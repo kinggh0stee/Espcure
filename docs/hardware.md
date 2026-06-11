@@ -8,12 +8,12 @@
 | 2 | **MCU** | ESP32-C6 DevKit (e.g. Espressif ESP32-C6-DevKitC-1) | 3.3 V logic; requires ESP-IDF firmware |
 | 3 | **Chamber sensor** | SHT45 breakout (Adafruit #5665 or equiv.) | I²C, 3.3 V; ±0.1 °C / ±1 % RH |
 | 4 | **Peltier SSR** | SSR-40 DD (40 A DC-DC solid-state relay, 3–32 V control) | DC–DC only — not AC SSR |
-| 6 | **PTC heater** | 12 V PTC heater pad, 20–30 W (e.g. uxcell 12V 30W PTC) | Mount on heatsink with fan |
-| 7 | **Heater relay** | 5 V relay module (e.g. SRD-05VDC-SL-C) | Optocoupler-isolated board |
+| 5 | **PTC heater** | 12 V 50 W PTC ceramic heater, 87.5 × 60 × 42 mm (AliExpress) | ~4.2 A; requires airflow — position in path of chamber fans |
+| 6 | **Heater relay** | 5 V relay module (e.g. SRD-05VDC-SL-C, 10 A rating) | Optocoupler-isolated board; 10 A rating > 4.2 A load ✓ |
 | 8 | **Dehumidifier** | Compact thermoelectric dehumidifier (e.g. Ivation IVADM10) | 120 V AC |
 | 9 | **Dehumidifier relay** | AC SSR or mechanical relay rated 10 A 120 V | Isolate mains from ESP32 |
 | 10 | **Fan relay** | 5 V relay module | For fan power switching on boot |
-| 11 | **12 V PSU** | Mean Well LRS-100-12 or fridge's existing 12 V rail | ≥ 5 A for Peltier + heater + fans |
+| 11 | **12 V PSU** | Mean Well LRS-100-12 or fridge's existing 12 V rail | ≥ 8 A recommended (Peltier ~6 A + heater 4.2 A + fans) |
 | 12 | **5 V PSU** | USB phone charger or Mean Well IRM-05-5 | Powers ESP32 and relay coils |
 | 13 | **Misc** | 18 AWG wire, lever nuts (Wago 221), heat shrink | No 4.7 kΩ pull-up needed (no DS18B20) |
 
