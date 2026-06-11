@@ -37,14 +37,12 @@ Priority: 🔴 Critical · 🟡 High · 🟢 Nice-to-have · ✅ Done
 
 ## 🟡 Hardware Additions
 
-- [ ] **Display** — see `docs/display-plan.md` for hardware options and wiring
-  - Option A: SSD1306/SH1106 0.96"–1.3" OLED (I2C, shares bus, simple)
-  - Option B: ST7789 1.69" color TFT (SPI, richer display)
-  - ESPHome display lambda showing temp, RH, dew point, program status
-  - Optional: page-cycle button (GPIO)
+- [x] **Display (SSD1306 OLED)** — config live in `espcure.yaml`; wire VCC/GND/SDA/SCL to GPIO21/22
+  - 3 pages: Primary (temp/RH/DP/VPD), Control (setpoints/WiFi), Programs (status/error)
+  - BOOT button (GPIO9) cycles pages — no extra wiring
+  - Upgrade path to color TFT documented in `docs/display-plan.md`
 
-- [ ] **Physical button(s)** — on-device control without HA/browser
-  - Cycle display pages
+- [x] **Physical button** — BOOT button (GPIO9) wired as display page-cycle button
   - Acknowledge frost alert
   - Toggle fans on/off
   - Suggested: 1–3× momentary buttons on spare GPIOs

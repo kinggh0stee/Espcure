@@ -203,6 +203,7 @@ sensor:
     name: "Uptime"
     entity_category: diagnostic
   - platform: wifi_signal
+    id: wifi_signal_sensor
     name: "WiFi Signal"
     device_class: signal_strength
     state_class: measurement
@@ -715,3 +716,102 @@ text_sensor:
       }
       return std::string(buf);
     update_interval: 30s
+
+# ─── Display (SSD1306 0.96" OLED — optional) ─────────────────────────────────
+# Requires an SSD1306 or SH1106 I²C OLED wired to the existing I²C bus:
+#   OLED VCC → 3.3V   OLED GND → GND
+#   OLED SDA → GPIO21  OLED SCL → GPIO22  (same pins as SHT45 — no conflict)
+#
+# Fonts are downloaded from Google Fonts at compile time (internet required).
+# See docs/display-plan.md for ST7789 TFT wiring and alternative font options.
+
+font:
+  - file: "gfonts://Roboto"
+    id: font_s
+    size: 9
+  - file: "gfonts://Roboto"
+    id: font_m
+    size: 13
+  - file: "gfonts://Roboto"
+    id: font_l
+    size: 20
+
+display:
+  - platform: ssd1306_i2c
+    model: "SSD1306 128x64"
+    address: 0x3C
+    id: oled
+    rotation: 0°
+    update_interval: 5s
+    pages:
+
+      # Page 1 — primary readings
+      - id: page_main
+        lambda: |-
+          if (isnan(id(chamber_temp).state)) {
+            it.printf(0, 24, id(font_m), "Sensor init...");
+            return;
+          }
+          // Temp (large, left half)
+          it.printf(0,  0, id(font_l), "%.1f\xc2\xb0", id(chamber_temp).state);
+          // RH (large, right half)
+          it.printf(68, 0, id(font_l), "%.0f%%", id(chamber_rh).state);
+          // Dew point
+          it.printf(0, 26, id(font_s), "DP %.1f\xc2\xb0C", id(dew_point).state);
+          // VPD
+          it.printf(68, 26, id(font_s), "VPD%.2f", id(vpd).state);
+          // Horizontal divider
+          it.line(0, 37, 128, 37);
+          // Status bar
+          it.printf(0, 40, id(font_s), "%s", id(chamber_status).state.c_str());
+          // Temp in °F (Cannatrol-style)
+          it.printf(68, 40, id(font_s), "%.0f\xc2\xb0""F", id(chamber_temp).state * 9.0f / 5.0f + 32.0f);
+          // Frost warning (bottom row when active)
+          if (id(frost_active)) {
+            it.printf(0, 54, id(font_s), "! FROST GUARD ACTIVE");
+          }
+
+      # Page 2 — humidity control & setpoints
+      - id: page_control
+        lambda: |-
+          it.printf(0,  0, id(font_m), "Control");
+          it.line(0, 15, 128, 15);
+          it.printf(0, 18, id(font_s), "%s", id(humidity_control_mode).state.c_str());
+          it.printf(0, 30, id(font_s), "SP %.1f\xc2\xb0C / %.0f\xc2\xb0""F",
+            id(temp_pid).target_temperature,
+            id(temp_pid).target_temperature * 9.0f / 5.0f + 32.0f);
+          it.printf(0, 42, id(font_s), "Frost floor %.0f\xc2\xb0""C", id(min_chamber_temp).state);
+          it.printf(0, 54, id(font_s), "WiFi %d dBm", (int)id(wifi_signal_sensor).state);
+
+      # Page 3 — active cure program
+      - id: page_programs
+        lambda: |-
+          it.printf(0,  0, id(font_m), "Programs");
+          it.line(0, 15, 128, 15);
+          it.printf(0, 18, id(font_s), "18d: %s", id(cure_program_status).state.c_str());
+          it.printf(0, 30, id(font_s), "C44: %s", id(cannatrol_program_status).state.c_str());
+          if (!id(use_dew_point_control).state && !isnan(id(humidity_error).state)) {
+            it.printf(0, 42, id(font_s), "RH err %+.1f%%", id(humidity_error).state);
+          } else if (id(use_dew_point_control).state && !isnan(id(dew_point_error).state)) {
+            it.printf(0, 42, id(font_s), "DP err %+.1f\xc2\xb0""C", id(dew_point_error).state);
+          }
+
+# ─── Display page-cycle button (BOOT button on DevKitC-1 = GPIO9) ─────────────
+
+binary_sensor:
+  # Uses the built-in BOOT button on the ESP32-C6 DevKitC-1 (GPIO9, active low).
+  # Short press cycles display pages. No additional wiring needed.
+  - platform: gpio
+    id: page_button
+    name: "Display Page Button"
+    pin:
+      number: GPIO9
+      mode: INPUT_PULLUP
+      inverted: true
+    entity_category: diagnostic
+    on_click:
+      min_length: 50ms
+      max_length: 350ms
+      then:
+        - display.page.show_next: oled
+        - component.update: oled
