@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(esphome config espcure.yaml)",
+      "Bash(esphome logs espcure.yaml*)",
+      "Bash(esphome run espcure.yaml*)",
+      "Bash(pip install esphome*)",
+      "Bash(git status)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(git add*)",
+      "Bash(git commit*)"
+    ]
+  }
+}
