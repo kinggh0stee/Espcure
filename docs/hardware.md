@@ -10,9 +10,9 @@
 | 4 | **SSR — Fan rail** | SSR-40 DD (DC-DC solid-state relay) | Controls all 3 fans together (2 TEC hot-side + heater fan); always on |
 | 5 | **SSR — TEC cooling** | SSR-40 DD | Controls both TECs in parallel; slow_pwm 20 s |
 | 6 | **SSR — Heater** | SSR-40 DD | Controls PTC element only (heater fan wired to fan rail); slow_pwm 20 s |
-| 7 | **PTC heater** | 12 V 50 W PTC ceramic heater with integrated 12 V fan, 87.5 × 60 × 42 mm (AliExpress) | Splice the heater connector: fan wire → fan rail (row 4 SSR); PTC wire → heater SSR (row 6) |
+| 7 | **PTC heater** | 12 V 50 W PTC ceramic heater with integrated 12 V fan, 87.5 × 60 × 42 mm (AliExpress) | Fan and element have **separate connectors** (white JST = fan; bare red/black = PTC element) — no splicing needed |
 | 8 | **Dehumidifier** | Optional — Peltier condensation alone may suffice | If used: add AC SSR (separate part) for 120 V AC load on GPIO23 |
-| 9 | **12 V PSU** | Mean Well LRS-200-12 (16.7 A) recommended | Peak load: 2× TECs (verify A per TEC) + heater 4.2 A + fans ~0.6 A |
+| 9 | **12 V PSU** | Generic 12 V 300 W switching PSU (25 A) | 25 A headroom covers 2× TECs + heater (4.2 A) + fans comfortably |
 | 10 | **5 V PSU** | USB phone charger or Mean Well IRM-05-5 | Powers ESP32 only (no relay coils — SSRs draw < 20 mA from GPIO directly) |
 | 11 | **Misc** | 18 AWG wire, lever nuts (Wago 221), heat shrink, 3× SSR heatsinks | SSR-40 DDs must be mounted on heatsink when carrying > 5 A |
 
@@ -57,15 +57,14 @@
   5V USB ──────────── ESP32 VIN
 ```
 
-## Heater Fan Splicing
+## Heater Wiring
 
-The PTC heater ships with the fan and element sharing one power connector. To put the fan on the always-on fan rail (with TEC fans) and the PTC element on its own SSR:
+The PTC heater has **two separate connectors pre-wired from the factory**:
 
-1. Cut open the heater connector harness.
-2. Identify the fan wires (usually the thinner pair; fan is ~0.2 A) and the PTC element wires (thicker pair; element is ~4.2 A).
-3. Connect fan wires to the 12 V fan rail output (SSR GPIO5 load side).
-4. Connect PTC element wires to the heater SSR output (SSR GPIO19 load side).
-5. Use lever nuts or solder + heat shrink. Do not use wire nuts on 12 V DC — they can work loose.
+- **White JST connector** (2 pins, thin wires) → fan. Connect to the 12 V fan rail output (fan SSR GPIO5 load side). Fan runs continuously.
+- **Bare red/black wires** (thicker) → PTC ceramic element. Connect to the heater SSR output (GPIO19 load side). Element is slow-PWM controlled.
+
+No cutting or splicing required.
 
 ## SSR-40 DD Heatsinking
 
