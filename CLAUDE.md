@@ -84,14 +84,17 @@ esphome run espcure.yaml --device espcure.local
 | `safety-reviewer` | **opus** | Electrical safety, frost protection logic, thermal runaway review |
 | `docs-writer` | haiku | README, hardware docs, setup guides, cure-program docs |
 | `ha-integration` | haiku | Home Assistant dashboard YAML, HA automations, Lovelace cards |
+| `senior-reviewer` | **opus** | Final review gate for major changes — audits correctness, safety compliance, secrets hygiene, and doc sync |
+| `ci-checker` | sonnet | Pre-push validation — runs `esphome config`, checks safety invariants, scans for leaked secrets |
 
 ### Mandatory workflow
 
 1. For any non-trivial change: consult `plan` (opus) for approach.
 2. Route implementation to the matching specialist agent.
-3. Run `esphome config espcure.yaml` to validate.
+3. Run `ci-checker` to validate config, secrets, and safety invariants before pushing.
 4. Electrical or safety-touching changes → `safety-reviewer` before done.
 5. Update relevant docs via `docs-writer` if behavior changed.
+6. Run `senior-reviewer` as the final gate before any major change is merged.
 
 ## Key constraints & gotchas
 
