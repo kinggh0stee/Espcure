@@ -706,9 +706,12 @@ text_sensor:
       char buf[56];
       int day = (int)id(cannatrol_day).state;
       if (id(cannatrol_phase) == 0) {
-        snprintf(buf, sizeof(buf), "Dry Phase \xe2\x80\x94 Day %d/4 (12.2\xc2\xb0C DP)", day + 1);
+        // days 0-3 display as Day 1/4 – Day 4/4; day=4 is transitional (still dry)
+        int d = (day + 1 <= 4) ? day + 1 : 4;
+        snprintf(buf, sizeof(buf), "Dry Phase \xe2\x80\x94 Day %d/4 (12.2\xc2\xb0C DP)", d);
       } else {
-        snprintf(buf, sizeof(buf), "Cure Phase \xe2\x80\x94 Day %d/4 (11.1\xc2\xb0C DP)", day - 3);
+        // cure days start at cannatrol_day=5; day-4 gives 1-4
+        snprintf(buf, sizeof(buf), "Cure Phase \xe2\x80\x94 Day %d/4 (11.1\xc2\xb0C DP)", day - 4);
       }
       return std::string(buf);
     update_interval: 30s
