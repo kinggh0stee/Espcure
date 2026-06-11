@@ -1,0 +1,79 @@
+site_name: EspCure
+site_description: Open-source DIY cannabis curing chamber controller — ESP32-C6 + ESPHome
+site_url: https://kinggh0stee.github.io/Espcure/
+repo_url: https://github.com/kinggh0stee/Espcure
+repo_name: kinggh0stee/Espcure
+edit_uri: edit/main/docs/
+copyright: MIT License — EspCure contributors
+
+theme:
+  name: material
+  custom_dir: docs/overrides
+  palette:
+    - scheme: slate
+      primary: teal
+      accent: amber
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+    - scheme: default
+      primary: teal
+      accent: amber
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+  font:
+    text: Inter
+    code: JetBrains Mono
+  features:
+    - navigation.instant
+    - navigation.instant.progress
+    - navigation.tabs
+    - navigation.top
+    - navigation.footer
+    - content.code.copy
+    - content.code.annotate
+    - search.highlight
+    - search.suggest
+    - toc.follow
+  icon:
+    repo: fontawesome/brands/github
+    logo: material/leaf
+  favicon: assets/favicon.png
+
+extra_css:
+  - stylesheets/extra.css
+
+plugins:
+  - search
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Hardware: hardware.md
+  - Setup: setup.md
+  - Calibration: calibration.md
+  - PID Tuning: pid-tuning.md
+  - Cure Programs: cure-programs.md
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/kinggh0stee/Espcure

@@ -22,22 +22,29 @@ deadband_parameters:
 
 These are initial defaults. Run the autotune procedure after install to get values specific to your fridge.
 
+## Live PID Tuning (no reflash needed)
+
+EspCure exposes `PID Kp`, `PID Ki`, and `PID Kd` as number entities — available on both the device web UI (`http://espcure.local`) and in Home Assistant. Changing any value instantly applies it to the running PID controller via `climate.pid.set_control_parameters`.
+
+Values are persisted across reboots (`restore_value: true`) and automatically re-applied at boot. You no longer need to edit the YAML or reflash to tune the PID.
+
+**After tuning**: Update the `control_parameters` block in `espcure.yaml` to match your tuned values so the YAML stays the source of truth, and log them below.
+
 ## Autotune Procedure
 
 The `PID Autotune` button in HA / web UI triggers ESPHome's built-in relay-feedback autotune.
 
 1. Let chamber stabilize at a temperature above setpoint (e.g. room temp) with the door closed.
 2. Set target temperature to 12.8 °C (55 °F) via the climate entity.
-3. Press **PID Autotune** in the HA device page.
+3. Press **PID Autotune** in the HA device page or device web UI.
 4. Wait. The fridge will oscillate deliberately. For a small thermoelectric fridge this takes 30–90 minutes.
 5. Watch ESPHome logs (`esphome logs espcure.yaml`) for:
    ```
    [I][pid.autotune:xxx]: PID Autotune finished!
    [I][pid.autotune:xxx]:   Calculated kp=X, ki=Y, kd=Z
    ```
-6. Copy those values into `espcure.yaml` under `control_parameters`.
-7. Flash: `esphome run espcure.yaml`
-8. Log the results in this file (see format below).
+6. Apply the new values via the `PID Kp/Ki/Kd` sliders in the web UI or HA — no reflash needed.
+7. Update `control_parameters` in `espcure.yaml` and log them below.
 
 ## Diagnostic Quick Reference
 

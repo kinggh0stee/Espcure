@@ -7,13 +7,17 @@ This file provides guidance to Claude Code when working with this repository.
 **EspCure** — an open-source DIY cannabis curing chamber controller built on ESPHome and ESP32-C6. Inspired by the Cannatrol and the thermoelectric wine-cooler modification documented at rollitup.org. The base hardware is a Honeywell thermoelectric (Peltier) fridge with its original control board bypassed and replaced by an ESP32-C6.
 
 Capabilities:
-- PID temperature control (default 55 °F / 12.8 °C)
+- PID temperature control with live tunable Kp/Ki/Kd (default 55 °F / 12.8 °C)
 - Dual humidity control modes: **RH mode** (rollitup-style, bang-bang on % RH) and **Dew Point mode** (Cannatrol-style, bang-bang on dew point °C)
-- Dew point + VPD sensors derived from SHT45 readings
-- Automated cure program: steps humidity down 1 %/day from 78 % → 60 %
+- Dew point + VPD sensors derived from SHT45 readings; humidity error and dew-point error diagnostic sensors
+- **18-day step-down program** (RH mode): −1 %/day from 78 % → 60 %
+- **Cannatrol 4+4 program** (dew-point mode): 4 days dry at 12.2 °C DP → 4 days cure at 11.1 °C DP
+- **One-tap presets**: Dry Profile, Cure Profile, Cold-Plate Profile buttons
+- Chamber Status text sensor (Cooling / Heating / Idle / Frost Guard)
 - Software frost floor (disables Peltier if chamber air drops below configurable floor, default 4 °C)
-- Home Assistant integration via native API
-- OTA updates, fallback AP, local web UI
+- Home Assistant integration via encrypted native API (device_class + state_class on all sensors)
+- Device-hosted web UI at `http://espcure.local` — `web_server` v3, dark mode toggle, no HA required
+- OTA updates, fallback AP
 
 ## Repository layout
 
@@ -22,10 +26,11 @@ espcure.yaml            Main ESPHome configuration
 secrets.yaml.example    Template — copy to secrets.yaml (gitignored)
 docs/
   hardware.md           BOM, pinout, wiring guide
-  setup.md              First-flash and integration guide
+  setup.md              First-flash and HA integration guide
   calibration.md        Sensor offset calibration procedure
   pid-tuning.md         PID autotune and manual tuning guide
-  cure-programs.md      Cure program logic and HA automation examples
+  cure-programs.md      Cure programs (18-day + Cannatrol 4+4) and HA automations
+  ha-dashboard.yaml     Ready-to-import Lovelace dashboard
 .claude/
   agents/               Sub-agent definitions (see below)
   settings.json         Permissions
@@ -42,8 +47,13 @@ All ESPHome work lives in **`espcure.yaml`**. Key sections:
 | `output.slow_pwm` (heater) | 20 s period |
 | `interval` (30 s) | Humidity/dew-point bang-bang loop (switches on `use_dew_point_control`) |
 | `interval` (60 s) | Frost-guard loop |
-| `time.on_time` (cron) | Daily cure step-down |
-| `number.*_setpoint` | User-facing setpoints exposed to HA |
+| `time.on_time` (cron) | Midnight cron — 18-day step + Cannatrol 4+4 advance |
+| `number.*_setpoint` | User-facing setpoints exposed to HA and web UI |
+| `number.pid_k*` | Live PID tuning — `on_value` calls `set_control_parameters` |
+| `switch.cure_program_active` | 18-day RH step-down program |
+| `switch.cannatrol_program_active` | Cannatrol 4+4 dew-point program |
+| `button.apply_*_profile` | One-tap profile presets |
+| `text_sensor.chamber_status` | Human-readable operating state |
 
 ## Build & flash
 
@@ -103,7 +113,8 @@ esphome run espcure.yaml --device espcure.local
 - **3.3 V GPIO → SSR-40 DD**: ESP32-C6 outputs 3.3 V; SSR-40 DD spec minimum is 3 V. Verify each SSR triggers reliably at 3.3 V before final install. If marginal, add a 2N2222 NPN driver on the control line.
 - **No cold-plate sensor**: There is no DS18B20. Frost protection is software-only: if `chamber_temp` drops below `min_chamber_temp` (default 4 °C), PID is disabled until chamber recovers 2 °C above the floor. The `frost_active` global tracks this state.
 - **Humidity loop**: The dehumidifier's primary function is to raise internal temperature slightly, triggering the Peltier to activate and pull moisture through condensation on the cold plate — not direct dehumidification.
-- **Cure program**: Driven by `time.homeassistant` cron (midnight). Requires HA time sync. Restarting ESPHome does not reset the day counter (`restore_value: true`).
+- **Cure programs**: Both the 18-day and Cannatrol 4+4 programs are driven by `time.homeassistant` cron (midnight). Require HA time sync. Day counters use `restore_value: true` — restarting ESPHome does not reset them. Enabling one program automatically disables the other.
+- **Cannatrol 4+4 program**: `cannatrol_phase` global (0=dry, 1=cure) tracks which phase is active. Phase transitions happen at midnight on day 5. The `cannatrol_program_status` text sensor exposes progress to both HA and the web UI.
 - **Sensor calibration**: SHT45 self-heating is ~0.1–0.2 °C (much less than SHT31). Still calibrate with `offset` in `filters` after install.
 - **Cannatrol dew-point philosophy**: The Cannatrol controls dew point, not raw RH. With `use_dew_point_control` ON, the dehumidifier is driven by `dew_point_setpoint` (°C). Cannatrol cure default is 11.1 °C (52 °F dew point). The `dew_point` sensor is calculated from SHT45 T + RH via Magnus formula — do not replace it with a direct sensor.
 - **ESP32-C6 requires ESP-IDF**: The `framework: type: esp-idf` must not be changed to `arduino`. The C6 variant is not Arduino-compatible in ESPHome.

@@ -1,0 +1,252 @@
+# EspCure — Home Assistant Lovelace Dashboard
+#
+# Import via: Settings → Dashboards → Add Dashboard → (paste raw YAML)
+# or drop into your lovelace config under `views:`.
+#
+# Replace "espcure" with your actual entity prefix if you changed the device name.
+
+title: EspCure
+path: espcure
+icon: mdi:cannabis
+background: var(--primary-background-color)
+
+cards:
+
+  # ── Status header ────────────────────────────────────────────────────────────
+  - type: custom:mushroom-title-card
+    title: EspCure
+    subtitle: "{{ states('sensor.espcure_chamber_status') }}"
+
+  # ── Primary sensor row ───────────────────────────────────────────────────────
+  - type: horizontal-stack
+    cards:
+      - type: gauge
+        entity: sensor.espcure_chamber_temperature
+        name: Temp
+        min: 0
+        max: 35
+        needle: true
+        severity:
+          green: 10
+          yellow: 18
+          red: 25
+        unit: "°C"
+
+      - type: gauge
+        entity: sensor.espcure_chamber_humidity
+        name: RH
+        min: 40
+        max: 100
+        needle: true
+        severity:
+          green: 58
+          yellow: 75
+          red: 85
+        unit: "%"
+
+      - type: gauge
+        entity: sensor.espcure_dew_point
+        name: Dew Pt
+        min: 0
+        max: 20
+        needle: true
+        severity:
+          green: 10
+          yellow: 14
+          red: 17
+        unit: "°C"
+
+      - type: gauge
+        entity: sensor.espcure_vapor_pressure_deficit
+        name: VPD
+        min: 0
+        max: 2.5
+        needle: true
+        severity:
+          green: 0
+          yellow: 0.8
+          red: 1.5
+        unit: "kPa"
+
+  # ── Climate + Temperature (°F) ───────────────────────────────────────────────
+  - type: horizontal-stack
+    cards:
+      - type: thermostat
+        entity: climate.espcure_chamber_temperature
+        name: Chamber PID
+        features:
+          - type: climate-hvac-modes
+            hvac_modes:
+              - heat_cool
+              - "off"
+
+      - type: vertical-stack
+        cards:
+          - type: entity
+            entity: sensor.espcure_chamber_temperature_f
+            name: Temperature (°F)
+            icon: mdi:thermometer
+          - type: entity
+            entity: sensor.espcure_humidity_control_mode
+            name: Control Mode
+            icon: mdi:water-check
+
+  # ── Cure programs ────────────────────────────────────────────────────────────
+  - type: entities
+    title: Cure Programs
+    icon: mdi:sprout
+    entities:
+      - entity: switch.espcure_cure_program_18_day
+        name: 18-Day Step-Down Program
+      - entity: sensor.espcure_cure_program_status
+        name: 18-Day Status
+      - type: divider
+      - entity: switch.espcure_cannatrol_4_4_program
+        name: Cannatrol 4+4 Program
+      - entity: sensor.espcure_cannatrol_program_status
+        name: 4+4 Status
+      - type: divider
+      - entity: number.espcure_cure_program_day
+        name: 18-Day Counter
+      - entity: number.espcure_cannatrol_program_day
+        name: 4+4 Counter
+
+  # ── One-tap profile presets ──────────────────────────────────────────────────
+  - type: grid
+    title: Cannatrol Presets
+    columns: 3
+    square: false
+    cards:
+      - type: button
+        entity: button.espcure_apply_dry_profile
+        name: Dry Profile
+        icon: mdi:weather-sunny
+        tap_action:
+          action: call-service
+          service: button.press
+          target:
+            entity_id: button.espcure_apply_dry_profile
+        show_state: false
+
+      - type: button
+        entity: button.espcure_apply_cure_profile
+        name: Cure Profile
+        icon: mdi:leaf
+        tap_action:
+          action: call-service
+          service: button.press
+          target:
+            entity_id: button.espcure_apply_cure_profile
+        show_state: false
+
+      - type: button
+        entity: button.espcure_apply_cold_plate_profile
+        name: Cold-Plate
+        icon: mdi:snowflake-thermometer
+        tap_action:
+          action: call-service
+          service: button.press
+          target:
+            entity_id: button.espcure_apply_cold_plate_profile
+        show_state: false
+
+  # ── Humidity setpoints ───────────────────────────────────────────────────────
+  - type: entities
+    title: Humidity Setpoints
+    icon: mdi:tune
+    entities:
+      - entity: switch.espcure_dew_point_control_mode
+        name: Dew Point Control Mode
+      - entity: number.espcure_dew_point_setpoint
+        name: Dew Point Target
+      - entity: number.espcure_dew_point_hysteresis
+        name: Dew Point Hysteresis
+      - type: divider
+      - entity: number.espcure_humidity_setpoint
+        name: RH Target
+      - entity: number.espcure_humidity_hysteresis
+        name: RH Hysteresis
+      - type: divider
+      - entity: sensor.espcure_humidity_error
+        name: RH Error
+      - entity: sensor.espcure_dew_point_error
+        name: Dew Point Error
+
+  # ── Temperature history ──────────────────────────────────────────────────────
+  - type: history-graph
+    title: Temperature & Dew Point (24 h)
+    hours_to_show: 24
+    entities:
+      - entity: sensor.espcure_chamber_temperature
+        name: Temp °C
+      - entity: sensor.espcure_dew_point
+        name: Dew Pt °C
+
+  # ── Humidity history ─────────────────────────────────────────────────────────
+  - type: history-graph
+    title: Humidity & VPD (24 h)
+    hours_to_show: 24
+    entities:
+      - entity: sensor.espcure_chamber_humidity
+        name: RH %
+      - entity: sensor.espcure_vapor_pressure_deficit
+        name: VPD kPa
+
+  # ── PID live tuning ──────────────────────────────────────────────────────────
+  - type: entities
+    title: PID Tuning
+    icon: mdi:chart-bell-curve
+    entities:
+      - entity: number.espcure_pid_kp
+        name: Kp
+      - entity: number.espcure_pid_ki
+        name: Ki
+      - entity: number.espcure_pid_kd
+        name: Kd
+      - type: divider
+      - entity: sensor.espcure_pid_cool_output
+        name: Cool Output
+      - entity: sensor.espcure_pid_heat_output
+        name: Heat Output
+      - entity: sensor.espcure_pid_integral
+        name: Integral
+      - type: divider
+      - entity: button.espcure_pid_autotune
+        name: Run Autotune
+        action_name: Start
+
+  # ── Safety & outputs ─────────────────────────────────────────────────────────
+  - type: entities
+    title: Outputs & Safety
+    icon: mdi:shield-check
+    entities:
+      - entity: binary_sensor.espcure_frost_floor_active
+        name: Frost Guard Active
+      - entity: number.espcure_min_chamber_temperature_frost_floor
+        name: Frost Floor (°C)
+      - type: divider
+      - entity: switch.espcure_chamber_fans
+        name: Chamber Fans
+      - entity: switch.espcure_dehumidifier
+        name: Dehumidifier Relay
+
+  # ── Diagnostics ──────────────────────────────────────────────────────────────
+  - type: entities
+    title: Diagnostics
+    icon: mdi:information
+    entities:
+      - entity: binary_sensor.espcure_controller_online
+        name: Controller Online
+      - entity: sensor.espcure_wifi_signal
+        name: WiFi Signal
+      - entity: sensor.espcure_ip_address
+        name: IP Address
+      - entity: sensor.espcure_uptime
+        name: Uptime
+      - type: divider
+      - entity: button.espcure_clear_sensor_condensation
+        name: Clear Sensor Condensation
+        action_name: Run
+      - entity: button.espcure_restart_controller
+        name: Restart Controller
+        action_name: Restart
