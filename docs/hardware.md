@@ -8,7 +8,7 @@
 | 2 | **MCU** | ESP32-C6 DevKit (e.g. Espressif ESP32-C6-DevKitC-1) | 3.3 V logic; requires ESP-IDF firmware |
 | 3 | **Chamber sensor** | SHT45 breakout (Adafruit #5665 or equiv.) | I²C, 3.3 V; ±0.1 °C / ±1 % RH |
 | 4 | **Peltier SSR** | SSR-40 DD (40 A DC-DC solid-state relay, 3–32 V control) | DC–DC only — not AC SSR |
-| 5 | **PTC heater** | 12 V 50 W PTC ceramic heater, 87.5 × 60 × 42 mm (AliExpress) | ~4.2 A; requires airflow — position in path of chamber fans |
+| 5 | **PTC heater** | 12 V 50 W PTC ceramic heater with integrated 12 V fan, 87.5 × 60 × 42 mm (AliExpress) | ~4.2 A + fan (~0.2 A); fan and heater share one relay — both cycle together |
 | 6 | **Heater relay** | 5 V relay module (e.g. SRD-05VDC-SL-C, 10 A rating) | Optocoupler-isolated board; 10 A rating > 4.2 A load ✓ |
 | 8 | **Dehumidifier** | Compact thermoelectric dehumidifier (e.g. Ivation IVADM10) | 120 V AC |
 | 9 | **Dehumidifier relay** | AC SSR or mechanical relay rated 10 A 120 V | Isolate mains from ESP32 |

@@ -139,8 +139,9 @@ output:
       inverted: false
     period: 20s
 
-  # 12 V 50 W PTC ceramic heater (87.5×60×42 mm) — must have airflow across it
-  # GPIO19 → 5 V relay module (SRD-05VDC-SL-C) → heater 12 V supply
+  # 12 V 50 W PTC ceramic heater with integrated 12 V fan (87.5×60×42 mm)
+  # Fan and heater share one 12 V connector — both cycle with this relay
+  # GPIO19 → 5 V relay module (SRD-05VDC-SL-C) → heater+fan 12 V supply
   - platform: slow_pwm
     id: heater_output
     pin:
