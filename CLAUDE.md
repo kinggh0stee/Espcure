@@ -96,7 +96,8 @@ esphome run espcure.yaml --device espcure.local
 ## Key constraints & gotchas
 
 - **Peltier switching**: Use `slow_pwm` ≥ 10 s period only. Never use regular GPIO PWM — rapid switching destroys Peltier junctions.
-- **DC SSR required**: The Peltier runs on 12 V DC. The SSR-40 DD is a DC-DC SSR. Do not substitute an AC SSR.
+- **All 3 outputs use SSR-40 DD**: Fan rail (GPIO5), TEC cooling (GPIO18), heater element (GPIO19) — all DC-DC solid-state relays. No mechanical relay modules in this build. SSR-40 DDs must be on heatsinks when carrying > 5 A.
+- **3.3 V GPIO → SSR-40 DD**: ESP32-C6 outputs 3.3 V; SSR-40 DD spec minimum is 3 V. Verify each SSR triggers reliably at 3.3 V before final install. If marginal, add a 2N2222 NPN driver on the control line.
 - **No cold-plate sensor**: There is no DS18B20. Frost protection is software-only: if `chamber_temp` drops below `min_chamber_temp` (default 4 °C), PID is disabled until chamber recovers 2 °C above the floor. The `frost_active` global tracks this state.
 - **Humidity loop**: The dehumidifier's primary function is to raise internal temperature slightly, triggering the Peltier to activate and pull moisture through condensation on the cold plate — not direct dehumidification.
 - **Cure program**: Driven by `time.homeassistant` cron (midnight). Requires HA time sync. Restarting ESPHome does not reset the day counter (`restore_value: true`).

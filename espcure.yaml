@@ -130,8 +130,8 @@ sensor:
 # ─── Outputs ──────────────────────────────────────────────────────────────────
 
 output:
-  # Peltier SSR — slow PWM avoids thermal stress from rapid switching
-  # GPIO18 → SSR-40 DD (DC-DC SSR) → Peltier positive rail (12 V)
+  # TEC cooling — both Peltiers wired in parallel through one SSR-40 DD
+  # GPIO18 → SSR-40 DD → TEC 1 (+) and TEC 2 (+) in parallel → 12 V PSU (−)
   - platform: slow_pwm
     id: peltier_output
     pin:
@@ -152,7 +152,8 @@ output:
 # ─── Switches ─────────────────────────────────────────────────────────────────
 
 switch:
-  # Circulation fans — always on during operation
+  # Fan rail — all 3 fans together (2 TEC hot-side fans + heater fan)
+  # GPIO5 → SSR-40 DD → fan rail 12 V (always on at boot)
   - platform: gpio
     id: fan_relay
     name: "Chamber Fans"
