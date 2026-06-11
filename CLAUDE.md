@@ -24,13 +24,15 @@ Capabilities:
 ```
 espcure.yaml            Main ESPHome configuration
 secrets.yaml.example    Template — copy to secrets.yaml (gitignored)
+TODO.md                 Project TODO list (prioritized)
 docs/
   hardware.md           BOM, pinout, wiring guide
   setup.md              First-flash and HA integration guide
   calibration.md        Sensor offset calibration procedure
   pid-tuning.md         PID autotune and manual tuning guide
   cure-programs.md      Cure programs (18-day + Cannatrol 4+4) and HA automations
-  ha-dashboard.yaml     Ready-to-import Lovelace dashboard
+  ha-dashboard.yaml     Ready-to-import Lovelace dashboard (5 tabs)
+  display-plan.md       Display hardware options, wiring, ESPHome config skeleton
 .claude/
   agents/               Sub-agent definitions (see below)
   settings.json         Permissions
