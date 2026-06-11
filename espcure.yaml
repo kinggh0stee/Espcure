@@ -43,6 +43,8 @@ captive_portal:
 
 web_server:
   port: 80
+  version: 3
+  local: true
 
 # ─── I²C (SHT45 chamber sensor) ───────────────────────────────────────────────
 # SDA → GPIO21   SCL → GPIO22
@@ -270,6 +272,62 @@ number:
     optimistic: true
     unit_of_measurement: "°C"
     icon: "mdi:snowflake-alert"
+
+  # PID tuning — live adjustable from the device web UI at http://espcure.local
+  # Changing any parameter immediately calls set_control_parameters on the climate.
+  - platform: template
+    id: pid_kp
+    name: "PID Kp"
+    min_value: 0.01
+    max_value: 2.0
+    step: 0.01
+    initial_value: 0.35
+    restore_value: true
+    optimistic: true
+    icon: "mdi:alpha-p-circle"
+    on_value:
+      then:
+        - climate.pid.set_control_parameters:
+            id: temp_pid
+            kp: !lambda return id(pid_kp).state;
+            ki: !lambda return id(pid_ki).state;
+            kd: !lambda return id(pid_kd).state;
+
+  - platform: template
+    id: pid_ki
+    name: "PID Ki"
+    min_value: 0.0
+    max_value: 0.1
+    step: 0.001
+    initial_value: 0.005
+    restore_value: true
+    optimistic: true
+    icon: "mdi:alpha-i-circle"
+    on_value:
+      then:
+        - climate.pid.set_control_parameters:
+            id: temp_pid
+            kp: !lambda return id(pid_kp).state;
+            ki: !lambda return id(pid_ki).state;
+            kd: !lambda return id(pid_kd).state;
+
+  - platform: template
+    id: pid_kd
+    name: "PID Kd"
+    min_value: 0.0
+    max_value: 5.0
+    step: 0.05
+    initial_value: 1.2
+    restore_value: true
+    optimistic: true
+    icon: "mdi:alpha-d-circle"
+    on_value:
+      then:
+        - climate.pid.set_control_parameters:
+            id: temp_pid
+            kp: !lambda return id(pid_kp).state;
+            ki: !lambda return id(pid_ki).state;
+            kd: !lambda return id(pid_kd).state;
 
 # ─── Climate (Temperature PID) ────────────────────────────────────────────────
 
