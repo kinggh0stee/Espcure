@@ -46,9 +46,23 @@ esphome run espcure.yaml
 
 When complete, the ESP32 will reboot and connect to your WiFi. The onboard LED will blink during connection.
 
-## 4. Verify connectivity
+## 4. Open the device web UI
 
-Open a browser to `http://espcure.local` (or the IP shown in logs). The ESPHome web interface should display all sensors and controls.
+Browse to **`http://espcure.local`** (or the IP address shown in logs).
+
+The device-hosted dashboard gives full control without Home Assistant:
+
+| Section | What you get |
+|---|---|
+| **Sensors** | Chamber temp (°C + °F), RH, dew point, VPD, error values |
+| **Climate** | Temperature PID card — adjust setpoint, see cooling/heating state |
+| **Controls** | Cure programs, dehumidifier, fan, dew-point mode toggle |
+| **Presets** | Apply Dry / Cure / Cold-Plate profile in one tap |
+| **PID Tuning** | Adjust Kp/Ki/Kd live — changes apply without reflash |
+| **Status** | Chamber Status, Humidity Control Mode, program progress |
+| **Dark mode** | Toggle in the top-right corner of the UI (follows system preference by default) |
+
+The web UI runs entirely from the ESP32's flash — no internet access required.
 
 ## 5. Add to Home Assistant
 
@@ -57,15 +71,23 @@ Open a browser to `http://espcure.local` (or the IP shown in logs). The ESPHome 
 3. Enter the `api_encryption_key` from your `secrets.yaml`
 4. All entities will appear under the **EspCure** device
 
+### Import the dashboard
+
+A ready-to-use Lovelace dashboard is at `docs/ha-dashboard.yaml`. To import:
+
+1. In HA: **Settings → Dashboards → Add Dashboard**
+2. Switch to YAML mode and paste the contents of `docs/ha-dashboard.yaml`
+
 ## 6. First-run checklist
 
+- [ ] `http://espcure.local` loads the web dashboard
 - [ ] Chamber temperature sensor reads a plausible value
-- [ ] Cold plate temperature sensor reads (should be near ambient initially)
 - [ ] Chamber humidity sensor reads a plausible value
 - [ ] Fan relay turns on automatically on boot
-- [ ] Climate entity shows in HA with target 12.8 °C
+- [ ] Climate entity shows with target 12.8 °C (55 °F)
 - [ ] Dehumidifier relay off by default
-- [ ] Cure program switch off by default
+- [ ] Both cure program switches off by default
+- [ ] Apply Dry Profile button sets 20 °C + 12.2 °C DP + dew-point mode ON
 
 ## 7. Set up HA time sync
 

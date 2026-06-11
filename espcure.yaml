@@ -2,7 +2,8 @@
 # EspCure — Thermoelectric Curing Chamber Controller
 # Target board : ESP32-C6  (requires ESP-IDF framework)
 # Sensor       : SHT45 (I²C, chamber temp/RH only — no cold-plate sensor)
-# Outputs      : Peltier SSR-40 DD, heater relay, dehumidifier relay, fan relay
+# Outputs      : 3× SSR-40 DD (fan rail / Peltier TECs / heater)
+# Web UI       : http://espcure.local  (no Home Assistant required)
 ################################################################################
 
 esphome:
@@ -41,6 +42,9 @@ wifi:
 
 captive_portal:
 
+# Device-hosted web UI — browse to http://espcure.local
+# version: 3 provides a full React dashboard with dark mode toggle.
+# local: true serves assets from flash (works without internet).
 web_server:
   port: 80
   version: 3
@@ -63,32 +67,58 @@ globals:
     restore_value: false
     initial_value: "false"
 
+  # Cannatrol 4+4 program phase: 0 = dry (days 1–4), 1 = cure (days 5–8)
+  - id: cannatrol_phase
+    type: int
+    restore_value: true
+    initial_value: "0"
+
 # ─── Sensors ──────────────────────────────────────────────────────────────────
 
 sensor:
-  # Chamber air temperature & humidity (SHT45)
+  # ── Chamber air (SHT45) ──────────────────────────────────────────────────────
   - platform: sht4x
     address: 0x44
     precision: High
-    heater_max_duty: 0.0    # on-chip heater off by default; use Clear Sensor Condensation button
+    heater_max_duty: 0.0    # on-chip heater off by default; use "Clear Condensation" button
     update_interval: 30s
     temperature:
       id: chamber_temp
       name: "Chamber Temperature"
+      device_class: temperature
+      state_class: measurement
       filters:
-        - offset: 0.0        # adjust after calibration (see docs/calibration.md)
+        - offset: 0.0        # calibrate after install (see docs/calibration.md)
     humidity:
       id: chamber_rh
       name: "Chamber Humidity"
+      device_class: humidity
+      state_class: measurement
       filters:
-        - offset: 0.0        # adjust after calibration
+        - offset: 0.0
 
-  # Dew point — derived from chamber T + RH (Magnus formula)
-  # Cannatrol targets dew point, not raw RH. This is the primary humidity metric.
+  # Chamber temperature in °F — Cannatrol display convention
+  - platform: template
+    id: chamber_temp_f
+    name: "Chamber Temperature (°F)"
+    unit_of_measurement: "°F"
+    device_class: temperature
+    state_class: measurement
+    icon: "mdi:thermometer"
+    lambda: |-
+      if (isnan(id(chamber_temp).state)) return NAN;
+      return id(chamber_temp).state * 9.0f / 5.0f + 32.0f;
+    update_interval: 30s
+
+  # ── Derived humidity metrics ─────────────────────────────────────────────────
+
+  # Dew point via Magnus formula — Cannatrol controls this, not raw RH
   - platform: template
     id: dew_point
     name: "Dew Point"
     unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
     icon: "mdi:thermometer-water"
     lambda: |-
       float t  = id(chamber_temp).state;
@@ -98,11 +128,12 @@ sensor:
       return 243.04f * g / (17.625f - g);
     update_interval: 30s
 
-  # Vapor Pressure Deficit — derived metric for monitoring
+  # Vapor Pressure Deficit — plant stress indicator
   - platform: template
     id: vpd
     name: "Vapor Pressure Deficit"
     unit_of_measurement: "kPa"
+    state_class: measurement
     icon: "mdi:waves"
     lambda: |-
       float t  = id(chamber_temp).state;
@@ -112,38 +143,77 @@ sensor:
       return svp * (1.0f - rh / 100.0f);
     update_interval: 30s
 
-  # PID monitoring (diagnostic)
+  # RH error vs setpoint (positive = too humid; NaN when in dew-point mode)
+  - platform: template
+    id: humidity_error
+    name: "Humidity Error"
+    unit_of_measurement: "%"
+    state_class: measurement
+    icon: "mdi:water-alert"
+    entity_category: diagnostic
+    lambda: |-
+      if (id(use_dew_point_control).state) return NAN;
+      if (isnan(id(chamber_rh).state)) return NAN;
+      return id(chamber_rh).state - id(humidity_setpoint).state;
+    update_interval: 30s
+
+  # Dew-point error vs setpoint (positive = too humid; NaN when in RH mode)
+  - platform: template
+    id: dew_point_error
+    name: "Dew Point Error"
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    icon: "mdi:thermometer-alert"
+    entity_category: diagnostic
+    lambda: |-
+      if (!id(use_dew_point_control).state) return NAN;
+      if (isnan(id(dew_point).state)) return NAN;
+      return id(dew_point).state - id(dew_point_setpoint).state;
+    update_interval: 30s
+
+  # ── PID diagnostics ──────────────────────────────────────────────────────────
   - platform: pid
     climate_id: temp_pid
     name: "PID Cool Output"
     type: COOL
+    entity_category: diagnostic
   - platform: pid
     climate_id: temp_pid
     name: "PID Heat Output"
     type: HEAT
+    entity_category: diagnostic
+  - platform: pid
+    climate_id: temp_pid
+    name: "PID Integral"
+    type: INTEGRAL
+    entity_category: diagnostic
 
-  # System diagnostics
+  # ── System diagnostics ───────────────────────────────────────────────────────
   - platform: uptime
     name: "Uptime"
+    entity_category: diagnostic
   - platform: wifi_signal
     name: "WiFi Signal"
+    device_class: signal_strength
+    state_class: measurement
+    entity_category: diagnostic
     update_interval: 60s
 
 # ─── Outputs ──────────────────────────────────────────────────────────────────
 
 output:
-  # TEC cooling — both Peltiers wired in parallel through one SSR-40 DD
-  # GPIO18 → SSR-40 DD → TEC 1 (+) and TEC 2 (+) in parallel → 12 V PSU (−)
+  # TEC cooling — both Peltiers in parallel through one SSR-40 DD
+  # GPIO18 → SSR-40 DD → TEC1 (+) || TEC2 (+) → 12 V PSU (−)
   - platform: slow_pwm
     id: peltier_output
     pin:
       number: GPIO18
       inverted: false
-    period: 20s
+    period: 20s    # never reduce below 10 s — rapid cycling destroys Peltier junctions
 
-  # 12 V 50 W PTC ceramic heater with integrated 12 V fan (87.5×60×42 mm)
-  # Fan and heater share one 12 V connector — both cycle with this relay
-  # GPIO19 → 5 V relay module (SRD-05VDC-SL-C) → heater+fan 12 V supply
+  # 12 V 50 W PTC heater with integrated 12 V fan
+  # GPIO19 → SSR-40 DD → heater+fan 12 V supply
   - platform: slow_pwm
     id: heater_output
     pin:
@@ -154,7 +224,7 @@ output:
 # ─── Switches ─────────────────────────────────────────────────────────────────
 
 switch:
-  # Fan rail — all 3 fans together (2 TEC hot-side fans + heater fan)
+  # Fan rail — all 3 fans together (2× TEC hot-side + heater fan)
   # GPIO5 → SSR-40 DD → fan rail 12 V (always on at boot)
   - platform: gpio
     id: fan_relay
@@ -163,7 +233,7 @@ switch:
     restore_mode: RESTORE_DEFAULT_ON
     icon: "mdi:fan"
 
-  # Dehumidifier relay (optional — Peltier condensation alone may suffice)
+  # Dehumidifier relay — Peltier condensation alone often suffices
   - platform: gpio
     id: dehumidifier_relay
     name: "Dehumidifier"
@@ -171,14 +241,16 @@ switch:
     restore_mode: RESTORE_DEFAULT_OFF
     icon: "mdi:water-off"
 
-  # Cure program (auto humidity step-down 78 % → 60 %, -1 %/day)
+  # 18-day slow cure program: humidity steps -1 %/day from 78 % → 60 %
   - platform: template
     id: cure_program_active
-    name: "Cure Program"
+    name: "Cure Program (18-day)"
     restore_mode: RESTORE_DEFAULT_OFF
     optimistic: true
     icon: "mdi:sprout"
     on_turn_on:
+      - switch.turn_off: cannatrol_program_active  # only one program at a time
+      - switch.turn_off: use_dew_point_control     # 18-day program uses RH mode
       - number.set:
           id: program_day
           value: 0
@@ -186,8 +258,30 @@ switch:
           id: humidity_setpoint
           value: 78
 
-  # Dew point control mode — when ON, dehumidifier is driven by dew point setpoint
-  # (Cannatrol style). When OFF, uses raw RH setpoint (rollitup style).
+  # Cannatrol 4+4 program: 4 days dry (12.2 °C DP) then 4 days cure (11.1 °C DP)
+  - platform: template
+    id: cannatrol_program_active
+    name: "Cannatrol 4+4 Program"
+    restore_mode: RESTORE_DEFAULT_OFF
+    optimistic: true
+    icon: "mdi:cannabis"
+    on_turn_on:
+      - switch.turn_off: cure_program_active       # only one program at a time
+      - number.set:
+          id: cannatrol_day
+          value: 0
+      - lambda: id(cannatrol_phase) = 0;
+      - number.set:
+          id: dew_point_setpoint
+          value: 12.2       # 54 °F — Cannatrol dry profile
+      - climate.control:
+          id: temp_pid
+          target_temperature: 20.0    # 68 °F
+      - switch.turn_on: use_dew_point_control
+
+  # Humidity control mode toggle:
+  # OFF → rollitup style (bang-bang on % RH vs humidity_setpoint)
+  # ON  → Cannatrol style (bang-bang on dew point °C vs dew_point_setpoint)
   - platform: template
     id: use_dew_point_control
     name: "Dew Point Control Mode"
@@ -198,6 +292,7 @@ switch:
 # ─── Numbers (user-adjustable setpoints) ──────────────────────────────────────
 
 number:
+  # ── RH mode setpoints ────────────────────────────────────────────────────────
   - platform: template
     id: humidity_setpoint
     name: "Humidity Setpoint"
@@ -222,18 +317,7 @@ number:
     unit_of_measurement: "%"
     icon: "mdi:tune"
 
-  - platform: template
-    id: program_day
-    name: "Cure Program Day"
-    min_value: 0
-    max_value: 30
-    step: 1
-    initial_value: 0
-    restore_value: true
-    optimistic: true
-    icon: "mdi:calendar-today"
-
-  # Dew point setpoint — used when Dew Point Control Mode is ON
+  # ── Dew-point mode setpoints ─────────────────────────────────────────────────
   # Cannatrol defaults: 12.2 °C (54 °F) for dry, 11.1 °C (52 °F) for cure
   - platform: template
     id: dew_point_setpoint
@@ -259,8 +343,8 @@ number:
     unit_of_measurement: "°C"
     icon: "mdi:tune"
 
-  # Software frost floor — PID disables if chamber drops below this temperature
-  # Prevents over-cooling without a cold-plate sensor. Default 4 °C (39 °F).
+  # ── Frost floor ──────────────────────────────────────────────────────────────
+  # PID suspends if chamber air drops below this — software-only, no cold-plate sensor
   - platform: template
     id: min_chamber_temp
     name: "Min Chamber Temperature (Frost Floor)"
@@ -273,8 +357,32 @@ number:
     unit_of_measurement: "°C"
     icon: "mdi:snowflake-alert"
 
-  # PID tuning — live adjustable from the device web UI at http://espcure.local
-  # Changing any parameter immediately calls set_control_parameters on the climate.
+  # ── Cure program counters ────────────────────────────────────────────────────
+  - platform: template
+    id: program_day
+    name: "Cure Program Day"
+    min_value: 0
+    max_value: 30
+    step: 1
+    initial_value: 0
+    restore_value: true
+    optimistic: true
+    icon: "mdi:calendar-today"
+
+  - platform: template
+    id: cannatrol_day
+    name: "Cannatrol Program Day"
+    min_value: 0
+    max_value: 8
+    step: 1
+    initial_value: 0
+    restore_value: true
+    optimistic: true
+    icon: "mdi:calendar-today"
+
+  # ── Live PID tuning ──────────────────────────────────────────────────────────
+  # Changing any coefficient immediately applies via set_control_parameters.
+  # Tune from http://espcure.local or Home Assistant without reflashing.
   - platform: template
     id: pid_kp
     name: "PID Kp"
@@ -289,7 +397,7 @@ number:
       then:
         - climate.pid.set_control_parameters:
             id: temp_pid
-            kp: !lambda return id(pid_kp).state;
+            kp: !lambda return x;
             ki: !lambda return id(pid_ki).state;
             kd: !lambda return id(pid_kd).state;
 
@@ -308,7 +416,7 @@ number:
         - climate.pid.set_control_parameters:
             id: temp_pid
             kp: !lambda return id(pid_kp).state;
-            ki: !lambda return id(pid_ki).state;
+            ki: !lambda return x;
             kd: !lambda return id(pid_kd).state;
 
   - platform: template
@@ -327,7 +435,7 @@ number:
             id: temp_pid
             kp: !lambda return id(pid_kp).state;
             ki: !lambda return id(pid_ki).state;
-            kd: !lambda return id(pid_kd).state;
+            kd: !lambda return x;
 
 # ─── Climate (Temperature PID) ────────────────────────────────────────────────
 
@@ -336,11 +444,12 @@ climate:
     id: temp_pid
     name: "Chamber Temperature"
     sensor: chamber_temp
-    default_target_temperature: 12.8    # 55 °F — rollitup default; use 20 °C for Cannatrol style
+    default_target_temperature: 12.8    # 55 °F — rollitup cold-plate method
     cool_output: peltier_output
     heat_output: heater_output
     control_parameters:
       # Starting values — run PID Autotune after install to refine for your fridge
+      # Update pid_kp/ki/kd number entities after tuning (docs/pid-tuning.md)
       kp: 0.35
       ki: 0.005
       kd: 1.2
@@ -354,14 +463,15 @@ climate:
       ki_multiplier: 0.05
       kd_multiplier: 0.0
 
-# ─── Time (Home Assistant — drives daily cure step) ───────────────────────────
+# ─── Time (Home Assistant — drives daily cure program steps) ──────────────────
 
 time:
   - platform: homeassistant
     id: ha_time
     on_time:
-      - cron: "0 0 * * *"              # midnight daily
+      - cron: "0 0 * * *"    # midnight daily
         then:
+          # 18-day step-down: -1 %RH/day until 60 %
           - if:
               condition:
                 switch.is_on: cure_program_active
@@ -379,12 +489,36 @@ time:
                       id(cure_program_active).turn_off();
                     }
 
+          # Cannatrol 4+4: days 1-4 dry (12.2 °C DP), days 5-8 cure (11.1 °C DP)
+          - if:
+              condition:
+                switch.is_on: cannatrol_program_active
+              then:
+                - lambda: |-
+                    int day = (int)id(cannatrol_day).state + 1;
+                    auto dc = id(cannatrol_day).make_call();
+                    dc.set_value((float)day);
+                    dc.perform();
+                    if (day <= 4) {
+                      id(cannatrol_phase) = 0;
+                      auto sp = id(dew_point_setpoint).make_call();
+                      sp.set_value(12.2f);
+                      sp.perform();
+                    } else if (day <= 8) {
+                      id(cannatrol_phase) = 1;
+                      auto sp = id(dew_point_setpoint).make_call();
+                      sp.set_value(11.1f);
+                      sp.perform();
+                    } else {
+                      id(cannatrol_program_active).turn_off();
+                    }
+
 # ─── Interval automations ─────────────────────────────────────────────────────
 
 interval:
-  # Humidity/dew-point bang-bang control
-  # Dew Point Control Mode ON  → Cannatrol style (target dew point °C)
-  # Dew Point Control Mode OFF → rollitup style (target % RH)
+  # Humidity bang-bang control loop (30 s)
+  # Mode OFF → target % RH (rollitup style)
+  # Mode ON  → target dew point °C (Cannatrol style)
   - interval: 30s
     then:
       - lambda: |-
@@ -394,24 +528,20 @@ interval:
             float dp   = id(dew_point).state;
             float sp   = id(dew_point_setpoint).state;
             float hyst = id(dew_point_hysteresis).state / 2.0f;
-            if (!on && dp > sp + hyst)
-              id(dehumidifier_relay).turn_on();
-            else if (on && dp < sp - hyst)
-              id(dehumidifier_relay).turn_off();
+            if (!on && dp > sp + hyst) id(dehumidifier_relay).turn_on();
+            else if (on && dp < sp - hyst) id(dehumidifier_relay).turn_off();
           } else {
             if (isnan(id(chamber_rh).state)) return;
             float rh   = id(chamber_rh).state;
             float sp   = id(humidity_setpoint).state;
             float hyst = id(humidity_hysteresis).state / 2.0f;
-            if (!on && rh > sp + hyst)
-              id(dehumidifier_relay).turn_on();
-            else if (on && rh < sp - hyst)
-              id(dehumidifier_relay).turn_off();
+            if (!on && rh > sp + hyst) id(dehumidifier_relay).turn_on();
+            else if (on && rh < sp - hyst) id(dehumidifier_relay).turn_off();
           }
 
-  # Software frost guard — no cold-plate sensor, so we use chamber air temperature
-  # as a floor. If chamber drops below min_chamber_temp, PID is suspended until
-  # temperature recovers 2 °C above the floor.
+  # Software frost guard (60 s)
+  # No cold-plate sensor — uses chamber air as proxy.
+  # PID suspends below min_chamber_temp, resumes at floor + 2 °C.
   - interval: 60s
     then:
       - lambda: |-
@@ -435,6 +565,7 @@ interval:
 # ─── Buttons ──────────────────────────────────────────────────────────────────
 
 button:
+  # PID autotune — hold chamber at setpoint for a few hours before running
   - platform: template
     name: "PID Autotune"
     icon: "mdi:auto-fix"
@@ -448,13 +579,52 @@ button:
   - platform: restart
     name: "Restart Controller"
 
-  # Pulse the SHT45 on-chip heater to clear condensation from the sensor face
+  # Pulse the SHT45 on-chip heater briefly to clear condensation from sensor face
   - platform: template
     name: "Clear Sensor Condensation"
     icon: "mdi:heat-wave"
     on_press:
       - lambda: |-
           ESP_LOGI("espcure", "SHT45 condensation-clear heater pulse triggered");
+
+  # ── Cannatrol one-tap presets ────────────────────────────────────────────────
+  # Apply full profile: temp + dew point setpoints + enable dew-point mode.
+
+  - platform: template
+    name: "Apply Dry Profile"
+    icon: "mdi:weather-sunny"
+    on_press:
+      then:
+        - number.set:
+            id: dew_point_setpoint
+            value: 12.2        # 54 °F — Cannatrol dry
+        - climate.control:
+            id: temp_pid
+            target_temperature: 20.0   # 68 °F
+        - switch.turn_on: use_dew_point_control
+
+  - platform: template
+    name: "Apply Cure Profile"
+    icon: "mdi:leaf"
+    on_press:
+      then:
+        - number.set:
+            id: dew_point_setpoint
+            value: 11.1        # 52 °F — Cannatrol cure
+        - climate.control:
+            id: temp_pid
+            target_temperature: 20.0   # 68 °F
+        - switch.turn_on: use_dew_point_control
+
+  - platform: template
+    name: "Apply Cold-Plate Profile"
+    icon: "mdi:snowflake-thermometer"
+    on_press:
+      then:
+        - climate.control:
+            id: temp_pid
+            target_temperature: 12.8   # 55 °F — rollitup cold-plate method
+        - switch.turn_off: use_dew_point_control
 
 # ─── Binary sensors ───────────────────────────────────────────────────────────
 
@@ -464,6 +634,7 @@ binary_sensor:
 
   - platform: template
     name: "Frost Floor Active"
+    device_class: problem
     lambda: return id(frost_active);
 
 # ─── Text sensors ─────────────────────────────────────────────────────────────
@@ -472,3 +643,63 @@ text_sensor:
   - platform: wifi_info
     ip_address:
       name: "IP Address"
+      entity_category: diagnostic
+
+  # Human-readable chamber operating state (shown on web UI dashboard)
+  - platform: template
+    id: chamber_status
+    name: "Chamber Status"
+    icon: "mdi:information-outline"
+    lambda: |-
+      if (id(frost_active)) return std::string("Frost Guard");
+      auto action = id(temp_pid).action;
+      if (action == esphome::climate::CLIMATE_ACTION_COOLING) return std::string("Cooling");
+      if (action == esphome::climate::CLIMATE_ACTION_HEATING) return std::string("Heating");
+      if (action == esphome::climate::CLIMATE_ACTION_IDLE)    return std::string("Idle");
+      return std::string("Off");
+    update_interval: 30s
+
+  # Active humidity control mode with live setpoint readout
+  - platform: template
+    id: humidity_control_mode
+    name: "Humidity Control Mode"
+    icon: "mdi:water-check"
+    lambda: |-
+      char buf[48];
+      if (id(use_dew_point_control).state) {
+        snprintf(buf, sizeof(buf), "Dew Point %.1f\xc2\xb0C SP", id(dew_point_setpoint).state);
+      } else {
+        snprintf(buf, sizeof(buf), "RH Mode %.0f%% SP", id(humidity_setpoint).state);
+      }
+      return std::string(buf);
+    update_interval: 30s
+
+  # 18-day program progress
+  - platform: template
+    id: cure_program_status
+    name: "Cure Program Status"
+    icon: "mdi:sprout"
+    lambda: |-
+      if (!id(cure_program_active).state) return std::string("Inactive");
+      char buf[48];
+      snprintf(buf, sizeof(buf), "Day %.0f \xe2\x80\x94 %.0f%% RH target",
+               id(program_day).state + 1.0f, id(humidity_setpoint).state);
+      return std::string(buf);
+    update_interval: 30s
+
+  # Cannatrol 4+4 program progress
+  - platform: template
+    id: cannatrol_program_status
+    name: "Cannatrol Program Status"
+    icon: "mdi:cannabis"
+    lambda: |-
+      if (!id(cannatrol_program_active).state) return std::string("Inactive");
+      char buf[56];
+      int day = (int)id(cannatrol_day).state;
+      if (id(cannatrol_phase) == 0) {
+        snprintf(buf, sizeof(buf), "Dry Phase \xe2\x80\x94 Day %d/4 (12.2\xc2\xb0C DP)", day + 1);
+      } else {
+        snprintf(buf, sizeof(buf), "Cure Phase \xe2\x80\x94 Day %d/4 (11.1\xc2\xb0C DP)", day - 3);
+      }
+      return std::string(buf);
+    update_interval: 30s
