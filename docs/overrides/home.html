@@ -1,0 +1,190 @@
+{% extends "main.html" %}
+
+{% block tabs %}
+{{ super() }}
+
+<style>
+  .md-header { position: initial }
+  .md-main__inner { margin: 0 }
+  .md-content { display: none }
+  @media screen and (min-width: 60em) {
+    .md-sidebar--secondary { display: none }
+  }
+  @media screen and (min-width: 76.25em) {
+    .md-sidebar--primary { display: none }
+  }
+</style>
+
+<section class="ec-hero">
+  <div class="ec-hero__inner md-grid">
+    <div class="ec-hero__content">
+      <div class="ec-hero__badge">ESPHome + ESP32-C6</div>
+      <h1 class="ec-hero__title">EspCure</h1>
+      <p class="ec-hero__tagline">
+        Open-source DIY cannabis curing chamber controller.<br>
+        Cannatrol-class dew point control for the price of a wine fridge.
+      </p>
+      <div class="ec-hero__actions">
+        <a href="setup/" class="md-button md-button--primary ec-btn-primary">
+          Get Started
+        </a>
+        <a href="hardware/" class="md-button ec-btn-secondary">
+          Hardware Guide
+        </a>
+      </div>
+      <div class="ec-hero__stats">
+        <div class="ec-stat">
+          <span class="ec-stat__value">±0.1°C</span>
+          <span class="ec-stat__label">SHT45 accuracy</span>
+        </div>
+        <div class="ec-stat">
+          <span class="ec-stat__value">3×</span>
+          <span class="ec-stat__label">SSR-40 DD outputs</span>
+        </div>
+        <div class="ec-stat">
+          <span class="ec-stat__value">18-day</span>
+          <span class="ec-stat__label">auto cure program</span>
+        </div>
+      </div>
+    </div>
+    <div class="ec-hero__visual">
+      <div class="ec-diagram">
+        <div class="ec-diagram__card ec-diagram__card--sensor">
+          <span class="ec-diagram__icon">🌡️</span>
+          <span>SHT45</span>
+          <small>Temp · RH · Dew Pt · VPD</small>
+        </div>
+        <div class="ec-diagram__card ec-diagram__card--mcu">
+          <span class="ec-diagram__icon">⚡</span>
+          <span>ESP32-C6</span>
+          <small>PID · Bang-bang · HA API</small>
+        </div>
+        <div class="ec-diagram__outputs">
+          <div class="ec-diagram__card ec-diagram__card--out">🌬️ Fans</div>
+          <div class="ec-diagram__card ec-diagram__card--out">❄️ TECs</div>
+          <div class="ec-diagram__card ec-diagram__card--out">🔥 Heater</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="ec-features md-grid">
+  <h2 class="ec-section-title">What it does</h2>
+  <div class="ec-features__grid">
+
+    <div class="ec-feature-card">
+      <div class="ec-feature-card__icon">🌡️</div>
+      <h3>PID Temperature</h3>
+      <p>Full PID control of your Peltier TECs and heater. Default 55 °F (12.8 °C) for the cold-plate method, or 68 °F (20 °C) for Cannatrol-style. Built-in autotune button.</p>
+    </div>
+
+    <div class="ec-feature-card">
+      <div class="ec-feature-card__icon">💧</div>
+      <h3>Dew Point + VPD</h3>
+      <p>Controls humidity by dew point — exactly how the Cannatrol works. Switch between raw %RH mode and dew-point mode in Home Assistant. VPD shown as a live sensor.</p>
+    </div>
+
+    <div class="ec-feature-card">
+      <div class="ec-feature-card__icon">🌱</div>
+      <h3>Auto Cure Program</h3>
+      <p>Enable the cure program and walk away. Humidity steps down 1 %/day from 78 % → 60 % over 18 days. Alternatively run the Cannatrol 4+4 protocol manually from HA.</p>
+    </div>
+
+    <div class="ec-feature-card">
+      <div class="ec-feature-card__icon">🏠</div>
+      <h3>Home Assistant Native</h3>
+      <p>Encrypted native API integration. Climate entity, all sensors, setpoint numbers, and program switches show up instantly. OTA updates, fallback AP, local web UI.</p>
+    </div>
+
+    <div class="ec-feature-card">
+      <div class="ec-feature-card__icon">🛡️</div>
+      <h3>Frost Protection</h3>
+      <p>Software frost floor keeps the chamber from over-cooling. Configurable minimum temperature — PID suspends automatically and resumes when the chamber recovers.</p>
+    </div>
+
+    <div class="ec-feature-card">
+      <div class="ec-feature-card__icon">🔧</div>
+      <h3>One config file</h3>
+      <p>Everything lives in <code>espcure.yaml</code>. Validate with <code>esphome config</code>, flash via USB or OTA. No cloud dependency, no subscription, no app.</p>
+    </div>
+
+  </div>
+</section>
+
+<section class="ec-hardware md-grid">
+  <h2 class="ec-section-title">Core hardware</h2>
+  <div class="ec-hardware__grid">
+    <div class="ec-hw-item">
+      <strong>Controller</strong>
+      <span>ESP32-C6 DevKit</span>
+    </div>
+    <div class="ec-hw-item">
+      <strong>Sensor</strong>
+      <span>SHT45 (I²C)</span>
+    </div>
+    <div class="ec-hw-item">
+      <strong>Cooling</strong>
+      <span>Honeywell thermoelectric fridge + 2× TEC</span>
+    </div>
+    <div class="ec-hw-item">
+      <strong>Heating</strong>
+      <span>12 V 50 W PTC + fan</span>
+    </div>
+    <div class="ec-hw-item">
+      <strong>Switching</strong>
+      <span>3× SSR-40 DD (fans / TECs / heater)</span>
+    </div>
+    <div class="ec-hw-item">
+      <strong>Power</strong>
+      <span>12 V 300 W PSU</span>
+    </div>
+  </div>
+  <div class="ec-hardware__cta">
+    <a href="hardware/" class="md-button md-button--primary">Full BOM & Wiring →</a>
+  </div>
+</section>
+
+<section class="ec-quickstart md-grid">
+  <h2 class="ec-section-title">Quick start</h2>
+  <div class="ec-quickstart__steps">
+    <div class="ec-step">
+      <div class="ec-step__num">1</div>
+      <div class="ec-step__body">
+        <strong>Clone & configure</strong>
+        <pre><code>git clone https://github.com/kinggh0stee/Espcure
+cp secrets.yaml.example secrets.yaml
+# fill in WiFi + API key</code></pre>
+      </div>
+    </div>
+    <div class="ec-step">
+      <div class="ec-step__num">2</div>
+      <div class="ec-step__body">
+        <strong>Validate</strong>
+        <pre><code>esphome config espcure.yaml</code></pre>
+      </div>
+    </div>
+    <div class="ec-step">
+      <div class="ec-step__num">3</div>
+      <div class="ec-step__body">
+        <strong>Flash (USB first time)</strong>
+        <pre><code>esphome run espcure.yaml</code></pre>
+      </div>
+    </div>
+    <div class="ec-step">
+      <div class="ec-step__num">4</div>
+      <div class="ec-step__body">
+        <strong>Add to Home Assistant</strong>
+        <p>Settings → Devices & Services → ESPHome → <code>espcure.local</code></p>
+      </div>
+    </div>
+  </div>
+  <div style="text-align:center;margin-top:2rem;">
+    <a href="setup/" class="md-button md-button--primary">Full setup guide →</a>
+  </div>
+</section>
+
+{% endblock %}
+
+{% block content %}{% endblock %}
+{% block footer %}{{ super() }}{% endblock %}

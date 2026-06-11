@@ -1,0 +1,315 @@
+/* ── EspCure site styles ─────────────────────────────────────────────────── */
+
+/* ── Hero ─────────────────────────────────────────────────────────────────── */
+.ec-hero {
+  background: linear-gradient(135deg, #004d40 0%, #00695c 40%, #1a237e 100%);
+  padding: 5rem 0 4rem;
+  color: #fff;
+}
+
+.ec-hero__inner {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3rem;
+  align-items: center;
+}
+
+@media (max-width: 64em) {
+  .ec-hero__inner {
+    grid-template-columns: 1fr;
+  }
+  .ec-hero__visual { display: none; }
+}
+
+.ec-hero__badge {
+  display: inline-block;
+  background: rgba(255,255,255,0.15);
+  border: 1px solid rgba(255,255,255,0.3);
+  border-radius: 2rem;
+  padding: 0.25rem 1rem;
+  font-size: 0.8rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  margin-bottom: 1.25rem;
+  color: #ffd54f;
+}
+
+.ec-hero__title {
+  font-size: 4rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin: 0 0 1rem;
+  line-height: 1;
+  color: #fff !important;
+}
+
+.ec-hero__tagline {
+  font-size: 1.2rem;
+  opacity: 0.9;
+  line-height: 1.6;
+  margin-bottom: 2rem;
+  color: rgba(255,255,255,0.9);
+}
+
+.ec-hero__actions {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 2.5rem;
+}
+
+.ec-btn-primary {
+  background: #ffd54f !important;
+  color: #1a237e !important;
+  border-color: #ffd54f !important;
+  font-weight: 700;
+}
+
+.ec-btn-secondary {
+  background: transparent !important;
+  color: #fff !important;
+  border-color: rgba(255,255,255,0.5) !important;
+}
+
+.ec-hero__stats {
+  display: flex;
+  gap: 2.5rem;
+  padding-top: 2rem;
+  border-top: 1px solid rgba(255,255,255,0.2);
+}
+
+.ec-stat__value {
+  display: block;
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #ffd54f;
+}
+
+.ec-stat__label {
+  font-size: 0.8rem;
+  opacity: 0.7;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* ── Hero diagram ─────────────────────────────────────────────────────────── */
+.ec-diagram {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  align-items: center;
+}
+
+.ec-diagram__card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  border-radius: 0.75rem;
+  font-weight: 600;
+  text-align: center;
+  min-width: 180px;
+}
+
+.ec-diagram__card small {
+  font-size: 0.75rem;
+  font-weight: 400;
+  opacity: 0.8;
+  margin-top: 0.25rem;
+}
+
+.ec-diagram__card--sensor {
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,213,79,0.4);
+  color: #ffd54f;
+}
+
+.ec-diagram__card--mcu {
+  background: rgba(255,255,255,0.15);
+  border: 2px solid rgba(255,255,255,0.5);
+  color: #fff;
+  width: 100%;
+}
+
+.ec-diagram__icon {
+  font-size: 1.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.ec-diagram__outputs {
+  display: flex;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.ec-diagram__card--out {
+  flex: 1;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.2);
+  color: rgba(255,255,255,0.85);
+  font-size: 0.85rem;
+  padding: 0.75rem 0.5rem;
+  flex-direction: row;
+  gap: 0.4rem;
+  border-radius: 0.5rem;
+}
+
+/* ── Shared section styles ────────────────────────────────────────────────── */
+.ec-section-title {
+  font-size: 2rem;
+  font-weight: 800;
+  text-align: center;
+  margin: 0 0 2.5rem;
+  letter-spacing: -0.02em;
+}
+
+/* ── Features ─────────────────────────────────────────────────────────────── */
+.ec-features {
+  padding: 5rem 0;
+}
+
+.ec-features__grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+}
+
+@media (max-width: 76em) {
+  .ec-features__grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 48em) {
+  .ec-features__grid { grid-template-columns: 1fr; }
+}
+
+.ec-feature-card {
+  padding: 1.75rem;
+  border-radius: 0.75rem;
+  border: 1px solid var(--md-default-fg-color--lightest);
+  background: var(--md-default-bg-color);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.ec-feature-card:hover {
+  border-color: var(--md-primary-fg-color);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+}
+
+.ec-feature-card__icon {
+  font-size: 2rem;
+  margin-bottom: 0.75rem;
+}
+
+.ec-feature-card h3 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin: 0 0 0.5rem;
+}
+
+.ec-feature-card p {
+  font-size: 0.9rem;
+  opacity: 0.8;
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* ── Hardware strip ───────────────────────────────────────────────────────── */
+.ec-hardware {
+  padding: 4rem 0;
+  background: var(--md-code-bg-color);
+  border-radius: 1rem;
+  margin-bottom: 2rem;
+}
+
+.ec-hardware__grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+@media (max-width: 48em) {
+  .ec-hardware__grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+.ec-hw-item {
+  display: flex;
+  flex-direction: column;
+  padding: 1rem 1.25rem;
+  border-radius: 0.5rem;
+  background: var(--md-default-bg-color);
+  border: 1px solid var(--md-default-fg-color--lightest);
+}
+
+.ec-hw-item strong {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--md-primary-fg-color);
+  margin-bottom: 0.25rem;
+}
+
+.ec-hw-item span {
+  font-size: 0.9rem;
+}
+
+.ec-hardware__cta {
+  text-align: center;
+}
+
+/* ── Quick start ──────────────────────────────────────────────────────────── */
+.ec-quickstart {
+  padding: 5rem 0;
+}
+
+.ec-quickstart__steps {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.ec-step {
+  display: flex;
+  gap: 1.5rem;
+  align-items: flex-start;
+}
+
+.ec-step__num {
+  flex-shrink: 0;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  background: var(--md-primary-fg-color);
+  color: var(--md-primary-bg-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 1rem;
+}
+
+.ec-step__body {
+  flex: 1;
+  padding-top: 0.4rem;
+}
+
+.ec-step__body strong {
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.ec-step__body pre {
+  margin: 0;
+  border-radius: 0.5rem;
+  font-size: 0.85rem;
+}
+
+/* ── Dark mode adjustments ────────────────────────────────────────────────── */
+[data-md-color-scheme="slate"] .ec-hero {
+  background: linear-gradient(135deg, #002921 0%, #004d40 40%, #0d1445 100%);
+}
+
+[data-md-color-scheme="slate"] .ec-feature-card:hover {
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+}
