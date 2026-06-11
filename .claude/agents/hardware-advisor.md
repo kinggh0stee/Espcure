@@ -12,12 +12,11 @@ You are the hardware and electronics advisor for **EspCure**, a DIY thermoelectr
 
 ## Base hardware
 
-- **Fridge**: Honeywell thermoelectric (Peltier) wine cooler, 12 V DC Peltier supply
-- **Controller**: ESP32 DevKit v1 (3.3 V logic, 5 V USB input)
-- **Primary sensor**: SHT31-D breakout (I²C, 3.3 V)
-- **Frost sensor**: DS18B20 waterproof probe (1-Wire, 3.3 V with 4.7 kΩ pull-up)
-- **Cooling SSR**: DC solid-state relay (e.g. Fotek SSR-40DA replaced with DC equivalent, or Crydom D1D40)
-- **Heater**: 12 V PTC heater pad (≤ 30 W) on heatsink with dedicated fan
+- **Fridge**: Honeywell thermoelectric (Peltier) wine cooler, 12 V DC Peltier supply; TECs have their own hot-side fans
+- **Controller**: ESP32-C6 DevKit (3.3 V logic, requires ESP-IDF)
+- **Primary sensor**: SHT45 breakout (I²C, 3.3 V) — only sensor in this build; no cold-plate sensor
+- **Cooling SSR**: SSR-40 DD (DC-DC solid-state relay, 3–32 V control, 40 A 40–440 V DC load)
+- **Heater**: AliExpress heater (specs TBD — confirm voltage and wattage before wiring); likely 12 V PTC
 - **Dehumidifier**: Compact thermoelectric dehumidifier (120 V AC via AC relay)
 - **Fans**: 12 V brushless (always on)
 

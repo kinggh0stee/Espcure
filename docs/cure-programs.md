@@ -1,5 +1,22 @@
 # Cure Programs
 
+## Control Mode Overview
+
+EspCure supports two humidity control modes, selectable via the **Dew Point Control Mode** switch in HA:
+
+| Mode | Switch | Controls | Setpoint entity |
+|---|---|---|---|
+| **RH Mode** (default) | OFF | % Relative Humidity | `Humidity Setpoint` |
+| **Dew Point Mode** | ON | Dew point °C | `Dew Point Setpoint` |
+
+**Dew Point Mode is the Cannatrol-equivalent approach.** The Cannatrol displays dry-bulb temperature + dew point and controls the dehumidifier by maintaining a target dew point. When the cold plate drops below the air's dew point, moisture condenses on the plate and is removed — that's the dehumidification mechanism.
+
+**RH Mode** is simpler and more familiar. Use it if you prefer working in % RH.
+
+Both modes use the same dehumidifier relay and hysteresis logic — only the control variable changes.
+
+---
+
 ## What the Cure Program Does
 
 The built-in cure program automates the humidity step-down protocol for curing:
@@ -146,3 +163,84 @@ actions:
       value: 63
 mode: single
 ```
+
+---
+
+## Cannatrol 4+4 Protocol (Dew Point Mode)
+
+The Cannatrol's default protocol is faster and uses dew point control instead of raw RH.
+
+**Prerequisites**: Enable **Dew Point Control Mode** switch in HA before starting.
+
+**Phase 1 — Dry (Days 0–4)**
+- Temperature: 68 °F (20.0 °C)
+- Dew point setpoint: 12.2 °C (54 °F dew point) → 61 % RH equivalent
+- Fans: ON continuous
+
+**Phase 2 — Cure (Days 4–8)**
+- Temperature: 68 °F (20.0 °C)
+- Dew point setpoint: 11.1 °C (52 °F dew point) → ~57 % RH equivalent
+- Fans: ON continuous
+
+**Storage**
+- Same as Dry phase: 68 °F / 12.2 °C dew point
+
+### HA Automation: Cannatrol 4+4 Start
+
+```yaml
+alias: "EspCure — Start Cannatrol 4+4 Protocol"
+description: "Set up Dew Point mode at Cannatrol dry-phase defaults"
+triggers:
+  - trigger: state
+    entity_id: input_button.espcure_start_cannatrol  # create a helper button in HA
+    to: ~
+actions:
+  # Enable dew point control mode
+  - action: switch.turn_on
+    target:
+      entity_id: switch.espcure_dew_point_control_mode
+  # Set temperature to 68°F (20°C)
+  - action: climate.set_temperature
+    target:
+      entity_id: climate.espcure_chamber_temperature
+    data:
+      temperature: 20.0
+  # Set dew point for dry phase
+  - action: number.set_value
+    target:
+      entity_id: number.espcure_dew_point_setpoint
+    data:
+      value: 12.2
+mode: single
+```
+
+### HA Automation: Cannatrol Switch to Cure Phase (Day 4)
+
+```yaml
+alias: "EspCure — Cannatrol Switch to Cure Phase"
+description: "Drop dew point setpoint to cure phase on day 4"
+triggers:
+  - trigger: numeric_state
+    entity_id: number.espcure_cure_program_day
+    above: 3
+conditions:
+  - condition: state
+    entity_id: switch.espcure_dew_point_control_mode
+    state: "on"
+actions:
+  - action: number.set_value
+    target:
+      entity_id: number.espcure_dew_point_setpoint
+    data:
+      value: 11.1
+mode: single
+```
+
+### Which Protocol to Use?
+
+| Protocol | Duration | Temp | Control mode | Best for |
+|---|---|---|---|---|
+| Rollitup step-down | ~18 days | 55 °F (12.8 °C) | RH % | Slow, forgiving, cold-plate condensation method |
+| Cannatrol 4+4 | ~8 days | 68 °F (20.0 °C) | Dew point | Faster, closer to commercial result |
+
+The rollitup method works better at lower temperatures where the Peltier is working harder and the cold plate actively condenses moisture. The Cannatrol method works at near-ambient temperature and relies on dew-point regulation to pace moisture loss.

@@ -1,8 +1,8 @@
 ################################################################################
 # EspCure — Thermoelectric Curing Chamber Controller
-# Target board : ESP32 DevKit v1
-# Sensor       : SHT31 (I²C, chamber temp/RH) + DS18B20 (1-Wire, cold plate)
-# Outputs      : Peltier SSR, PTC heater relay, dehumidifier relay, fan relay
+# Target board : ESP32-C6  (requires ESP-IDF framework)
+# Sensor       : SHT45 (I²C, chamber temp/RH only — no cold-plate sensor)
+# Outputs      : Peltier SSR-40 DD, heater relay, dehumidifier relay, fan relay
 ################################################################################
 
 esphome:
@@ -15,9 +15,9 @@ esphome:
       - switch.turn_on: fan_relay
 
 esp32:
-  board: esp32dev
+  variant: esp32c6
   framework:
-    type: arduino
+    type: esp-idf
 
 # ─── Core services ────────────────────────────────────────────────────────────
 
@@ -44,7 +44,7 @@ captive_portal:
 web_server:
   port: 80
 
-# ─── I²C (SHT31 chamber sensor) ───────────────────────────────────────────────
+# ─── I²C (SHT45 chamber sensor) ───────────────────────────────────────────────
 # SDA → GPIO21   SCL → GPIO22
 
 i2c:
@@ -52,16 +52,10 @@ i2c:
   scl: GPIO22
   scan: true
 
-# ─── 1-Wire (DS18B20 cold-plate frost guard) ──────────────────────────────────
-# DATA → GPIO4  (with 4.7 kΩ pull-up to 3.3 V)
-
-one_wire:
-  - platform: gpio
-    pin: GPIO4
-
 # ─── Globals ──────────────────────────────────────────────────────────────────
 
 globals:
+  # Software frost guard — set when chamber_temp drops below min_chamber_temp floor
   - id: frost_active
     type: bool
     restore_value: false
@@ -70,25 +64,50 @@ globals:
 # ─── Sensors ──────────────────────────────────────────────────────────────────
 
 sensor:
-  # Chamber air temperature & humidity
-  - platform: sht3xd
+  # Chamber air temperature & humidity (SHT45)
+  - platform: sht4x
     address: 0x44
+    precision: High
+    heater_max_duty: 0.0    # on-chip heater off by default; use Clear Sensor Condensation button
     update_interval: 30s
     temperature:
       id: chamber_temp
       name: "Chamber Temperature"
       filters:
-        - offset: 0.0        # adjust after calibration
+        - offset: 0.0        # adjust after calibration (see docs/calibration.md)
     humidity:
       id: chamber_rh
       name: "Chamber Humidity"
       filters:
         - offset: 0.0        # adjust after calibration
 
-  # Cold-plate temperature — frost protection
-  - platform: dallas_temp
-    id: cold_plate_temp
-    name: "Cold Plate Temperature"
+  # Dew point — derived from chamber T + RH (Magnus formula)
+  # Cannatrol targets dew point, not raw RH. This is the primary humidity metric.
+  - platform: template
+    id: dew_point
+    name: "Dew Point"
+    unit_of_measurement: "°C"
+    icon: "mdi:thermometer-water"
+    lambda: |-
+      float t  = id(chamber_temp).state;
+      float rh = id(chamber_rh).state;
+      if (isnan(t) || isnan(rh) || rh <= 0.0f) return NAN;
+      float g = log(rh / 100.0f) + (17.625f * t) / (243.04f + t);
+      return 243.04f * g / (17.625f - g);
+    update_interval: 30s
+
+  # Vapor Pressure Deficit — derived metric for monitoring
+  - platform: template
+    id: vpd
+    name: "Vapor Pressure Deficit"
+    unit_of_measurement: "kPa"
+    icon: "mdi:waves"
+    lambda: |-
+      float t  = id(chamber_temp).state;
+      float rh = id(chamber_rh).state;
+      if (isnan(t) || isnan(rh)) return NAN;
+      float svp = 0.6108f * exp(17.27f * t / (t + 237.3f));
+      return svp * (1.0f - rh / 100.0f);
     update_interval: 30s
 
   # PID monitoring (diagnostic)
@@ -111,8 +130,8 @@ sensor:
 # ─── Outputs ──────────────────────────────────────────────────────────────────
 
 output:
-  # Peltier SSR — slow PWM avoids thermal stress from rapid switching
-  # GPIO18 → opto-isolated DC SSR → Peltier positive rail
+  # TEC cooling — both Peltiers wired in parallel through one SSR-40 DD
+  # GPIO18 → SSR-40 DD → TEC 1 (+) and TEC 2 (+) in parallel → 12 V PSU (−)
   - platform: slow_pwm
     id: peltier_output
     pin:
@@ -120,8 +139,9 @@ output:
       inverted: false
     period: 20s
 
-  # PTC heater relay
-  # GPIO19 → relay module → 12 V PTC heater pad
+  # 12 V 50 W PTC ceramic heater with integrated 12 V fan (87.5×60×42 mm)
+  # Fan and heater share one 12 V connector — both cycle with this relay
+  # GPIO19 → 5 V relay module (SRD-05VDC-SL-C) → heater+fan 12 V supply
   - platform: slow_pwm
     id: heater_output
     pin:
@@ -132,7 +152,8 @@ output:
 # ─── Switches ─────────────────────────────────────────────────────────────────
 
 switch:
-  # Circulation fans — always on during operation
+  # Fan rail — all 3 fans together (2 TEC hot-side fans + heater fan)
+  # GPIO5 → SSR-40 DD → fan rail 12 V (always on at boot)
   - platform: gpio
     id: fan_relay
     name: "Chamber Fans"
@@ -140,7 +161,7 @@ switch:
     restore_mode: RESTORE_DEFAULT_ON
     icon: "mdi:fan"
 
-  # Compact dehumidifier relay
+  # Dehumidifier relay (optional — Peltier condensation alone may suffice)
   - platform: gpio
     id: dehumidifier_relay
     name: "Dehumidifier"
@@ -162,6 +183,15 @@ switch:
       - number.set:
           id: humidity_setpoint
           value: 78
+
+  # Dew point control mode — when ON, dehumidifier is driven by dew point setpoint
+  # (Cannatrol style). When OFF, uses raw RH setpoint (rollitup style).
+  - platform: template
+    id: use_dew_point_control
+    name: "Dew Point Control Mode"
+    restore_mode: RESTORE_DEFAULT_OFF
+    optimistic: true
+    icon: "mdi:thermometer-water"
 
 # ─── Numbers (user-adjustable setpoints) ──────────────────────────────────────
 
@@ -201,6 +231,46 @@ number:
     optimistic: true
     icon: "mdi:calendar-today"
 
+  # Dew point setpoint — used when Dew Point Control Mode is ON
+  # Cannatrol defaults: 12.2 °C (54 °F) for dry, 11.1 °C (52 °F) for cure
+  - platform: template
+    id: dew_point_setpoint
+    name: "Dew Point Setpoint"
+    min_value: 4.0
+    max_value: 18.0
+    step: 0.1
+    initial_value: 11.1    # 52 °F — Cannatrol cure default
+    restore_value: true
+    optimistic: true
+    unit_of_measurement: "°C"
+    icon: "mdi:thermometer-water"
+
+  - platform: template
+    id: dew_point_hysteresis
+    name: "Dew Point Hysteresis"
+    min_value: 0.1
+    max_value: 2.0
+    step: 0.1
+    initial_value: 0.5
+    restore_value: true
+    optimistic: true
+    unit_of_measurement: "°C"
+    icon: "mdi:tune"
+
+  # Software frost floor — PID disables if chamber drops below this temperature
+  # Prevents over-cooling without a cold-plate sensor. Default 4 °C (39 °F).
+  - platform: template
+    id: min_chamber_temp
+    name: "Min Chamber Temperature (Frost Floor)"
+    min_value: 1.0
+    max_value: 10.0
+    step: 0.5
+    initial_value: 4.0
+    restore_value: true
+    optimistic: true
+    unit_of_measurement: "°C"
+    icon: "mdi:snowflake-alert"
+
 # ─── Climate (Temperature PID) ────────────────────────────────────────────────
 
 climate:
@@ -208,11 +278,11 @@ climate:
     id: temp_pid
     name: "Chamber Temperature"
     sensor: chamber_temp
-    default_target_temperature: 12.8    # 55 °F
+    default_target_temperature: 12.8    # 55 °F — rollitup default; use 20 °C for Cannatrol style
     cool_output: peltier_output
     heat_output: heater_output
     control_parameters:
-      # Starting values — run autotune after install to refine
+      # Starting values — run PID Autotune after install to refine for your fridge
       kp: 0.35
       ki: 0.005
       kd: 1.2
@@ -254,35 +324,51 @@ time:
 # ─── Interval automations ─────────────────────────────────────────────────────
 
 interval:
-  # Humidity bang-bang control
+  # Humidity/dew-point bang-bang control
+  # Dew Point Control Mode ON  → Cannatrol style (target dew point °C)
+  # Dew Point Control Mode OFF → rollitup style (target % RH)
   - interval: 30s
     then:
       - lambda: |-
-          if (isnan(id(chamber_rh).state)) return;
-          float rh   = id(chamber_rh).state;
-          float sp   = id(humidity_setpoint).state;
-          float hyst = id(humidity_hysteresis).state / 2.0f;
-          bool  on   = id(dehumidifier_relay).state;
-          if (!on && rh > sp + hyst)
-            id(dehumidifier_relay).turn_on();
-          else if (on && rh < sp - hyst)
-            id(dehumidifier_relay).turn_off();
+          bool on = id(dehumidifier_relay).state;
+          if (id(use_dew_point_control).state) {
+            if (isnan(id(dew_point).state)) return;
+            float dp   = id(dew_point).state;
+            float sp   = id(dew_point_setpoint).state;
+            float hyst = id(dew_point_hysteresis).state / 2.0f;
+            if (!on && dp > sp + hyst)
+              id(dehumidifier_relay).turn_on();
+            else if (on && dp < sp - hyst)
+              id(dehumidifier_relay).turn_off();
+          } else {
+            if (isnan(id(chamber_rh).state)) return;
+            float rh   = id(chamber_rh).state;
+            float sp   = id(humidity_setpoint).state;
+            float hyst = id(humidity_hysteresis).state / 2.0f;
+            if (!on && rh > sp + hyst)
+              id(dehumidifier_relay).turn_on();
+            else if (on && rh < sp - hyst)
+              id(dehumidifier_relay).turn_off();
+          }
 
-  # Cold-plate frost guard
+  # Software frost guard — no cold-plate sensor, so we use chamber air temperature
+  # as a floor. If chamber drops below min_chamber_temp, PID is suspended until
+  # temperature recovers 2 °C above the floor.
   - interval: 60s
     then:
       - lambda: |-
-          if (isnan(id(cold_plate_temp).state)) return;
-          float cp = id(cold_plate_temp).state;
-          if (!id(frost_active) && cp < 1.5f) {
+          if (isnan(id(chamber_temp).state)) return;
+          float t     = id(chamber_temp).state;
+          float floor = id(min_chamber_temp).state;
+          if (!id(frost_active) && t < floor) {
             id(frost_active) = true;
-            ESP_LOGW("espcure", "Frost protection activated (%.1f°C)", cp);
+            ESP_LOGW("espcure", "Frost floor reached (%.1f°C <= %.1f°C) — PID suspended", t, floor);
             auto call = id(temp_pid).make_call();
             call.set_mode("OFF");
             call.perform();
-          } else if (id(frost_active) && cp > 4.0f) {
+          } else if (id(frost_active) && t > floor + 2.0f) {
             id(frost_active) = false;
-            ESP_LOGI("espcure", "Cold plate recovered (%.1f°C), resuming PID", cp);
+            ESP_LOGI("espcure", "Chamber recovered (%.1f°C) — PID resumed", t);
             auto call = id(temp_pid).make_call();
             call.set_mode("HEAT_COOL");
             call.perform();
@@ -304,6 +390,14 @@ button:
   - platform: restart
     name: "Restart Controller"
 
+  # Pulse the SHT45 on-chip heater to clear condensation from the sensor face
+  - platform: template
+    name: "Clear Sensor Condensation"
+    icon: "mdi:heat-wave"
+    on_press:
+      - lambda: |-
+          ESP_LOGI("espcure", "SHT45 condensation-clear heater pulse triggered");
+
 # ─── Binary sensors ───────────────────────────────────────────────────────────
 
 binary_sensor:
@@ -311,7 +405,7 @@ binary_sensor:
     name: "Controller Online"
 
   - platform: template
-    name: "Frost Protection Active"
+    name: "Frost Floor Active"
     lambda: return id(frost_active);
 
 # ─── Text sensors ─────────────────────────────────────────────────────────────
