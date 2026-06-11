@@ -1,0 +1,322 @@
+################################################################################
+# EspCure — Thermoelectric Curing Chamber Controller
+# Target board : ESP32 DevKit v1
+# Sensor       : SHT31 (I²C, chamber temp/RH) + DS18B20 (1-Wire, cold plate)
+# Outputs      : Peltier SSR, PTC heater relay, dehumidifier relay, fan relay
+################################################################################
+
+esphome:
+  name: espcure
+  friendly_name: EspCure
+  comment: "Thermoelectric curing chamber — DIY Cannatrol"
+  on_boot:
+    priority: -100
+    then:
+      - switch.turn_on: fan_relay
+
+esp32:
+  board: esp32dev
+  framework:
+    type: arduino
+
+# ─── Core services ────────────────────────────────────────────────────────────
+
+logger:
+  level: INFO
+
+api:
+  encryption:
+    key: !secret api_encryption_key
+
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  ap:
+    ssid: "EspCure-Setup"
+    password: !secret ap_password
+
+captive_portal:
+
+web_server:
+  port: 80
+
+# ─── I²C (SHT31 chamber sensor) ───────────────────────────────────────────────
+# SDA → GPIO21   SCL → GPIO22
+
+i2c:
+  sda: GPIO21
+  scl: GPIO22
+  scan: true
+
+# ─── 1-Wire (DS18B20 cold-plate frost guard) ──────────────────────────────────
+# DATA → GPIO4  (with 4.7 kΩ pull-up to 3.3 V)
+
+one_wire:
+  - platform: gpio
+    pin: GPIO4
+
+# ─── Globals ──────────────────────────────────────────────────────────────────
+
+globals:
+  - id: frost_active
+    type: bool
+    restore_value: false
+    initial_value: "false"
+
+# ─── Sensors ──────────────────────────────────────────────────────────────────
+
+sensor:
+  # Chamber air temperature & humidity
+  - platform: sht3xd
+    address: 0x44
+    update_interval: 30s
+    temperature:
+      id: chamber_temp
+      name: "Chamber Temperature"
+      filters:
+        - offset: 0.0        # adjust after calibration
+    humidity:
+      id: chamber_rh
+      name: "Chamber Humidity"
+      filters:
+        - offset: 0.0        # adjust after calibration
+
+  # Cold-plate temperature — frost protection
+  - platform: dallas_temp
+    id: cold_plate_temp
+    name: "Cold Plate Temperature"
+    update_interval: 30s
+
+  # PID monitoring (diagnostic)
+  - platform: pid
+    climate_id: temp_pid
+    name: "PID Cool Output"
+    type: COOL
+  - platform: pid
+    climate_id: temp_pid
+    name: "PID Heat Output"
+    type: HEAT
+
+  # System diagnostics
+  - platform: uptime
+    name: "Uptime"
+  - platform: wifi_signal
+    name: "WiFi Signal"
+    update_interval: 60s
+
+# ─── Outputs ──────────────────────────────────────────────────────────────────
+
+output:
+  # Peltier SSR — slow PWM avoids thermal stress from rapid switching
+  # GPIO18 → opto-isolated DC SSR → Peltier positive rail
+  - platform: slow_pwm
+    id: peltier_output
+    pin:
+      number: GPIO18
+      inverted: false
+    period: 20s
+
+  # PTC heater relay
+  # GPIO19 → relay module → 12 V PTC heater pad
+  - platform: slow_pwm
+    id: heater_output
+    pin:
+      number: GPIO19
+      inverted: false
+    period: 20s
+
+# ─── Switches ─────────────────────────────────────────────────────────────────
+
+switch:
+  # Circulation fans — always on during operation
+  - platform: gpio
+    id: fan_relay
+    name: "Chamber Fans"
+    pin: GPIO5
+    restore_mode: RESTORE_DEFAULT_ON
+    icon: "mdi:fan"
+
+  # Compact dehumidifier relay
+  - platform: gpio
+    id: dehumidifier_relay
+    name: "Dehumidifier"
+    pin: GPIO23
+    restore_mode: RESTORE_DEFAULT_OFF
+    icon: "mdi:water-off"
+
+  # Cure program (auto humidity step-down 78 % → 60 %, -1 %/day)
+  - platform: template
+    id: cure_program_active
+    name: "Cure Program"
+    restore_mode: RESTORE_DEFAULT_OFF
+    optimistic: true
+    icon: "mdi:sprout"
+    on_turn_on:
+      - number.set:
+          id: program_day
+          value: 0
+      - number.set:
+          id: humidity_setpoint
+          value: 78
+
+# ─── Numbers (user-adjustable setpoints) ──────────────────────────────────────
+
+number:
+  - platform: template
+    id: humidity_setpoint
+    name: "Humidity Setpoint"
+    min_value: 55
+    max_value: 85
+    step: 1
+    initial_value: 78
+    restore_value: true
+    optimistic: true
+    unit_of_measurement: "%"
+    icon: "mdi:water-percent"
+
+  - platform: template
+    id: humidity_hysteresis
+    name: "Humidity Hysteresis"
+    min_value: 1
+    max_value: 5
+    step: 0.5
+    initial_value: 2.0
+    restore_value: true
+    optimistic: true
+    unit_of_measurement: "%"
+    icon: "mdi:tune"
+
+  - platform: template
+    id: program_day
+    name: "Cure Program Day"
+    min_value: 0
+    max_value: 30
+    step: 1
+    initial_value: 0
+    restore_value: true
+    optimistic: true
+    icon: "mdi:calendar-today"
+
+# ─── Climate (Temperature PID) ────────────────────────────────────────────────
+
+climate:
+  - platform: pid
+    id: temp_pid
+    name: "Chamber Temperature"
+    sensor: chamber_temp
+    default_target_temperature: 12.8    # 55 °F
+    cool_output: peltier_output
+    heat_output: heater_output
+    control_parameters:
+      # Starting values — run autotune after install to refine
+      kp: 0.35
+      ki: 0.005
+      kd: 1.2
+      max_integral: 1.0
+      output_averaging_samples: 5
+      derivative_averaging_samples: 5
+    deadband_parameters:
+      threshold_high: 0.5              # ±0.5 °C deadband
+      threshold_low: -0.5
+      kp_multiplier: 0.1
+      ki_multiplier: 0.05
+      kd_multiplier: 0.0
+
+# ─── Time (Home Assistant — drives daily cure step) ───────────────────────────
+
+time:
+  - platform: homeassistant
+    id: ha_time
+    on_time:
+      - cron: "0 0 * * *"              # midnight daily
+        then:
+          - if:
+              condition:
+                switch.is_on: cure_program_active
+              then:
+                - lambda: |-
+                    float sp = id(humidity_setpoint).state;
+                    if (sp > 60.0f) {
+                      auto call = id(humidity_setpoint).make_call();
+                      call.set_value(sp - 1.0f);
+                      call.perform();
+                      auto dc = id(program_day).make_call();
+                      dc.set_value(id(program_day).state + 1.0f);
+                      dc.perform();
+                    } else {
+                      id(cure_program_active).turn_off();
+                    }
+
+# ─── Interval automations ─────────────────────────────────────────────────────
+
+interval:
+  # Humidity bang-bang control
+  - interval: 30s
+    then:
+      - lambda: |-
+          if (isnan(id(chamber_rh).state)) return;
+          float rh   = id(chamber_rh).state;
+          float sp   = id(humidity_setpoint).state;
+          float hyst = id(humidity_hysteresis).state / 2.0f;
+          bool  on   = id(dehumidifier_relay).state;
+          if (!on && rh > sp + hyst)
+            id(dehumidifier_relay).turn_on();
+          else if (on && rh < sp - hyst)
+            id(dehumidifier_relay).turn_off();
+
+  # Cold-plate frost guard
+  - interval: 60s
+    then:
+      - lambda: |-
+          if (isnan(id(cold_plate_temp).state)) return;
+          float cp = id(cold_plate_temp).state;
+          if (!id(frost_active) && cp < 1.5f) {
+            id(frost_active) = true;
+            ESP_LOGW("espcure", "Frost protection activated (%.1f°C)", cp);
+            auto call = id(temp_pid).make_call();
+            call.set_mode("OFF");
+            call.perform();
+          } else if (id(frost_active) && cp > 4.0f) {
+            id(frost_active) = false;
+            ESP_LOGI("espcure", "Cold plate recovered (%.1f°C), resuming PID", cp);
+            auto call = id(temp_pid).make_call();
+            call.set_mode("HEAT_COOL");
+            call.perform();
+          }
+
+# ─── Buttons ──────────────────────────────────────────────────────────────────
+
+button:
+  - platform: template
+    name: "PID Autotune"
+    icon: "mdi:auto-fix"
+    on_press:
+      - climate.pid.autotune:
+          id: temp_pid
+          noiseband: 0.25
+          positive_output: 1.0
+          negative_output: -1.0
+
+  - platform: restart
+    name: "Restart Controller"
+
+# ─── Binary sensors ───────────────────────────────────────────────────────────
+
+binary_sensor:
+  - platform: status
+    name: "Controller Online"
+
+  - platform: template
+    name: "Frost Protection Active"
+    lambda: return id(frost_active);
+
+# ─── Text sensors ─────────────────────────────────────────────────────────────
+
+text_sensor:
+  - platform: wifi_info
+    ip_address:
+      name: "IP Address"
