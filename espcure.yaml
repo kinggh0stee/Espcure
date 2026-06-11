@@ -11,9 +11,18 @@ esphome:
   friendly_name: EspCure
   comment: "Thermoelectric curing chamber — DIY Cannatrol"
   on_boot:
-    priority: -100
-    then:
-      - switch.turn_on: fan_relay
+    - priority: -100
+      then:
+        - switch.turn_on: fan_relay
+    # Apply restored PID number entity values so tuned gains survive reboots.
+    # Must run after component init (lower priority = runs later).
+    - priority: -200
+      then:
+        - climate.pid.set_control_parameters:
+            id: temp_pid
+            kp: !lambda return id(pid_kp).state;
+            ki: !lambda return id(pid_ki).state;
+            kd: !lambda return id(pid_kd).state;
 
 esp32:
   variant: esp32c6
