@@ -521,7 +521,7 @@ time:
   - platform: homeassistant
     id: ha_time
     on_time:
-      - cron: "0 0 * * *"    # midnight daily
+      - cron: "0 0 0 * * *"    # midnight daily (ESPHome cron: sec min hour dom mon dow)
         then:
           # 18-day step-down: -1 %RH/day until 60 %
           - if:
@@ -917,7 +917,6 @@ light:
     name: "Status LED"
     pin: GPIO8
     num_leds: 1
-    rmt_channel: 0
     chipset: WS2812
     rgb_order: GRB
     default_transition_length: 300ms
