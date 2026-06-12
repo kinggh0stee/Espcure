@@ -8,7 +8,7 @@
 | 2 | **MCU** | ESP32-C6 DevKit (e.g. Espressif ESP32-C6-DevKitC-1) | 3.3 V logic; requires ESP-IDF firmware |
 | 3 | **Chamber sensor** | SHT45 breakout (Adafruit #5665 or equiv.) | I²C, 3.3 V; ±0.1 °C / ±1 % RH |
 | 4 | **SSR — Fan rail** | SSR-40 DD (DC-DC solid-state relay) | Controls all 3 fans together (2 TEC hot-side + heater fan); on when PID active |
-| 5 | **SSR — TEC cooling** | SSR-40 DD | Controls both TECs in parallel; slow_pwm 20 s |
+| 5 | **SSR — TEC cooling** | SSR-40 DD | Controls both TECs in parallel; LEDC 15 Hz |
 | 6 | **SSR — Heater** | SSR-40 DD | Controls PTC element only (heater fan wired to fan rail); LEDC 15 Hz |
 | 7 | **PTC heater** | 12 V 50 W PTC ceramic heater with integrated 12 V fan, 87.5 × 60 × 42 mm (AliExpress) | Fan and element have **separate connectors** (white JST = fan; bare red/black = PTC element) — no splicing needed |
 | 8 | **Dehumidifier** | Optional — Peltier condensation alone may suffice | If used: add AC SSR (separate part) for 120 V AC load on GPIO23 |
@@ -24,7 +24,7 @@
 | 5 | SSR-40 DD — Fan rail IN | Active HIGH; all 3 fans; on when PID active, off when PID off |
 | 8 | WS2812 RGB LED | Built into ESP32-C6 DevKitC-1 — no wiring needed |
 | 9 | BOOT button (display page cycle) | Built into DevKitC-1 — INPUT_PULLUP, active low |
-| 18 | SSR-40 DD — TEC cooling IN | slow_pwm 20 s; active HIGH; both TECs in parallel |
+| 18 | SSR-40 DD — TEC cooling IN | LEDC 15 Hz; active HIGH; both TECs in parallel |
 | 19 | SSR-40 DD — Heater IN | LEDC 15 Hz; active HIGH; PTC element only |
 | 21 | SDA (SHT45 + OLED) | I²C — shared by both devices |
 | 22 | SCL (SHT45 + OLED) | I²C — shared by both devices |
@@ -83,8 +83,8 @@ For a 1.3" SH1106 OLED, wiring is identical — change `model: "SSD1306 128x64"`
 
 The PTC heater has **two separate connectors pre-wired from the factory**:
 
-- **White JST connector** (2 pins, thin wires) → fan. Connect to the 12 V fan rail output (fan SSR GPIO5 load side). Fan runs continuously.
-- **Bare red/black wires** (thicker) → PTC ceramic element. Connect to the heater SSR output (GPIO19 load side). Element is slow-PWM controlled.
+- **White JST connector** (2 pins, thin wires) → fan. Connect to the 12 V fan rail output (fan SSR GPIO5 load side). Fan runs when PID is active.
+- **Bare red/black wires** (thicker) → PTC ceramic element. Connect to the heater SSR output (GPIO19 load side). Element is LEDC 15 Hz controlled.
 
 No cutting or splicing required.
 

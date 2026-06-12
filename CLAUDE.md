@@ -62,8 +62,8 @@ All ESPHome work lives in **`espcure.yaml`**. Key sections:
 | Section | Purpose |
 |---|---|
 | `climate.pid` | Temperature PID — defaults Kp=0.35, Ki=0.005, Kd=1.2; deadband ±0.5 °C |
-| `output.slow_pwm` (peltier) | 20 s period; never reduce below 10 s |
-| `output.slow_pwm` (heater) | 20 s period |
+| `output.ledc` (peltier) | 15 Hz; both TECs in parallel on GPIO18 |
+| `output.ledc` (heater) | 15 Hz; PTC element on GPIO19 |
 | `interval` (30 s) | Humidity/dew-point bang-bang loop (switches on `use_dew_point_control`) |
 | `interval` (60 s) | Frost-guard loop |
 | `interval` (2 s) | Status LED update loop — polls PID action, drives WS2812 colour |
@@ -162,7 +162,7 @@ No real credentials are stored in the repo. The dummy `api_encryption_key` used 
 
 ## Key constraints & gotchas
 
-- **Peltier switching**: The Peltier output (`peltier_output`, GPIO18) uses `slow_pwm` with a 20 s period — never reduce below 10 s. Rapid switching destroys Peltier junctions. The heater output (`heater_output`, GPIO19) uses `ledc` at 15 Hz / 10-bit resolution — fast PWM is fine for the PTC heater and gives finer PID resolution.
+- **Peltier and heater outputs**: Both use `ledc` at 15 Hz (`peltier_output` GPIO18, `heater_output` GPIO19). At 15 Hz the TEC junction sees average power rather than thermal cycling, which reduces junction fatigue vs slow_pwm. Do not switch these to `slow_pwm` or reduce below ~10 Hz.
 - **All 3 outputs use SSR-40 DD**: Fan rail (GPIO5), TEC cooling (GPIO18), heater element (GPIO19) — all DC-DC solid-state relays. No mechanical relay modules in this build. SSR-40 DDs must be on heatsinks when carrying > 5 A.
 - **Dehumidifier relay**: GPIO23 — bang-bang controlled by the 30 s `interval` loop. Not part of the SSR-40 DD trio; it is the external dehumidifier plug relay. Restore mode is `RESTORE_DEFAULT_OFF`.
 - **3.3 V GPIO → SSR-40 DD**: ESP32-C6 outputs 3.3 V; SSR-40 DD spec minimum is 3 V. Verify each SSR triggers reliably at 3.3 V before final install. If marginal, add a 2N2222 NPN driver on the control line.

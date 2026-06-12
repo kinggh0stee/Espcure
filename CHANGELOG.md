@@ -14,6 +14,7 @@ All notable changes to EspCure are documented here.
 - **Made for ESPHome compliance** — `esp32_improv` and `improv_serial` components added for BLE + serial WiFi provisioning
 
 ### Changed
+- **Peltier output** switched from `slow_pwm` (20 s) to `ledc` at 15 Hz — matches heater output; TEC junction sees average power instead of thermal cycling, reducing long-term junction fatigue.
 - **Fan relay** now controlled dynamically by the 2 s PID-state loop — ON when PID is active (cooling/heating/idle), OFF when PID is off. Removed always-on boot behaviour (`on_boot` + `RESTORE_DEFAULT_ON`). Fans no longer run on idle power-on.
 - **Heater output** switched from `slow_pwm` (20 s period) to `ledc` at 15 Hz for finer PID duty-cycle resolution. Peltier output remains `slow_pwm` 20 s — do not change.
 - **BOM**: replaced 5 V PSU with a 12 V → 5 V buck converter (e.g. LM2596 or MP1584EN module) — one less power brick.
