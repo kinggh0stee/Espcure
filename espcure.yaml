@@ -52,7 +52,9 @@ wifi:
 captive_portal:
 
 # WiFi provisioning — required for Made for ESPHome compliance
+# authorizer: page_button — hold the BOOT button (GPIO9) to authorize BLE provisioning
 esp32_improv:
+  authorizer: page_button
 
 improv_serial:
 
