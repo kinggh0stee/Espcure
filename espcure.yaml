@@ -221,12 +221,12 @@ sensor:
 output:
   # TEC cooling — both Peltiers in parallel through one SSR-40 DD
   # GPIO18 → SSR-40 DD → TEC1 (+) || TEC2 (+) → 12 V PSU (−)
-  - platform: slow_pwm
+  - platform: ledc
     id: peltier_output
     pin:
       number: GPIO18
       inverted: false
-    period: 20s    # never reduce below 10 s — rapid cycling destroys Peltier junctions
+    frequency: 15Hz
 
   # 12 V 50 W PTC heater with integrated 12 V fan
   # GPIO19 → SSR-40 DD → heater+fan 12 V supply
