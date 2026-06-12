@@ -231,6 +231,12 @@ output:
       inverted: false
     period: 20s
 
+  # Passive piezo buzzer — GPIO10 → buzzer (+)  GND → buzzer (−)
+  # Passive buzzer requires PWM (LEDC). Do NOT use an active buzzer here.
+  - platform: ledc
+    id: buzzer_output
+    pin: GPIO10
+
 # ─── Switches ─────────────────────────────────────────────────────────────────
 
 switch:
@@ -267,6 +273,8 @@ switch:
       - number.set:
           id: humidity_setpoint
           value: 78
+    on_turn_off:
+      - rtttl.play: 'done:d=8,o=5,b=100:c,e,g,c6'
 
   # Cannatrol 4+4 program: 4 days dry (12.2 °C DP) then 4 days cure (11.1 °C DP)
   - platform: template
@@ -288,6 +296,8 @@ switch:
           id: temp_pid
           target_temperature: 20.0    # 68 °F
       - switch.turn_on: use_dew_point_control
+    on_turn_off:
+      - rtttl.play: 'done:d=8,o=5,b=100:c,e,g,c6'
 
   # Humidity control mode toggle:
   # OFF → rollitup style (bang-bang on % RH vs humidity_setpoint)
@@ -572,6 +582,45 @@ interval:
             call.perform();
           }
 
+  # Status LED update (2 s)
+  # Blue = cooling · Red = heating · Green (dim) = idle · White blink = frost
+  - interval: 2s
+    then:
+      - lambda: |-
+          auto call = id(status_led).make_call();
+          call.set_transition_length(300);
+          if (id(frost_active)) {
+            // White fast blink — frost guard active
+            call.set_state(true);
+            call.set_rgb(1.0f, 1.0f, 1.0f);
+            call.set_brightness(0.5f);
+            call.set_effect("Frost Blink");
+          } else {
+            call.set_effect("None");
+            auto act = id(temp_pid).action;
+            switch (act) {
+              case esphome::climate::CLIMATE_ACTION_COOLING:
+                call.set_state(true);
+                call.set_rgb(0.0f, 0.3f, 1.0f);   // blue
+                call.set_brightness(0.7f);
+                break;
+              case esphome::climate::CLIMATE_ACTION_HEATING:
+                call.set_state(true);
+                call.set_rgb(1.0f, 0.15f, 0.0f);  // red
+                call.set_brightness(0.5f);
+                break;
+              case esphome::climate::CLIMATE_ACTION_IDLE:
+                call.set_state(true);
+                call.set_rgb(0.0f, 1.0f, 0.0f);   // green very dim
+                call.set_brightness(0.04f);
+                break;
+              default:
+                call.set_state(false);
+                break;
+            }
+          }
+          call.perform();
+
 # ─── Buttons ──────────────────────────────────────────────────────────────────
 
 button:
@@ -646,6 +695,26 @@ binary_sensor:
     name: "Frost Floor Active"
     device_class: problem
     lambda: return id(frost_active);
+    on_press:
+      # Frost floor just activated — three sharp warning beeps
+      - rtttl.play: 'frost:d=16,o=5,b=240:e6,p,e6,p,e6,p,e6,p,e6'
+
+  # BOOT button (GPIO9, built into ESP32-C6 DevKitC-1) — cycles display pages.
+  # INPUT_PULLUP + inverted: no extra hardware needed.
+  - platform: gpio
+    id: page_button
+    name: "Display Page Button"
+    pin:
+      number: GPIO9
+      mode: INPUT_PULLUP
+      inverted: true
+    entity_category: diagnostic
+    on_click:
+      min_length: 50ms
+      max_length: 350ms
+      then:
+        - display.page.show_next: oled
+        - component.update: oled
 
 # ─── Text sensors ─────────────────────────────────────────────────────────────
 
@@ -796,22 +865,36 @@ display:
             it.printf(0, 42, id(font_s), "DP err %+.1f\xc2\xb0""C", id(dew_point_error).state);
           }
 
-# ─── Display page-cycle button (BOOT button on DevKitC-1 = GPIO9) ─────────────
+# ─── Buzzer (passive piezo) ───────────────────────────────────────────────────
+# Plays short RTTTL melodies for frost alerts and program completion.
 
-binary_sensor:
-  # Uses the built-in BOOT button on the ESP32-C6 DevKitC-1 (GPIO9, active low).
-  # Short press cycles display pages. No additional wiring needed.
-  - platform: gpio
-    id: page_button
-    name: "Display Page Button"
-    pin:
-      number: GPIO9
-      mode: INPUT_PULLUP
-      inverted: true
-    entity_category: diagnostic
-    on_click:
-      min_length: 50ms
-      max_length: 350ms
-      then:
-        - display.page.show_next: oled
-        - component.update: oled
+rtttl:
+  output: buzzer_output
+  id: buzzer
+  gain: 0.5
+
+# ─── Status LED (WS2812 RGB, built into ESP32-C6 DevKitC-1 on GPIO8) ─────────
+# Color code:
+#   Cooling  → blue      Heating → red (dim)
+#   Idle     → green (very dim — not distracting in the dark)
+#   Frost    → white fast blink
+#   Off/init → off
+
+light:
+  - platform: esp32_rmt_led_strip
+    id: status_led
+    name: "Status LED"
+    pin: GPIO8
+    num_leds: 1
+    rmt_channel: 0
+    chipset: WS2812
+    rgb_order: GRB
+    default_transition_length: 300ms
+    restore_mode: ALWAYS_OFF
+    effects:
+      - pulse:
+          name: "Frost Blink"
+          transition_length: 150ms
+          update_interval: 350ms
+          min_brightness: 0%
+          max_brightness: 60%

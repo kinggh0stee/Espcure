@@ -14,17 +14,22 @@
 | 8 | **Dehumidifier** | Optional — Peltier condensation alone may suffice | If used: add AC SSR (separate part) for 120 V AC load on GPIO23 |
 | 9 | **12 V PSU** | Generic 12 V 300 W switching PSU (25 A) | 25 A headroom covers 2× TECs + heater (4.2 A) + fans comfortably |
 | 10 | **5 V PSU** | USB phone charger or Mean Well IRM-05-5 | Powers ESP32 only (no relay coils — SSRs draw < 20 mA from GPIO directly) |
-| 11 | **Misc** | 18 AWG wire, lever nuts (Wago 221), heat shrink, 3× SSR heatsinks | SSR-40 DDs must be mounted on heatsink when carrying > 5 A |
+| 11 | **OLED display** | SSD1306 0.96" 128×64 I²C OLED (e.g. AliExpress) | Shares GPIO21/22 I²C bus — no extra wiring beyond VCC/GND |
+| 12 | **Passive piezo buzzer** | 3–5 V passive (magnetic) piezo buzzer | GPIO10 → buzzer (+); GND → buzzer (−). Must be **passive** (requires PWM) |
+| 13 | **Misc** | 18 AWG wire, lever nuts (Wago 221), heat shrink, 3× SSR heatsinks | SSR-40 DDs must be mounted on heatsink when carrying > 5 A |
 
 ## GPIO Pinout
 
 | GPIO | Function | Notes |
 |---|---|---|
 | 5 | SSR-40 DD — Fan rail IN | Active HIGH; all 3 fans; always on at boot |
+| 8 | WS2812 RGB LED | Built into ESP32-C6 DevKitC-1 — no wiring needed |
+| 9 | BOOT button (display page cycle) | Built into DevKitC-1 — INPUT_PULLUP, active low |
+| 10 | Passive piezo buzzer | LEDC PWM; buzzer (+) → GPIO10; buzzer (−) → GND |
 | 18 | SSR-40 DD — TEC cooling IN | slow_pwm 20 s; active HIGH; both TECs in parallel |
 | 19 | SSR-40 DD — Heater IN | slow_pwm 20 s; active HIGH; PTC element only |
-| 21 | SDA (SHT45) | I²C |
-| 22 | SCL (SHT45) | I²C |
+| 21 | SDA (SHT45 + OLED) | I²C — shared by both devices |
+| 22 | SCL (SHT45 + OLED) | I²C — shared by both devices |
 | 23 | Dehumidifier relay IN (optional) | Active HIGH; not part of core 3-SSR build |
 
 > **⚠️ 3.3 V control voltage:** The ESP32-C6 GPIO outputs 3.3 V. SSR-40 DD spec says 3–32 V control, so 3.3 V is at the minimum. Test continuity of each SSR before final install — if an SSR doesn't trigger reliably, add a small NPN transistor (e.g. 2N2222) between the GPIO and SSR input to drive it at a higher current level.

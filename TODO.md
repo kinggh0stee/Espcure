@@ -47,12 +47,12 @@ Priority: 🔴 Critical · 🟡 High · 🟢 Nice-to-have · ✅ Done
   - Toggle fans on/off
   - Suggested: 1–3× momentary buttons on spare GPIOs
 
-- [ ] **Piezo buzzer** — alert on frost floor activation, program completion
-  - Suggested: passive piezo on GPIO with `rtttl` ESPHome component
+- [x] **Piezo buzzer** — passive piezo on GPIO10, `rtttl` melodies
+  - Frost floor → 5× rapid E6 beeps
+  - Program complete (18-day or 4+4) → ascending C-E-G-C chime
 
-- [ ] **Status LED** — RGB or single color for quick status at a glance
-  - Cooling = blue blink, heating = red blink, idle = green solid, frost = white flash
-  - ESP32-C6 DevKitC-1 has a built-in WS2812 RGB LED (GPIO8)
+- [x] **Status LED** — built-in WS2812 on GPIO8 (DevKitC-1), 2 s interval
+  - Cooling = blue, Heating = red (dim), Idle = green (very dim), Frost = white Frost Blink effect
 
 ---
 
