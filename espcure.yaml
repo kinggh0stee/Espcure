@@ -11,9 +11,6 @@ esphome:
   friendly_name: EspCure
   comment: "Thermoelectric curing chamber — DIY Cannatrol"
   on_boot:
-    - priority: -100
-      then:
-        - switch.turn_on: fan_relay
     # Apply restored PID number entity values so tuned gains survive reboots.
     # Must run after component init (lower priority = runs later).
     - priority: -200
@@ -233,24 +230,25 @@ output:
 
   # 12 V 50 W PTC heater with integrated 12 V fan
   # GPIO19 → SSR-40 DD → heater+fan 12 V supply
-  - platform: slow_pwm
+  # LEDC 15 Hz / 10-bit: finer PID resolution; SSR-40 DD handles this frequency cleanly
+  - platform: ledc
     id: heater_output
     pin:
       number: GPIO19
       inverted: false
-    period: 20s
+    frequency: 15Hz
 
 
 # ─── Switches ─────────────────────────────────────────────────────────────────
 
 switch:
   # Fan rail — all 3 fans together (2× TEC hot-side + heater fan)
-  # GPIO5 → SSR-40 DD → fan rail 12 V (always on at boot)
+  # GPIO5 → SSR-40 DD → fan rail 12 V (controlled by PID state — on when active, off when idle)
   - platform: gpio
     id: fan_relay
     name: "Chamber Fans"
     pin: GPIO5
-    restore_mode: RESTORE_DEFAULT_ON
+    restore_mode: RESTORE_DEFAULT_OFF
     icon: "mdi:fan"
 
   # Dehumidifier relay — Peltier condensation alone often suffices
@@ -629,11 +627,19 @@ interval:
             call.perform();
           }
 
-  # Status LED update (2 s)
+  # Status LED update + fan control (2 s)
+  # Fan: on whenever PID is active (cooling/heating/idle); off when PID is off
   # Blue = cooling · Red = heating · Green (dim) = idle · White blink = frost
   - interval: 2s
     then:
       - lambda: |-
+          auto act = id(temp_pid).action;
+          if (act != esphome::climate::CLIMATE_ACTION_OFF) {
+            id(fan_relay).turn_on();
+          } else {
+            id(fan_relay).turn_off();
+          }
+
           auto call = id(status_led).make_call();
           call.set_transition_length(300);
           if (id(frost_active)) {
@@ -644,7 +650,6 @@ interval:
             call.set_effect("Frost Blink");
           } else {
             call.set_effect("None");
-            auto act = id(temp_pid).action;
             switch (act) {
               case esphome::climate::CLIMATE_ACTION_COOLING:
                 call.set_state(true);

@@ -27,8 +27,14 @@ Capabilities:
 ```
 espcure.yaml            Main ESPHome configuration
 secrets.yaml.example    Template — copy to secrets.yaml (gitignored)
+requirements.txt        Python deps — pins esphome==2026.5.3 for CI parity
+requirements-docs.txt   Docs deps — pins mkdocs-material>=9.5
+mkdocs.yml              MkDocs config; site published to GitHub Pages
+README.md               Project overview and feature list
+CHANGELOG.md            Release history (Keep a Changelog format)
 TODO.md                 Project TODO list (prioritized)
 docs/
+  index.md              Docs home page (MkDocs entry point)
   hardware.md           BOM, pinout, wiring guide
   setup.md              First-flash and HA integration guide
   calibration.md        Sensor offset calibration procedure
@@ -36,6 +42,14 @@ docs/
   cure-programs.md      Cure programs (18-day + Cannatrol 4+4) and HA automations
   ha-dashboard.yaml     Ready-to-import Lovelace dashboard (5 tabs)
   display-plan.md       Display hardware options, wiring, ESPHome config skeleton
+  stylesheets/
+    extra.css           Custom CSS for MkDocs Material theme
+  overrides/
+    home.html           Custom home-page template
+.github/
+  workflows/
+    validate.yml        ESPHome config validation CI (PRs + main pushes)
+    docs.yml            Auto-deploy MkDocs to GitHub Pages on push to main
 .claude/
   agents/               Sub-agent definitions (see below)
   settings.json         Permissions
@@ -47,14 +61,18 @@ All ESPHome work lives in **`espcure.yaml`**. Key sections:
 
 | Section | Purpose |
 |---|---|
-| `climate.pid` | Temperature PID — `kp`, `ki`, `kd` here |
+| `climate.pid` | Temperature PID — defaults Kp=0.35, Ki=0.005, Kd=1.2; deadband ±0.5 °C |
 | `output.slow_pwm` (peltier) | 20 s period; never reduce below 10 s |
 | `output.slow_pwm` (heater) | 20 s period |
 | `interval` (30 s) | Humidity/dew-point bang-bang loop (switches on `use_dew_point_control`) |
 | `interval` (60 s) | Frost-guard loop |
+| `interval` (2 s) | Status LED update loop — polls PID action, drives WS2812 colour |
+| `switch.fan_relay` | GPIO5 — fan rail SSR; controlled by 2 s interval — ON when PID active, OFF when PID off |
+| `switch.dehumidifier_relay` | GPIO23 — bang-bang controlled by the 30 s humidity loop |
 | `time.on_time` (cron) | Midnight cron — 18-day step + Cannatrol 4+4 advance |
 | `number.*_setpoint` | User-facing setpoints exposed to HA and web UI |
 | `number.pid_k*` | Live PID tuning — `on_value` calls `set_control_parameters` |
+| `number.vpd_setpoint` / `number.vpd_hysteresis` | VPD control setpoints (kPa) for VPD mode |
 | `switch.cure_program_active` | 18-day RH step-down program |
 | `switch.cannatrol_program_active` | Cannatrol 4+4 dew-point program |
 | `switch.use_dew_point_control` | Dew Point mode toggle (mutual-exclusive with VPD mode) |
@@ -63,12 +81,14 @@ All ESPHome work lives in **`espcure.yaml`**. Key sections:
 | `text_sensor.chamber_status` | Human-readable operating state |
 | `light.status_led` | WS2812 RGB LED (GPIO8) — color reflects PID action |
 | `display.oled` (pages) | SSD1306 OLED, 3-page cycling; `page_button` GPIO9 cycles |
+| `esp32_improv` | BLE WiFi provisioning; BOOT button (GPIO9) is the authorizer |
+| `improv_serial` | Serial WiFi provisioning (USB fallback) |
 
 ## Build & flash
 
 ```bash
-# Install ESPHome (once)
-pip install esphome
+# Install ESPHome — use requirements.txt to match the CI-pinned version
+pip install -r requirements.txt
 
 # Validate config
 esphome config espcure.yaml
@@ -82,6 +102,29 @@ esphome run espcure.yaml --device espcure.local
 
 **Never flash without running `esphome config` first** — it catches YAML errors.
 
+**Always install with `pip install -r requirements.txt`** — pins `esphome==2026.5.3`, matching `validate.yml`. Installing a different version can produce parse differences that only surface in CI.
+
+### Docs site
+
+```bash
+# Local preview
+mkdocs serve
+
+# Deploy to GitHub Pages (maintainers only — CI does this automatically)
+mkdocs gh-deploy
+```
+
+The docs site is automatically deployed by `.github/workflows/docs.yml` on every push to `main`.
+
+## GitHub Actions CI
+
+| Workflow | File | Trigger | What it does |
+|---|---|---|---|
+| ESPHome Validate | `.github/workflows/validate.yml` | PR or push to `main` touching `espcure.yaml` or `secrets.yaml.example` | Writes a placeholder `secrets.yaml` with dummy values, then runs `esphome config espcure.yaml` |
+| Deploy Docs | `.github/workflows/docs.yml` | Push to `main` (any file) or manual `workflow_dispatch` | Installs `requirements-docs.txt`, runs `mkdocs gh-deploy --force` to GitHub Pages |
+
+No real credentials are stored in the repo. The dummy `api_encryption_key` used in CI is a valid base64-encoded 32-byte value so the ESPHome parser accepts it.
+
 ## Development rules
 
 1. **Route work to the matching agent** before making non-trivial changes (see table below).
@@ -91,6 +134,8 @@ esphome run espcure.yaml --device espcure.local
 5. Don't hard-code WiFi credentials, API keys, or passwords — always use `!secret`.
 6. The `slow_pwm` period for the Peltier must stay ≥ 10 s to avoid thermal cycling damage.
 7. PID `kp`/`ki`/`kd` changes must be documented in `docs/pid-tuning.md`.
+8. Install dependencies with `pip install -r requirements.txt` (not bare `pip install esphome`) to stay in sync with the CI-pinned ESPHome version.
+9. Update `CHANGELOG.md` for any user-facing change — new entities, behaviour changes, removals. Follow Keep a Changelog format (`### Added / Changed / Fixed / Removed` under `## [Unreleased]`).
 
 ## Sub-agents
 
@@ -117,10 +162,25 @@ esphome run espcure.yaml --device espcure.local
 
 ## Key constraints & gotchas
 
-- **Peltier switching**: Use `slow_pwm` ≥ 10 s period only. Never use regular GPIO PWM — rapid switching destroys Peltier junctions.
+- **Peltier switching**: The Peltier output (`peltier_output`, GPIO18) uses `slow_pwm` with a 20 s period — never reduce below 10 s. Rapid switching destroys Peltier junctions. The heater output (`heater_output`, GPIO19) uses `ledc` at 15 Hz / 10-bit resolution — fast PWM is fine for the PTC heater and gives finer PID resolution.
 - **All 3 outputs use SSR-40 DD**: Fan rail (GPIO5), TEC cooling (GPIO18), heater element (GPIO19) — all DC-DC solid-state relays. No mechanical relay modules in this build. SSR-40 DDs must be on heatsinks when carrying > 5 A.
+- **Dehumidifier relay**: GPIO23 — bang-bang controlled by the 30 s `interval` loop. Not part of the SSR-40 DD trio; it is the external dehumidifier plug relay. Restore mode is `RESTORE_DEFAULT_OFF`.
 - **3.3 V GPIO → SSR-40 DD**: ESP32-C6 outputs 3.3 V; SSR-40 DD spec minimum is 3 V. Verify each SSR triggers reliably at 3.3 V before final install. If marginal, add a 2N2222 NPN driver on the control line.
 - **No cold-plate sensor**: There is no DS18B20. Frost protection is software-only: if `chamber_temp` drops below `min_chamber_temp` (default 4 °C), PID is disabled until chamber recovers 2 °C above the floor. The `frost_active` global tracks this state.
+- **GPIO reference**:
+
+  | GPIO | Function |
+  |---|---|
+  | GPIO5 | Fan rail SSR-40 DD (always ON at boot) |
+  | GPIO8 | WS2812 RGB LED (built-in DevKitC-1 LED) |
+  | GPIO9 | BOOT / page button — OLED page cycle + BLE provisioning authorizer |
+  | GPIO18 | Peltier (cooling) SSR-40 DD — `slow_pwm` 20 s period |
+  | GPIO19 | Heater SSR-40 DD — `slow_pwm` 20 s period |
+  | GPIO21 | I²C SDA (SHT45 + SSD1306) |
+  | GPIO22 | I²C SCL (SHT45 + SSD1306) |
+  | GPIO23 | Dehumidifier relay |
+
+- **Shared I²C bus**: SHT45 sensor (address `0x44`) and SSD1306 OLED (address `0x3C`) share GPIO21/GPIO22. Do not add a second `i2c:` block — add new devices to the existing bus with their own `address:` key.
 - **Humidity loop**: The dehumidifier's primary function is to raise internal temperature slightly, triggering the Peltier to activate and pull moisture through condensation on the cold plate — not direct dehumidification.
 - **Cure programs**: Both the 18-day and Cannatrol 4+4 programs are driven by `time.homeassistant` cron (midnight). Require HA time sync. Day counters use `restore_value: true` — restarting ESPHome does not reset them. Enabling one program automatically disables the other.
 - **Cannatrol 4+4 program**: `cannatrol_phase` global (0=dry, 1=cure) tracks which phase is active. Phase transitions happen at midnight on day 5. The `cannatrol_program_status` text sensor exposes progress to both HA and the web UI.
@@ -128,3 +188,4 @@ esphome run espcure.yaml --device espcure.local
 - **Cannatrol dew-point philosophy**: The Cannatrol controls dew point, not raw RH. With `use_dew_point_control` ON, the dehumidifier is driven by `dew_point_setpoint` (°C). Cannatrol cure default is 11.1 °C (52 °F dew point). The `dew_point` sensor is calculated from SHT45 T + RH via Magnus formula — do not replace it with a direct sensor.
 - **Three humidity control modes**: RH mode (default), Dew Point mode, VPD mode. Only one active at a time — `use_vpd_control` and `use_dew_point_control` are mutually exclusive (each `on_turn_on` turns off the other). All three modes control only the dehumidifier relay — there is no humidifier in this build.
 - **ESP32-C6 requires ESP-IDF**: The `framework: type: esp-idf` must not be changed to `arduino`. The C6 variant is not Arduino-compatible in ESPHome.
+- **BLE provisioning**: `esp32_improv` is enabled with `authorizer: page_button` (GPIO9 BOOT button). Hold the BOOT button while a phone scans for the device to authorize WiFi provisioning. `improv_serial` provides the same over USB serial.
