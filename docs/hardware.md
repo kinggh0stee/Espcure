@@ -83,10 +83,12 @@ For a 1.3" SH1106 OLED, wiring is identical — change `model: "SSD1306 128x64"`
 
 The PTC heater has **two separate connectors pre-wired from the factory**:
 
-- **White JST connector** (2 pins, thin wires) → fan. Connect to the 12 V fan rail output (fan SSR GPIO5 load side). Fan runs continuously.
-- **Bare red/black wires** (thicker) → PTC ceramic element. Connect to the heater SSR output (GPIO19 load side). Element is slow-PWM controlled.
+- **White JST connector** (2 pins, thin wires) → fan. Connect to the 12 V fan rail output (fan SSR GPIO5 load side).
+- **Bare red/black wires** (thicker) → PTC ceramic element. Connect to the heater SSR output (GPIO19 load side).
 
 No cutting or splicing required.
+
+**Mounting position:** Install the heater+fan plate in the **bottom slot**, fan side facing down. This draws air down through the center of the chamber and exhausts out the front and back — best airflow pattern for even temperature distribution.
 
 ## SSR-40 DD Heatsinking
 
