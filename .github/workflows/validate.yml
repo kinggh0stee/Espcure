@@ -1,0 +1,46 @@
+name: ESPHome Validate
+
+on:
+  pull_request:
+    paths:
+      - 'espcure.yaml'
+      - 'secrets.yaml.example'
+      - '.github/workflows/validate.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'espcure.yaml'
+
+jobs:
+  validate:
+    name: esphome config
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Install ESPHome
+        run: pip install esphome
+
+      - name: Create CI secrets
+        # secrets.yaml is gitignored — CI needs placeholder values so the
+        # config parser can resolve !secret references without real credentials.
+        run: |
+          cat > secrets.yaml << 'EOF'
+          wifi_ssid: "ci-test-network"
+          wifi_password: "ci-test-password-32chars-placeholder"
+          ap_password: "ci-test-ap"
+          api_encryption_key: "dGVzdC1rZXktZm9yLWNpLXRlc3Qtb25seS0zMmJ5dGVz"
+          ota_password: "ci-test-ota-password"
+          EOF
+
+      - name: Validate ESPHome config
+        run: esphome config espcure.yaml

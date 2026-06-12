@@ -152,7 +152,7 @@ sensor:
       return svp * (1.0f - rh / 100.0f);
     update_interval: 30s
 
-  # RH error vs setpoint (positive = too humid; NaN when in dew-point mode)
+  # RH error vs setpoint (positive = too humid; NaN when in dew-point or VPD mode)
   - platform: template
     id: humidity_error
     name: "Humidity Error"
@@ -162,11 +162,12 @@ sensor:
     entity_category: diagnostic
     lambda: |-
       if (id(use_dew_point_control).state) return NAN;
+      if (id(use_vpd_control).state) return NAN;
       if (isnan(id(chamber_rh).state)) return NAN;
       return id(chamber_rh).state - id(humidity_setpoint).state;
     update_interval: 30s
 
-  # Dew-point error vs setpoint (positive = too humid; NaN when in RH mode)
+  # Dew-point error vs setpoint (positive = too humid; NaN when in RH or VPD mode)
   - platform: template
     id: dew_point_error
     name: "Dew Point Error"
@@ -177,6 +178,7 @@ sensor:
     entity_category: diagnostic
     lambda: |-
       if (!id(use_dew_point_control).state) return NAN;
+      if (id(use_vpd_control).state) return NAN;
       if (isnan(id(dew_point).state)) return NAN;
       return id(dew_point).state - id(dew_point_setpoint).state;
     update_interval: 30s
@@ -299,6 +301,28 @@ switch:
     restore_mode: RESTORE_DEFAULT_OFF
     optimistic: true
     icon: "mdi:thermometer-water"
+    on_turn_on:
+      - switch.turn_off: use_vpd_control
+
+  # Humidifier relay — raises RH when chamber is too dry
+  - platform: gpio
+    id: humidifier_relay
+    name: "Humidifier"
+    pin: GPIO20
+    restore_mode: RESTORE_DEFAULT_OFF
+    icon: "mdi:water-plus"
+
+  # VPD control mode — bang-bang on Vapor Pressure Deficit (kPa)
+  # Highest-priority humidity mode: overrides dew-point and RH modes.
+  # Low VPD = too humid → dehumidify; High VPD = too dry → humidify.
+  - platform: template
+    id: use_vpd_control
+    name: "VPD Control Mode"
+    restore_mode: RESTORE_DEFAULT_OFF
+    optimistic: true
+    icon: "mdi:waves"
+    on_turn_on:
+      - switch.turn_off: use_dew_point_control
 
 # ─── Numbers (user-adjustable setpoints) ──────────────────────────────────────
 
@@ -448,6 +472,56 @@ number:
             ki: !lambda return id(pid_ki).state;
             kd: !lambda return x;
 
+  # ── Humidifier setpoints ─────────────────────────────────────────────────────
+  - platform: template
+    id: humidifier_setpoint
+    name: "Humidifier Setpoint"
+    min_value: 40
+    max_value: 80
+    step: 1
+    initial_value: 60
+    restore_value: true
+    optimistic: true
+    unit_of_measurement: "%"
+    icon: "mdi:water-plus"
+
+  - platform: template
+    id: humidifier_hysteresis
+    name: "Humidifier Hysteresis"
+    min_value: 0.5
+    max_value: 4.0
+    step: 0.5
+    initial_value: 2.0
+    restore_value: true
+    optimistic: true
+    unit_of_measurement: "%"
+    icon: "mdi:tune"
+
+  # ── VPD mode setpoints ───────────────────────────────────────────────────────
+  - platform: template
+    id: vpd_setpoint
+    name: "VPD Setpoint"
+    min_value: 0.1
+    max_value: 2.0
+    step: 0.05
+    initial_value: 0.8
+    restore_value: true
+    optimistic: true
+    unit_of_measurement: "kPa"
+    icon: "mdi:waves"
+
+  - platform: template
+    id: vpd_hysteresis
+    name: "VPD Hysteresis"
+    min_value: 0.02
+    max_value: 0.3
+    step: 0.02
+    initial_value: 0.1
+    restore_value: true
+    optimistic: true
+    unit_of_measurement: "kPa"
+    icon: "mdi:tune"
+
 # ─── Climate (Temperature PID) ────────────────────────────────────────────────
 
 climate:
@@ -528,26 +602,49 @@ time:
 
 interval:
   # Humidity bang-bang control loop (30 s)
-  # Mode OFF → target % RH (rollitup style)
-  # Mode ON  → target dew point °C (Cannatrol style)
+  # Priority order: VPD mode → Dew Point mode → RH mode
+  # Controls both dehumidifier (too humid) and humidifier (too dry).
   - interval: 30s
     then:
       - lambda: |-
-          bool on = id(dehumidifier_relay).state;
-          if (id(use_dew_point_control).state) {
+          bool dehum_on = id(dehumidifier_relay).state;
+          bool hum_on   = id(humidifier_relay).state;
+
+          if (id(use_vpd_control).state) {
+            if (isnan(id(vpd).state)) return;
+            float v    = id(vpd).state;
+            float sp   = id(vpd_setpoint).state;
+            float hyst = id(vpd_hysteresis).state / 2.0f;
+            // Low VPD = too humid → dehumidify
+            if (!dehum_on && v < sp - hyst) id(dehumidifier_relay).turn_on();
+            else if (dehum_on && v > sp - hyst + id(vpd_hysteresis).state) id(dehumidifier_relay).turn_off();
+            // High VPD = too dry → humidify
+            if (!hum_on && v > sp + hyst) id(humidifier_relay).turn_on();
+            else if (hum_on && v < sp + hyst - id(vpd_hysteresis).state) id(humidifier_relay).turn_off();
+          } else if (id(use_dew_point_control).state) {
             if (isnan(id(dew_point).state)) return;
             float dp   = id(dew_point).state;
             float sp   = id(dew_point_setpoint).state;
             float hyst = id(dew_point_hysteresis).state / 2.0f;
-            if (!on && dp > sp + hyst) id(dehumidifier_relay).turn_on();
-            else if (on && dp < sp - hyst) id(dehumidifier_relay).turn_off();
+            // Dehumidify when too humid (dp too high)
+            if (!dehum_on && dp > sp + hyst) id(dehumidifier_relay).turn_on();
+            else if (dehum_on && dp < sp - hyst) id(dehumidifier_relay).turn_off();
+            // Humidify when too dry (dp too low) — uses separate hysteresis band below setpoint
+            if (!hum_on && dp < sp - hyst - 0.5f) id(humidifier_relay).turn_on();
+            else if (hum_on && dp > sp - hyst) id(humidifier_relay).turn_off();
           } else {
             if (isnan(id(chamber_rh).state)) return;
-            float rh   = id(chamber_rh).state;
-            float sp   = id(humidity_setpoint).state;
-            float hyst = id(humidity_hysteresis).state / 2.0f;
-            if (!on && rh > sp + hyst) id(dehumidifier_relay).turn_on();
-            else if (on && rh < sp - hyst) id(dehumidifier_relay).turn_off();
+            float rh      = id(chamber_rh).state;
+            float sp_hi   = id(humidity_setpoint).state;
+            float sp_lo   = id(humidifier_setpoint).state;
+            float hyst_hi = id(humidity_hysteresis).state / 2.0f;
+            float hyst_lo = id(humidifier_hysteresis).state / 2.0f;
+            // Dehumidify when too humid
+            if (!dehum_on && rh > sp_hi + hyst_hi) id(dehumidifier_relay).turn_on();
+            else if (dehum_on && rh < sp_hi - hyst_hi) id(dehumidifier_relay).turn_off();
+            // Humidify when too dry
+            if (!hum_on && rh < sp_lo - hyst_lo) id(humidifier_relay).turn_on();
+            else if (hum_on && rh > sp_lo + hyst_lo) id(humidifier_relay).turn_off();
           }
 
   # Software frost guard (60 s)
@@ -733,7 +830,9 @@ text_sensor:
     icon: "mdi:water-check"
     lambda: |-
       char buf[48];
-      if (id(use_dew_point_control).state) {
+      if (id(use_vpd_control).state) {
+        snprintf(buf, sizeof(buf), "VPD Mode %.2f kPa SP", id(vpd_setpoint).state);
+      } else if (id(use_dew_point_control).state) {
         snprintf(buf, sizeof(buf), "Dew Point %.1f\xc2\xb0C SP", id(dew_point_setpoint).state);
       } else {
         snprintf(buf, sizeof(buf), "RH Mode %.0f%% SP", id(humidity_setpoint).state);
@@ -878,3 +977,57 @@ light:
           update_interval: 350ms
           min_brightness: 0%
           max_brightness: 60%
+
+# ─── Optional hardware additions (uncomment to enable) ─────────────────────────
+
+# ── Option A: Door sensor ────────────────────────────────────────────────────
+# Magnetic reed switch on a spare GPIO. Wire: normally closed = door open.
+# Logs door events and can be used in HA automations to pause cure programs.
+#
+# binary_sensor:
+#   - platform: gpio
+#     id: door_sensor
+#     name: "Chamber Door"
+#     device_class: door
+#     pin:
+#       number: GPIO11
+#       mode: INPUT_PULLUP
+#       inverted: true   # change to false if using normally-open reed switch
+
+# ── Option B: Cold-plate DS18B20 (direct frost detection) ────────────────────
+# One-wire DS18B20 temperature sensor on the Peltier cold plate.
+# This allows direct frost detection instead of the software-only air-temp proxy.
+# Wire DATA → GPIO10, with 4.7 kΩ pull-up to 3.3 V.
+#
+# dallas_temp:
+#   pin: GPIO10
+#   update_interval: 10s
+#
+# sensor:
+#   - platform: dallas_temp
+#     id: cold_plate_temp
+#     name: "Cold Plate Temperature"
+#     device_class: temperature
+#     state_class: measurement
+#     accuracy_decimals: 1
+
+# ── Option C: Multi-zone second SHT45 (I2C address 0x45) ─────────────────────
+# A second SHT45 in a different zone (e.g. top vs. bottom of chamber).
+# Change the first SHT45 breakout's ADDR pin high to use 0x45.
+#
+# sensor:
+#   - platform: sht4x
+#     address: 0x45
+#     precision: High
+#     heater_max_duty: 0.0
+#     update_interval: 30s
+#     temperature:
+#       id: zone2_temp
+#       name: "Zone 2 Temperature"
+#       device_class: temperature
+#       state_class: measurement
+#     humidity:
+#       id: zone2_rh
+#       name: "Zone 2 Humidity"
+#       device_class: humidity
+#       state_class: measurement
