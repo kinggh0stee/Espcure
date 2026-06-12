@@ -7,13 +7,13 @@
 | 1 | **Fridge** | Honeywell thermoelectric wine cooler | Remove original control board |
 | 2 | **MCU** | ESP32-C6 DevKit (e.g. Espressif ESP32-C6-DevKitC-1) | 3.3 V logic; requires ESP-IDF firmware |
 | 3 | **Chamber sensor** | SHT45 breakout (Adafruit #5665 or equiv.) | I²C, 3.3 V; ±0.1 °C / ±1 % RH |
-| 4 | **SSR — Fan rail** | SSR-40 DD (DC-DC solid-state relay) | Controls all 3 fans together (2 TEC hot-side + heater fan); always on |
+| 4 | **SSR — Fan rail** | SSR-40 DD (DC-DC solid-state relay) | Controls all 3 fans together (2 TEC hot-side + heater fan); on when PID active |
 | 5 | **SSR — TEC cooling** | SSR-40 DD | Controls both TECs in parallel; slow_pwm 20 s |
-| 6 | **SSR — Heater** | SSR-40 DD | Controls PTC element only (heater fan wired to fan rail); slow_pwm 20 s |
+| 6 | **SSR — Heater** | SSR-40 DD | Controls PTC element only (heater fan wired to fan rail); LEDC 15 Hz |
 | 7 | **PTC heater** | 12 V 50 W PTC ceramic heater with integrated 12 V fan, 87.5 × 60 × 42 mm (AliExpress) | Fan and element have **separate connectors** (white JST = fan; bare red/black = PTC element) — no splicing needed |
 | 8 | **Dehumidifier** | Optional — Peltier condensation alone may suffice | If used: add AC SSR (separate part) for 120 V AC load on GPIO23 |
 | 9 | **12 V PSU** | Generic 12 V 300 W switching PSU (25 A) | 25 A headroom covers 2× TECs + heater (4.2 A) + fans comfortably |
-| 10 | **5 V PSU** | USB phone charger or Mean Well IRM-05-5 | Powers ESP32 only (no relay coils — SSRs draw < 20 mA from GPIO directly) |
+| 10 | **Buck converter** | 12 V → 5 V DC-DC buck (e.g. LM2596 or MP1584EN module) | Steps 12 V rail down to 5 V for ESP32 VIN — eliminates the separate 5 V PSU |
 | 11 | **OLED display** | SSD1306 0.96" 128×64 I²C OLED (e.g. AliExpress ~$3) | Shares GPIO21/22 I²C bus — no extra wiring beyond VCC/GND |
 | 12 | **Misc** | 18 AWG wire, lever nuts (Wago 221), heat shrink, 3× SSR heatsinks | SSR-40 DDs must be mounted on heatsink when carrying > 5 A |
 
@@ -21,11 +21,11 @@
 
 | GPIO | Function | Notes |
 |---|---|---|
-| 5 | SSR-40 DD — Fan rail IN | Active HIGH; all 3 fans; always on at boot |
+| 5 | SSR-40 DD — Fan rail IN | Active HIGH; all 3 fans; on when PID active, off when PID off |
 | 8 | WS2812 RGB LED | Built into ESP32-C6 DevKitC-1 — no wiring needed |
 | 9 | BOOT button (display page cycle) | Built into DevKitC-1 — INPUT_PULLUP, active low |
 | 18 | SSR-40 DD — TEC cooling IN | slow_pwm 20 s; active HIGH; both TECs in parallel |
-| 19 | SSR-40 DD — Heater IN | slow_pwm 20 s; active HIGH; PTC element only |
+| 19 | SSR-40 DD — Heater IN | LEDC 15 Hz; active HIGH; PTC element only |
 | 21 | SDA (SHT45 + OLED) | I²C — shared by both devices |
 | 22 | SCL (SHT45 + OLED) | I²C — shared by both devices |
 | 23 | Dehumidifier relay IN (optional) | Active HIGH; not part of core 3-SSR build |
@@ -59,7 +59,7 @@
 
   12V PSU (−) ──── all TEC (−), fan (−), PTC element (−)  [common ground]
 
-  5V USB ──────────── ESP32 VIN
+  12V PSU (+) ─── Buck converter (12V→5V) ─── ESP32 VIN
 
   OLED VCC ─── 3.3V   OLED GND ─── GND
 ```

@@ -237,7 +237,6 @@ output:
       number: GPIO19
       inverted: false
     frequency: 15Hz
-    bit_depth: 10
 
 
 # ─── Switches ─────────────────────────────────────────────────────────────────
