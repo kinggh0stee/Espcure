@@ -14,6 +14,8 @@ All notable changes to EspCure are documented here.
 - **Made for ESPHome compliance** — `esp32_improv` and `improv_serial` components added for BLE + serial WiFi provisioning
 
 ### Changed
+- **Fan relay** now controlled dynamically by the 2 s PID-state loop — ON when PID is active (cooling/heating/idle), OFF when PID is off. Removed always-on boot behaviour (`on_boot` + `RESTORE_DEFAULT_ON`). Fans no longer run on idle power-on.
+- **Heater output** switched from `slow_pwm` (20 s period) to `ledc` at 15 Hz / 10-bit resolution for finer PID duty-cycle resolution. Peltier output remains `slow_pwm` 20 s — do not change.
 - **README.md** rewritten to reflect current hardware (ESP32-C6, SHT45, SSR-40 DDs) and all current features (OLED, RGB LED, three humidity modes, Cannatrol 4+4, VPD, CI)
 - `cannatrol_day` max_value raised 8 → 9 to accommodate end-of-program day counter
 - Removed piezo buzzer (`ledc_output`, `rtttl`, frost/program-complete melodies); GPIO10 is now free

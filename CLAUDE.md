@@ -67,7 +67,7 @@ All ESPHome work lives in **`espcure.yaml`**. Key sections:
 | `interval` (30 s) | Humidity/dew-point bang-bang loop (switches on `use_dew_point_control`) |
 | `interval` (60 s) | Frost-guard loop |
 | `interval` (2 s) | Status LED update loop — polls PID action, drives WS2812 colour |
-| `switch.fan_relay` | GPIO5 — fan rail SSR; always turns ON at boot (`on_boot`) |
+| `switch.fan_relay` | GPIO5 — fan rail SSR; controlled by 2 s interval — ON when PID active, OFF when PID off |
 | `switch.dehumidifier_relay` | GPIO23 — bang-bang controlled by the 30 s humidity loop |
 | `time.on_time` (cron) | Midnight cron — 18-day step + Cannatrol 4+4 advance |
 | `number.*_setpoint` | User-facing setpoints exposed to HA and web UI |
@@ -162,7 +162,7 @@ No real credentials are stored in the repo. The dummy `api_encryption_key` used 
 
 ## Key constraints & gotchas
 
-- **Peltier switching**: Use `slow_pwm` ≥ 10 s period only. Never use regular GPIO PWM — rapid switching destroys Peltier junctions.
+- **Peltier switching**: The Peltier output (`peltier_output`, GPIO18) uses `slow_pwm` with a 20 s period — never reduce below 10 s. Rapid switching destroys Peltier junctions. The heater output (`heater_output`, GPIO19) uses `ledc` at 15 Hz / 10-bit resolution — fast PWM is fine for the PTC heater and gives finer PID resolution.
 - **All 3 outputs use SSR-40 DD**: Fan rail (GPIO5), TEC cooling (GPIO18), heater element (GPIO19) — all DC-DC solid-state relays. No mechanical relay modules in this build. SSR-40 DDs must be on heatsinks when carrying > 5 A.
 - **Dehumidifier relay**: GPIO23 — bang-bang controlled by the 30 s `interval` loop. Not part of the SSR-40 DD trio; it is the external dehumidifier plug relay. Restore mode is `RESTORE_DEFAULT_OFF`.
 - **3.3 V GPIO → SSR-40 DD**: ESP32-C6 outputs 3.3 V; SSR-40 DD spec minimum is 3 V. Verify each SSR triggers reliably at 3.3 V before final install. If marginal, add a 2N2222 NPN driver on the control line.
