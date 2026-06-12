@@ -38,7 +38,7 @@ jobs:
           wifi_ssid: "ci-test-network"
           wifi_password: "ci-test-password-32chars-placeholder"
           ap_password: "ci-test-ap"
-          api_encryption_key: "dGVzdC1rZXktZm9yLWNpLXRlc3Qtb25seS0zMmJ5dGVz"
+          api_encryption_key: "YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXoxMjM0NTY="
           ota_password: "ci-test-ota-password"
           EOF
 
