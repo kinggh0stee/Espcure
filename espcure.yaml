@@ -51,6 +51,13 @@ wifi:
 
 captive_portal:
 
+# WiFi provisioning — required for Made for ESPHome compliance
+# authorizer: page_button — hold the BOOT button (GPIO9) to authorize BLE provisioning
+esp32_improv:
+  authorizer: page_button
+
+improv_serial:
+
 # Device-hosted web UI — browse to http://espcure.local
 # version: 3 provides a full React dashboard with dark mode toggle.
 # local: true serves assets from flash (works without internet).

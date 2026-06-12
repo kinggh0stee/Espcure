@@ -11,8 +11,11 @@ All notable changes to EspCure are documented here.
 - **Optional cold-plate sensor section** (commented YAML): DS18B20 one-wire on GPIO10 for direct frost detection
 - **GitHub Actions CI** — `esphome config` validation runs on every PR that touches `espcure.yaml`; `requirements.txt` added
 - **HA dashboard enhancements** — VPD gauge, color-coded overview badges, conditional program progress bars, 7-day temperature history, VPD control section
+- **Made for ESPHome compliance** — `esp32_improv` and `improv_serial` components added for BLE + serial WiFi provisioning
 
 ### Changed
+- **README.md** rewritten to reflect current hardware (ESP32-C6, SHT45, SSR-40 DDs) and all current features (OLED, RGB LED, three humidity modes, Cannatrol 4+4, VPD, CI)
+- `cannatrol_day` max_value raised 8 → 9 to accommodate end-of-program day counter
 - Removed piezo buzzer (`ledc_output`, `rtttl`, frost/program-complete melodies); GPIO10 is now free
 - `docs/display-plan.md` rewritten as an "implemented" reference (OLED live in config); updated GPIO budget to reflect GPIO8/9 assignments
 - `docs/setup.md` full rewrite: LED colour table, OLED page guide, 10-step setup, comprehensive first-run checklist
