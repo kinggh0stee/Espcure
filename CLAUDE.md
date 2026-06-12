@@ -15,6 +15,8 @@ Capabilities:
 - **One-tap presets**: Dry Profile, Cure Profile, Cold-Plate Profile buttons
 - Chamber Status text sensor (Cooling / Heating / Idle / Frost Guard)
 - Software frost floor (disables Peltier if chamber air drops below configurable floor, default 4 °C)
+- **SSD1306 OLED display**: 3-page cycling (temp/RH/DP/VPD, control settings, program status); BOOT button (GPIO9) cycles pages manually
+- **WS2812 RGB LED** (GPIO8, built-in): cooling=blue, heating=red(dim), idle=green(very dim), frost=white blink
 - Home Assistant integration via encrypted native API (device_class + state_class on all sensors)
 - Device-hosted web UI at `http://espcure.local` — `web_server` v3, dark mode toggle, no HA required
 - OTA updates, fallback AP
@@ -56,6 +58,8 @@ All ESPHome work lives in **`espcure.yaml`**. Key sections:
 | `switch.cannatrol_program_active` | Cannatrol 4+4 dew-point program |
 | `button.apply_*_profile` | One-tap profile presets |
 | `text_sensor.chamber_status` | Human-readable operating state |
+| `light.status_led` | WS2812 RGB LED (GPIO8) — color reflects PID action |
+| `display.oled` (pages) | SSD1306 OLED, 3-page cycling; `page_button` GPIO9 cycles |
 
 ## Build & flash
 

@@ -5,7 +5,10 @@
 - ESPHome installed: `pip install esphome`
 - Home Assistant running (for HA API integration and time sync)
 - Hardware assembled per `docs/hardware.md`
-- USB-to-serial adapter or direct USB connection to ESP32
+- USB connection to the ESP32-C6 (first flash only)
+- Internet access at compile time (Roboto font downloaded from Google Fonts for the OLED display)
+
+---
 
 ## 1. Prepare secrets
 
@@ -13,20 +16,22 @@
 cp secrets.yaml.example secrets.yaml
 ```
 
-Edit `secrets.yaml`:
+Edit `secrets.yaml` with your values:
 
 ```yaml
-wifi_ssid: "YourNetwork"
-wifi_password: "YourPassword"
+wifi_ssid: "YourNetworkName"
+wifi_password: "YourWiFiPassword"
 ap_password: "espcure-setup"
 api_encryption_key: "<generate below>"
 ota_password: "<choose a strong password>"
 ```
 
-Generate an API key:
+Generate a random API encryption key:
 ```bash
 python3 -c "import base64,os; print(base64.b64encode(os.urandom(32)).decode())"
 ```
+
+---
 
 ## 2. Validate config
 
@@ -34,80 +39,129 @@ python3 -c "import base64,os; print(base64.b64encode(os.urandom(32)).decode())"
 esphome config espcure.yaml
 ```
 
-Fix any reported errors before proceeding.
+Fix any reported errors before flashing. This also downloads the Roboto font files on first run.
+
+---
 
 ## 3. First flash (USB)
 
-Connect the ESP32 via USB. Hold the BOOT button if the device does not enter flash mode automatically.
+Connect the ESP32-C6 DevKit via USB-C. If the device doesn't enter flash mode automatically, hold the **BOOT** button (GPIO9) while pressing **RST**, then release RST.
 
 ```bash
 esphome run espcure.yaml
 ```
 
-When complete, the ESP32 will reboot and connect to your WiFi. The onboard LED will blink during connection.
+When complete, the ESP32 reboots and connects to your WiFi. The built-in RGB LED (GPIO8) will show:
+
+| LED color | Meaning |
+|---|---|
+| Blue | Cooling (Peltier active) |
+| Red (dim) | Heating (PTC heater active) |
+| Green (very dim) | Idle — PID active but no output |
+| White blinking | **Frost guard active** — PID suspended |
+| Off | Climate off / booting |
+
+---
 
 ## 4. Open the device web UI
 
-Browse to **`http://espcure.local`** (or the IP address shown in logs).
+Browse to **`http://espcure.local`** (or the IP address shown in ESPHome logs).
 
 The device-hosted dashboard gives full control without Home Assistant:
 
 | Section | What you get |
 |---|---|
-| **Sensors** | Chamber temp (°C + °F), RH, dew point, VPD, error values |
-| **Climate** | Temperature PID card — adjust setpoint, see cooling/heating state |
+| **Sensors** | Chamber temp (°C + °F), RH, dew point, VPD, error diagnostics |
+| **Climate** | PID thermostat card — adjust target temp, see action state |
 | **Controls** | Cure programs, dehumidifier, fan, dew-point mode toggle |
 | **Presets** | Apply Dry / Cure / Cold-Plate profile in one tap |
-| **PID Tuning** | Adjust Kp/Ki/Kd live — changes apply without reflash |
+| **PID Tuning** | Kp/Ki/Kd sliders — changes apply instantly, no reflash |
 | **Status** | Chamber Status, Humidity Control Mode, program progress |
-| **Dark mode** | Toggle in the top-right corner of the UI (follows system preference by default) |
+| **Dark mode** | Toggle in the top-right corner (follows system preference by default) |
 
-The web UI runs entirely from the ESP32's flash — no internet access required.
+The web UI runs entirely from the ESP32 flash — no internet required after first compile.
 
-## 5. Add to Home Assistant
+---
 
-1. In HA: **Settings → Devices & Services → Add Integration → ESPHome**
+## 5. OLED display
+
+If you wired an SSD1306 OLED to GPIO21/22 (see `docs/display-plan.md`), it auto-starts and cycles between three pages every 5 seconds:
+
+| Page | Content |
+|---|---|
+| **Main** | Temperature °C + RH % (large), dew point, VPD, chamber status, temp °F, frost banner |
+| **Control** | Humidity control mode, temp setpoint (°C + °F), frost floor, WiFi signal |
+| **Programs** | 18-day + Cannatrol 4+4 status, active humidity/DP error |
+
+Press the **BOOT button** (GPIO9, on the DevKit board) to manually cycle pages.
+
+---
+
+## 6. Add to Home Assistant
+
+1. **Settings → Devices & Services → Add Integration → ESPHome**
 2. Enter `espcure.local` (or IP address)
 3. Enter the `api_encryption_key` from your `secrets.yaml`
-4. All entities will appear under the **EspCure** device
+4. All entities appear under the **EspCure** device
 
 ### Import the dashboard
 
-A ready-to-use Lovelace dashboard is at `docs/ha-dashboard.yaml`. To import:
+A complete 5-tab Lovelace dashboard is at `docs/ha-dashboard.yaml`.
 
-1. In HA: **Settings → Dashboards → Add Dashboard**
-2. Switch to YAML mode and paste the contents of `docs/ha-dashboard.yaml`
+1. **Settings → Dashboards → Add Dashboard**
+2. Give it a name (e.g. "EspCure"), toggle **Show in sidebar**
+3. Open the new dashboard, click the **⋮ menu → Edit → Raw configuration editor**
+4. Paste the contents of `docs/ha-dashboard.yaml` and save
 
-## 6. First-run checklist
+---
 
-- [ ] `http://espcure.local` loads the web dashboard
-- [ ] Chamber temperature sensor reads a plausible value
-- [ ] Chamber humidity sensor reads a plausible value
-- [ ] Fan relay turns on automatically on boot
-- [ ] Climate entity shows with target 12.8 °C (55 °F)
-- [ ] Dehumidifier relay off by default
-- [ ] Both cure program switches off by default
-- [ ] Apply Dry Profile button sets 20 °C + 12.2 °C DP + dew-point mode ON
+## 7. First-run checklist
 
-## 7. Set up HA time sync
+- [ ] `esphome config espcure.yaml` passes with zero errors
+- [ ] `http://espcure.local` loads and shows live sensor values
+- [ ] Chamber temperature reads a plausible value
+- [ ] Chamber humidity reads a plausible value
+- [ ] Fan relay turns ON automatically at boot
+- [ ] Status LED shows green (dim) when PID is idle
+- [ ] OLED displays temperature and RH on Page 1 (if connected)
+- [ ] Climate entity shows target 12.8 °C (55 °F)
+- [ ] Dehumidifier relay OFF by default
+- [ ] Both cure program switches OFF by default
+- [ ] **Apply Dry Profile** sets 20 °C + 12.2 °C DP + dew-point mode ON
+- [ ] HA device shows all entities after integration is added
 
-The daily cure step-down uses `time.homeassistant`. Ensure your Home Assistant has the correct timezone set:
+---
+
+## 8. Set up HA time sync
+
+The midnight cure step-down cron requires accurate time. Ensure your Home Assistant timezone is correct:
 
 **Settings → System → General → Time zone**
 
-The ESP32 syncs time from HA on connect; the midnight cron will not fire correctly without this.
+The ESP32 syncs time from HA on connect. Without this, the midnight cron will not fire at the right time.
 
-## 8. Subsequent OTA updates
+---
 
-After first flash, all future updates are wireless:
+## 9. Calibrate sensors
+
+After the chamber has been running for 30 minutes, follow `docs/calibration.md` to apply temperature and humidity offsets. The SHT45 reads within ±0.1 °C from the factory but mounting position and airflow introduce small errors.
+
+---
+
+## 10. Subsequent OTA updates
+
+After the first USB flash, all future updates are wireless:
 
 ```bash
 esphome run espcure.yaml --device espcure.local
 ```
 
+---
+
 ## Fallback / Recovery
 
 If the ESP32 loses WiFi or cannot reach HA:
-- It broadcasts `EspCure-Setup` WiFi AP (password: `ap_password` from secrets)
-- Connect to this AP and open `http://192.168.4.1` to reconfigure
+- It broadcasts a **`EspCure-Setup`** fallback WiFi AP (password: `ap_password` from secrets)
+- Connect to this network and browse to `http://192.168.4.1`
 - The controller continues operating with last-known setpoints during WiFi outage
+- OTA and web UI remain available on the fallback AP

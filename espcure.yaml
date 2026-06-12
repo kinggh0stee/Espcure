@@ -231,11 +231,6 @@ output:
       inverted: false
     period: 20s
 
-  # Passive piezo buzzer — GPIO10 → buzzer (+)  GND → buzzer (−)
-  # Passive buzzer requires PWM (LEDC). Do NOT use an active buzzer here.
-  - platform: ledc
-    id: buzzer_output
-    pin: GPIO10
 
 # ─── Switches ─────────────────────────────────────────────────────────────────
 
@@ -273,8 +268,6 @@ switch:
       - number.set:
           id: humidity_setpoint
           value: 78
-    on_turn_off:
-      - rtttl.play: 'done:d=8,o=5,b=100:c,e,g,c6'
 
   # Cannatrol 4+4 program: 4 days dry (12.2 °C DP) then 4 days cure (11.1 °C DP)
   - platform: template
@@ -296,8 +289,6 @@ switch:
           id: temp_pid
           target_temperature: 20.0    # 68 °F
       - switch.turn_on: use_dew_point_control
-    on_turn_off:
-      - rtttl.play: 'done:d=8,o=5,b=100:c,e,g,c6'
 
   # Humidity control mode toggle:
   # OFF → rollitup style (bang-bang on % RH vs humidity_setpoint)
@@ -695,9 +686,6 @@ binary_sensor:
     name: "Frost Floor Active"
     device_class: problem
     lambda: return id(frost_active);
-    on_press:
-      # Frost floor just activated — three sharp warning beeps
-      - rtttl.play: 'frost:d=16,o=5,b=240:e6,p,e6,p,e6,p,e6,p,e6'
 
   # BOOT button (GPIO9, built into ESP32-C6 DevKitC-1) — cycles display pages.
   # INPUT_PULLUP + inverted: no extra hardware needed.
@@ -864,14 +852,6 @@ display:
           } else if (id(use_dew_point_control).state && !isnan(id(dew_point_error).state)) {
             it.printf(0, 42, id(font_s), "DP err %+.1f\xc2\xb0""C", id(dew_point_error).state);
           }
-
-# ─── Buzzer (passive piezo) ───────────────────────────────────────────────────
-# Plays short RTTTL melodies for frost alerts and program completion.
-
-rtttl:
-  output: buzzer_output
-  id: buzzer
-  gain: 0.5
 
 # ─── Status LED (WS2812 RGB, built into ESP32-C6 DevKitC-1 on GPIO8) ─────────
 # Color code:

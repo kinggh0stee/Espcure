@@ -14,9 +14,8 @@
 | 8 | **Dehumidifier** | Optional — Peltier condensation alone may suffice | If used: add AC SSR (separate part) for 120 V AC load on GPIO23 |
 | 9 | **12 V PSU** | Generic 12 V 300 W switching PSU (25 A) | 25 A headroom covers 2× TECs + heater (4.2 A) + fans comfortably |
 | 10 | **5 V PSU** | USB phone charger or Mean Well IRM-05-5 | Powers ESP32 only (no relay coils — SSRs draw < 20 mA from GPIO directly) |
-| 11 | **OLED display** | SSD1306 0.96" 128×64 I²C OLED (e.g. AliExpress) | Shares GPIO21/22 I²C bus — no extra wiring beyond VCC/GND |
-| 12 | **Passive piezo buzzer** | 3–5 V passive (magnetic) piezo buzzer | GPIO10 → buzzer (+); GND → buzzer (−). Must be **passive** (requires PWM) |
-| 13 | **Misc** | 18 AWG wire, lever nuts (Wago 221), heat shrink, 3× SSR heatsinks | SSR-40 DDs must be mounted on heatsink when carrying > 5 A |
+| 11 | **OLED display** | SSD1306 0.96" 128×64 I²C OLED (e.g. AliExpress ~$3) | Shares GPIO21/22 I²C bus — no extra wiring beyond VCC/GND |
+| 12 | **Misc** | 18 AWG wire, lever nuts (Wago 221), heat shrink, 3× SSR heatsinks | SSR-40 DDs must be mounted on heatsink when carrying > 5 A |
 
 ## GPIO Pinout
 
@@ -25,7 +24,6 @@
 | 5 | SSR-40 DD — Fan rail IN | Active HIGH; all 3 fans; always on at boot |
 | 8 | WS2812 RGB LED | Built into ESP32-C6 DevKitC-1 — no wiring needed |
 | 9 | BOOT button (display page cycle) | Built into DevKitC-1 — INPUT_PULLUP, active low |
-| 10 | Passive piezo buzzer | LEDC PWM; buzzer (+) → GPIO10; buzzer (−) → GND |
 | 18 | SSR-40 DD — TEC cooling IN | slow_pwm 20 s; active HIGH; both TECs in parallel |
 | 19 | SSR-40 DD — Heater IN | slow_pwm 20 s; active HIGH; PTC element only |
 | 21 | SDA (SHT45 + OLED) | I²C — shared by both devices |
@@ -38,11 +36,13 @@
 
 ```
                      ┌──────────────────────────────────────┐
-                     │           ESP32-C6 DevKit            │
+                     │        ESP32-C6 DevKitC-1            │
                      │                                      │
-  SHT45 SDA ─────────┤ GPIO21 (SDA)                         │
-  SHT45 SCL ─────────┤ GPIO22 (SCL)                         │
+  SHT45 SDA ─────────┤ GPIO21 (SDA) ── OLED SDA             │
+  SHT45 SCL ─────────┤ GPIO22 (SCL) ── OLED SCL             │
                      │                  GPIO5  ├──── SSR-40 DD (Fan) IN+
+                     │                  GPIO8  │ WS2812 RGB LED (built-in)
+                     │                  GPIO9  │ BOOT button (built-in)
                      │                  GPIO18 ├──── SSR-40 DD (TEC)  IN+
                      │                  GPIO19 ├──── SSR-40 DD (Heat) IN+
                      │                  GND    ├──── all 3 SSR IN−
@@ -60,7 +60,24 @@
   12V PSU (−) ──── all TEC (−), fan (−), PTC element (−)  [common ground]
 
   5V USB ──────────── ESP32 VIN
+
+  OLED VCC ─── 3.3V   OLED GND ─── GND
 ```
+
+## OLED Display Wiring
+
+The SSD1306 OLED shares the existing I²C bus — only 4 wires needed:
+
+```
+OLED VCC → ESP32 3.3V
+OLED GND → ESP32 GND
+OLED SDA → GPIO21  (same wire as SHT45 SDA)
+OLED SCL → GPIO22  (same wire as SHT45 SCL)
+```
+
+The SSD1306 I²C address (0x3C) does not conflict with the SHT45 (0x44). No pull-up resistors are needed if the SHT45 breakout already has them (most do).
+
+For a 1.3" SH1106 OLED, wiring is identical — change `model: "SSD1306 128x64"` to `model: "SH1106 128x64"` in `espcure.yaml`.
 
 ## Heater Wiring
 

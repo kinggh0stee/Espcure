@@ -22,6 +22,8 @@ Priority: 🔴 Critical · 🟡 High · 🟢 Nice-to-have · ✅ Done
 - [x] Lovelace dashboard YAML (`docs/ha-dashboard.yaml`)
 - [x] Full documentation (hardware, setup, calibration, PID tuning, cure programs)
 - [x] Sub-agents + CLAUDE.md
+- [x] SSD1306 OLED display — 3-page cycling, BOOT button page advance
+- [x] WS2812 RGB LED (GPIO8) — PID action color, Frost Blink effect
 
 ---
 
@@ -43,13 +45,7 @@ Priority: 🔴 Critical · 🟡 High · 🟢 Nice-to-have · ✅ Done
   - Upgrade path to color TFT documented in `docs/display-plan.md`
 
 - [x] **Physical button** — BOOT button (GPIO9) wired as display page-cycle button
-  - Acknowledge frost alert
-  - Toggle fans on/off
-  - Suggested: 1–3× momentary buttons on spare GPIOs
-
-- [x] **Piezo buzzer** — passive piezo on GPIO10, `rtttl` melodies
-  - Frost floor → 5× rapid E6 beeps
-  - Program complete (18-day or 4+4) → ascending C-E-G-C chime
+  - Cycles OLED display pages; no extra wiring needed
 
 - [x] **Status LED** — built-in WS2812 on GPIO8 (DevKitC-1), 2 s interval
   - Cooling = blue, Heating = red (dim), Idle = green (very dim), Frost = white Frost Blink effect
