@@ -400,7 +400,7 @@ number:
     id: cannatrol_day
     name: "Cannatrol Program Day"
     min_value: 0
-    max_value: 8
+    max_value: 9
     step: 1
     initial_value: 0
     restore_value: true
@@ -580,7 +580,7 @@ interval:
             float v    = id(vpd).state;
             float sp   = id(vpd_setpoint).state;
             float hyst = id(vpd_hysteresis).state / 2.0f;
-            // Low VPD = too humid → dehumidify
+            // Low VPD = too humid → dehumidify; no humidifier in this build
             if (!on && v < sp - hyst) id(dehumidifier_relay).turn_on();
             else if (on && v > sp + hyst) id(dehumidifier_relay).turn_off();
           } else if (id(use_dew_point_control).state) {
