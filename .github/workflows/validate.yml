@@ -28,7 +28,7 @@ jobs:
           cache: pip
 
       - name: Install ESPHome
-        run: pip install esphome
+        run: pip install -r requirements.txt
 
       - name: Create CI secrets
         # secrets.yaml is gitignored — CI needs placeholder values so the

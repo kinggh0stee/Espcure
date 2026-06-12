@@ -296,8 +296,6 @@ views:
             name: Chamber Fans (GPIO5)
           - entity: switch.espcure_dehumidifier
             name: Dehumidifier Relay (GPIO23)
-          - entity: switch.espcure_humidifier
-            name: Humidifier Relay (GPIO20)
           - type: divider
           - entity: sensor.espcure_pid_cool_output
             name: Peltier TEC Output (GPIO18)
@@ -323,16 +321,6 @@ views:
             name: Frost Guard Active
           - entity: number.espcure_min_chamber_temperature_frost_floor
             name: Frost Floor (°C)
-
-      # ── Humidifier Setpoints ───────────────────────────────────────────────
-      - type: entities
-        title: Humidifier Setpoints
-        icon: mdi:water-plus
-        entities:
-          - entity: number.espcure_humidifier_setpoint
-            name: Min Humidity Target (%)
-          - entity: number.espcure_humidifier_hysteresis
-            name: Humidifier Hysteresis (%)
 
       # ── Safety notice ─────────────────────────────────────────────────────
       - type: markdown

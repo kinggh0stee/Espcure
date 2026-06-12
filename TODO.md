@@ -25,9 +25,8 @@ Priority: 🔴 Critical · 🟡 High · 🟢 Nice-to-have · ✅ Done
 - [x] SSD1306 OLED display — 3-page cycling, BOOT button page advance
 - [x] WS2812 RGB LED (GPIO8) — PID action color, Frost Blink effect
 - [x] Rich HA dashboard — VPD gauge, badges, conditional program cards, progress bars, 7-day history
-- [x] Humidifier support — GPIO20 relay, upward RH/DP/VPD control, setpoint entities
 - [x] VPD target mode — third control mode (`VPD Control Mode` switch), VPD setpoint/hysteresis entities
-- [x] Optional hardware sections in config (door sensor, cold-plate DS18B20, multi-zone SHT45 — commented)
+- [x] Optional cold-plate DS18B20 section (commented YAML, GPIO10)
 - [x] GitHub Actions CI — `esphome config` validation on PRs (`.github/workflows/validate.yml`)
 - [x] Changelog (`CHANGELOG.md`)
 
@@ -35,13 +34,12 @@ Priority: 🔴 Critical · 🟡 High · 🟢 Nice-to-have · ✅ Done
 
 ## 🔴 Before First Flash
 
-These require physical access to the hardware — they can't be done in config alone.
-
-- [ ] **`esphome config espcure.yaml`** — validate zero errors on your machine (CI runs this on PRs, but confirm locally with your secrets)
-- [ ] Copy `secrets.yaml.example` → `secrets.yaml`, fill in WiFi credentials + API key + OTA password
-- [ ] Verify GPIO pin assignments against your actual DevKit pinout (GPIO5/18/19/20/21/22/23)
-- [ ] Confirm SHT45 I2C address — check `esphome config` or boot logs; expected 0x44
-- [ ] Calibrate SHT45 temperature + humidity offsets after first flash (`docs/calibration.md`)
+> Config and CI are ready. These are physical deployment steps — follow **`docs/setup.md`**:
+> 1. `cp secrets.yaml.example secrets.yaml` and fill in credentials
+> 2. `esphome config espcure.yaml` locally with your real secrets
+> 3. Verify GPIO5/18/19/21/22/23 against your DevKit pinout
+> 4. Confirm SHT45 boots at I2C 0x44 (scan log at first boot)
+> 5. Calibrate SHT45 offsets after first flash (`docs/calibration.md`)
 
 ---
 
@@ -62,34 +60,32 @@ These require physical access to the hardware — they can't be done in config a
 
 ## 🟡 ESPHome Config — Post-Install
 
-These require a running device and cannot be done in YAML alone:
-
-- [ ] **Run PID autotune** after first install and update `pid_kp/ki/kd` values + log in `docs/pid-tuning.md`
-- [ ] **Calibrate SHT45** — set temp and RH `offset` values in `espcure.yaml` filters
-- [ ] **Verify SSR 3.3V trigger** — confirm each SSR-40 DD switches reliably at 3.3 V GPIO level (if not, add 2N2222 NPN driver, see `docs/hardware.md`)
-- [ ] **Test dehumidifier + humidifier relays** — confirm GPIO23 and GPIO20 wiring before enabling
-- [ ] **Time sync** — verify `time.homeassistant` syncs correctly; cure midnight cron depends on it
+> These require a running, installed device. See **`docs/setup.md`** and **`docs/pid-tuning.md`**:
+> - Run PID autotune and log results in `docs/pid-tuning.md`
+> - Set SHT45 temperature/RH `offset` values in `espcure.yaml` after calibration
+> - Verify each SSR-40 DD triggers reliably at 3.3 V (add 2N2222 NPN if marginal — see `docs/hardware.md`)
+> - Test dehumidifier relay GPIO23 wiring
+> - Verify `time.homeassistant` syncs (required for midnight cure program cron)
 
 ---
 
 ## 🟡 Home Assistant Dashboard
 
-- [x] **Rich dashboard** — VPD gauge, color-coded badges, conditional program progress cards, 7-day history, VPD control section, humidifier controls (all in `docs/ha-dashboard.yaml`)
-- [ ] **Notifications** — HA automation YAML for frost + program complete alerts is in `docs/cure-programs.md`; paste into HA to enable
-- [ ] **Energy monitoring** — requires additional hardware (INA219 current sensor on 12 V rail)
+- [x] **Rich dashboard** — VPD gauge, color-coded badges, conditional program progress cards, 7-day history, VPD control section (all in `docs/ha-dashboard.yaml`)
+- [x] **Notifications** — HA automation YAML for frost + program complete alerts documented in `docs/cure-programs.md`; paste into HA to activate
+- [ ] **Energy monitoring** — future: requires INA219 current sensor hardware on 12 V rail
 
 ---
 
 ## 🟢 Features (Future Iterations)
 
-- [x] **Multi-zone support** — optional commented section in `espcure.yaml`; enable second SHT45 at I2C 0x45
-- [x] **Door sensor** — optional commented section in `espcure.yaml`; GPIO11 reed switch
-- [x] **Humidifier support** — fully implemented (GPIO20, upward RH/DP/VPD control)
-- [x] **VPD target mode** — fully implemented (third humidity control mode)
+- [x] **VPD target mode** — fully implemented (third humidity control mode, dehumidifier-only)
 - [x] **Cold-plate sensor** — optional commented section in `espcure.yaml`; DS18B20 one-wire on GPIO10
 - [ ] **SD card logging** — local CSV data log without HA dependency (requires SPI SD card module)
 - [ ] **HA energy dashboard** — requires INA219 power sensor hardware
 - [ ] **Touchscreen display** — ILI9341 2.8" with touch; upgrade path in `docs/display-plan.md`
+- [ ] **Multi-zone second SHT45** — second sensor at I2C 0x45 if needed in future
+- [ ] **Humidifier** — upward RH control if ever needed; would add GPIO relay + setpoint entity
 
 ---
 
@@ -109,5 +105,4 @@ These require a running device and cannot be done in YAML alone:
 - Frost protection reacts to chamber *air* temperature (SHT45), not cold-plate surface — may be slow to respond to rapid over-cooling
 - SHT45 self-heating (~0.1–0.2 °C) means temperature reads slightly high; calibrate with offset after install
 - SSR-40 DD control voltage is at the minimum spec (3.3 V = 3 V min) — verify each SSR before final install
-- Humidifier (GPIO20) requires a connected humidifier hardware unit; relay turns on but has no effect without one
-- VPD mode controls both dehumidifier and humidifier; do not enable VPD mode without a humidifier connected unless you accept the humidifier relay clicking with no effect
+- VPD mode controls only the dehumidifier (downward); there is no humidifier in this build

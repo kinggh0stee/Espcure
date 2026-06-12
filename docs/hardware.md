@@ -28,7 +28,6 @@
 | 19 | SSR-40 DD — Heater IN | slow_pwm 20 s; active HIGH; PTC element only |
 | 21 | SDA (SHT45 + OLED) | I²C — shared by both devices |
 | 22 | SCL (SHT45 + OLED) | I²C — shared by both devices |
-| 20 | Humidifier relay IN (optional) | Active HIGH; upward RH/DP/VPD control |
 | 23 | Dehumidifier relay IN (optional) | Active HIGH; not part of core 3-SSR build |
 
 > **⚠️ 3.3 V control voltage:** The ESP32-C6 GPIO outputs 3.3 V. SSR-40 DD spec says 3–32 V control, so 3.3 V is at the minimum. Test continuity of each SSR before final install — if an SSR doesn't trigger reliably, add a small NPN transistor (e.g. 2N2222) between the GPIO and SSR input to drive it at a higher current level.

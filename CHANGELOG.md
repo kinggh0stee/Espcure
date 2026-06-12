@@ -7,11 +7,10 @@ All notable changes to EspCure are documented here.
 ## [Unreleased]
 
 ### Added
-- **Humidifier support** — GPIO20 relay for upward RH/dew-point control; `Humidifier Setpoint` and `Humidifier Hysteresis` number entities; integrated into 30 s humidity bang-bang loop
-- **VPD target mode** — third humidity control mode (`VPD Control Mode` switch); `VPD Setpoint` and `VPD Hysteresis` number entities; controls both dehumidifier and humidifier to hit target VPD
-- **Optional hardware sections** (commented YAML): door sensor (GPIO11), cold-plate DS18B20 (GPIO10), multi-zone SHT45 at I2C 0x45
-- **GitHub Actions CI** — `esphome config` validation runs on every PR that touches `espcure.yaml`
-- **HA dashboard enhancements** — VPD gauge, color-coded overview badges, conditional program progress bars, 7-day temperature history, VPD control section, humidifier controls
+- **VPD target mode** — third humidity control mode (`VPD Control Mode` switch); `VPD Setpoint` and `VPD Hysteresis` number entities; controls dehumidifier to hit target VPD
+- **Optional cold-plate sensor section** (commented YAML): DS18B20 one-wire on GPIO10 for direct frost detection
+- **GitHub Actions CI** — `esphome config` validation runs on every PR that touches `espcure.yaml`; `requirements.txt` added
+- **HA dashboard enhancements** — VPD gauge, color-coded overview badges, conditional program progress bars, 7-day temperature history, VPD control section
 
 ### Changed
 - Removed piezo buzzer (`ledc_output`, `rtttl`, frost/program-complete melodies); GPIO10 is now free
