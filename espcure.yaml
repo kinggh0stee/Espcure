@@ -152,7 +152,7 @@ sensor:
       return svp * (1.0f - rh / 100.0f);
     update_interval: 30s
 
-  # RH error vs setpoint (positive = too humid; NaN when in dew-point mode)
+  # RH error vs setpoint (positive = too humid; NaN when in dew-point or VPD mode)
   - platform: template
     id: humidity_error
     name: "Humidity Error"
@@ -162,11 +162,12 @@ sensor:
     entity_category: diagnostic
     lambda: |-
       if (id(use_dew_point_control).state) return NAN;
+      if (id(use_vpd_control).state) return NAN;
       if (isnan(id(chamber_rh).state)) return NAN;
       return id(chamber_rh).state - id(humidity_setpoint).state;
     update_interval: 30s
 
-  # Dew-point error vs setpoint (positive = too humid; NaN when in RH mode)
+  # Dew-point error vs setpoint (positive = too humid; NaN when in RH or VPD mode)
   - platform: template
     id: dew_point_error
     name: "Dew Point Error"
@@ -177,6 +178,7 @@ sensor:
     entity_category: diagnostic
     lambda: |-
       if (!id(use_dew_point_control).state) return NAN;
+      if (id(use_vpd_control).state) return NAN;
       if (isnan(id(dew_point).state)) return NAN;
       return id(dew_point).state - id(dew_point_setpoint).state;
     update_interval: 30s
@@ -231,11 +233,6 @@ output:
       inverted: false
     period: 20s
 
-  # Passive piezo buzzer — GPIO10 → buzzer (+)  GND → buzzer (−)
-  # Passive buzzer requires PWM (LEDC). Do NOT use an active buzzer here.
-  - platform: ledc
-    id: buzzer_output
-    pin: GPIO10
 
 # ─── Switches ─────────────────────────────────────────────────────────────────
 
@@ -273,8 +270,6 @@ switch:
       - number.set:
           id: humidity_setpoint
           value: 78
-    on_turn_off:
-      - rtttl.play: 'done:d=8,o=5,b=100:c,e,g,c6'
 
   # Cannatrol 4+4 program: 4 days dry (12.2 °C DP) then 4 days cure (11.1 °C DP)
   - platform: template
@@ -296,8 +291,6 @@ switch:
           id: temp_pid
           target_temperature: 20.0    # 68 °F
       - switch.turn_on: use_dew_point_control
-    on_turn_off:
-      - rtttl.play: 'done:d=8,o=5,b=100:c,e,g,c6'
 
   # Humidity control mode toggle:
   # OFF → rollitup style (bang-bang on % RH vs humidity_setpoint)
@@ -308,6 +301,20 @@ switch:
     restore_mode: RESTORE_DEFAULT_OFF
     optimistic: true
     icon: "mdi:thermometer-water"
+    on_turn_on:
+      - switch.turn_off: use_vpd_control
+
+  # VPD control mode — bang-bang on Vapor Pressure Deficit (kPa)
+  # Highest-priority humidity mode: overrides dew-point and RH modes.
+  # Low VPD = too humid → dehumidify; High VPD = too dry → humidify.
+  - platform: template
+    id: use_vpd_control
+    name: "VPD Control Mode"
+    restore_mode: RESTORE_DEFAULT_OFF
+    optimistic: true
+    icon: "mdi:waves"
+    on_turn_on:
+      - switch.turn_off: use_dew_point_control
 
 # ─── Numbers (user-adjustable setpoints) ──────────────────────────────────────
 
@@ -457,6 +464,31 @@ number:
             ki: !lambda return id(pid_ki).state;
             kd: !lambda return x;
 
+  # ── VPD mode setpoints ───────────────────────────────────────────────────────
+  - platform: template
+    id: vpd_setpoint
+    name: "VPD Setpoint"
+    min_value: 0.1
+    max_value: 2.0
+    step: 0.05
+    initial_value: 0.8
+    restore_value: true
+    optimistic: true
+    unit_of_measurement: "kPa"
+    icon: "mdi:waves"
+
+  - platform: template
+    id: vpd_hysteresis
+    name: "VPD Hysteresis"
+    min_value: 0.02
+    max_value: 0.3
+    step: 0.02
+    initial_value: 0.1
+    restore_value: true
+    optimistic: true
+    unit_of_measurement: "kPa"
+    icon: "mdi:tune"
+
 # ─── Climate (Temperature PID) ────────────────────────────────────────────────
 
 climate:
@@ -537,13 +569,21 @@ time:
 
 interval:
   # Humidity bang-bang control loop (30 s)
-  # Mode OFF → target % RH (rollitup style)
-  # Mode ON  → target dew point °C (Cannatrol style)
+  # Priority order: VPD mode → Dew Point mode → RH mode
+  # All modes control the dehumidifier relay only (downward control).
   - interval: 30s
     then:
       - lambda: |-
           bool on = id(dehumidifier_relay).state;
-          if (id(use_dew_point_control).state) {
+          if (id(use_vpd_control).state) {
+            if (isnan(id(vpd).state)) return;
+            float v    = id(vpd).state;
+            float sp   = id(vpd_setpoint).state;
+            float hyst = id(vpd_hysteresis).state / 2.0f;
+            // Low VPD = too humid → dehumidify
+            if (!on && v < sp - hyst) id(dehumidifier_relay).turn_on();
+            else if (on && v > sp + hyst) id(dehumidifier_relay).turn_off();
+          } else if (id(use_dew_point_control).state) {
             if (isnan(id(dew_point).state)) return;
             float dp   = id(dew_point).state;
             float sp   = id(dew_point_setpoint).state;
@@ -695,9 +735,6 @@ binary_sensor:
     name: "Frost Floor Active"
     device_class: problem
     lambda: return id(frost_active);
-    on_press:
-      # Frost floor just activated — three sharp warning beeps
-      - rtttl.play: 'frost:d=16,o=5,b=240:e6,p,e6,p,e6,p,e6,p,e6'
 
   # BOOT button (GPIO9, built into ESP32-C6 DevKitC-1) — cycles display pages.
   # INPUT_PULLUP + inverted: no extra hardware needed.
@@ -745,7 +782,9 @@ text_sensor:
     icon: "mdi:water-check"
     lambda: |-
       char buf[48];
-      if (id(use_dew_point_control).state) {
+      if (id(use_vpd_control).state) {
+        snprintf(buf, sizeof(buf), "VPD Mode %.2f kPa SP", id(vpd_setpoint).state);
+      } else if (id(use_dew_point_control).state) {
         snprintf(buf, sizeof(buf), "Dew Point %.1f\xc2\xb0C SP", id(dew_point_setpoint).state);
       } else {
         snprintf(buf, sizeof(buf), "RH Mode %.0f%% SP", id(humidity_setpoint).state);
@@ -865,14 +904,6 @@ display:
             it.printf(0, 42, id(font_s), "DP err %+.1f\xc2\xb0""C", id(dew_point_error).state);
           }
 
-# ─── Buzzer (passive piezo) ───────────────────────────────────────────────────
-# Plays short RTTTL melodies for frost alerts and program completion.
-
-rtttl:
-  output: buzzer_output
-  id: buzzer
-  gain: 0.5
-
 # ─── Status LED (WS2812 RGB, built into ESP32-C6 DevKitC-1 on GPIO8) ─────────
 # Color code:
 #   Cooling  → blue      Heating → red (dim)
@@ -898,3 +929,22 @@ light:
           update_interval: 350ms
           min_brightness: 0%
           max_brightness: 60%
+
+# ─── Optional hardware addition (uncomment to enable) ──────────────────────────
+
+# ── Cold-plate DS18B20 (direct frost detection) ───────────────────────────────
+# One-wire DS18B20 temperature sensor on the Peltier cold plate.
+# This allows direct frost detection instead of the software-only air-temp proxy.
+# Wire DATA → GPIO10, with 4.7 kΩ pull-up to 3.3 V.
+#
+# dallas_temp:
+#   pin: GPIO10
+#   update_interval: 10s
+#
+# sensor:
+#   - platform: dallas_temp
+#     id: cold_plate_temp
+#     name: "Cold Plate Temperature"
+#     device_class: temperature
+#     state_class: measurement
+#     accuracy_decimals: 1

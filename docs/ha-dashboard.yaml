@@ -17,7 +17,15 @@ views:
   - title: Overview
     path: overview
     icon: mdi:view-dashboard
-    badges: []
+    badges:
+      - entity: sensor.espcure_chamber_status
+        name: Status
+      - entity: binary_sensor.espcure_frost_floor_active
+        name: Frost
+      - entity: binary_sensor.espcure_controller_online
+        name: Online
+      - entity: sensor.espcure_humidity_control_mode
+        name: Mode
     cards:
 
       # ── Offline warning (only visible when device is offline) ─────────────
@@ -90,14 +98,17 @@ views:
       # ── Secondary metrics ─────────────────────────────────────────────────
       - type: horizontal-stack
         cards:
-          - type: statistic
+          - type: gauge
             entity: sensor.espcure_vapor_pressure_deficit
             name: VPD
-            period:
-              fixed_period:
-                start: P0D
-                end: P0D
-            stat_type: state
+            min: 0
+            max: 2.0
+            needle: true
+            severity:
+              green: 0.4
+              yellow: 0.8
+              red: 1.2
+            unit: "kPa"
 
           - type: entity
             entity: sensor.espcure_chamber_temperature_f
@@ -154,6 +165,17 @@ views:
           - entity: sensor.espcure_vapor_pressure_deficit
             name: VPD kPa
 
+      # ── Temperature history (7-day) ───────────────────────────────────────
+      - type: history-graph
+        title: Temperature — Last 7 Days
+        hours_to_show: 168
+        logarithmic_scale: false
+        entities:
+          - entity: sensor.espcure_chamber_temperature
+            name: Temp °C
+          - entity: sensor.espcure_dew_point
+            name: Dew Point °C
+
 
   # ── Programs & Control ────────────────────────────────────────────────────
   - title: Programs
@@ -176,6 +198,18 @@ views:
             name: Apply Cold-Plate Profile (55°F / RH mode)
             action_name: Apply
 
+      # ── 18-day program status (conditional) ───────────────────────────────
+      - type: conditional
+        conditions:
+          - entity: switch.espcure_cure_program_18_day
+            state: "on"
+        card:
+          type: markdown
+          content: >
+            **18-Day Program Active** — {{ states('sensor.espcure_cure_program_status') }}
+
+            Progress: `{{ '█' * (states('number.espcure_cure_program_day') | int) }}{{ '░' * (18 - (states('number.espcure_cure_program_day') | int)) }}` ({{ states('number.espcure_cure_program_day') }}/18 days)
+
       # ── 18-day program ────────────────────────────────────────────────────
       - type: entities
         title: 18-Day Step-Down Program
@@ -193,6 +227,18 @@ views:
             name: Humidity Hysteresis (%)
           - entity: sensor.espcure_humidity_error
             name: RH Error
+
+      # ── Cannatrol 4+4 program status (conditional) ─────────────────────────
+      - type: conditional
+        conditions:
+          - entity: switch.espcure_cannatrol_4_4_program
+            state: "on"
+        card:
+          type: markdown
+          content: >
+            **Cannatrol 4+4 Active** — {{ states('sensor.espcure_cannatrol_program_status') }}
+
+            Progress: `{{ '█' * (states('number.espcure_cannatrol_program_day') | int) }}{{ '░' * (8 - (states('number.espcure_cannatrol_program_day') | int)) }}` ({{ states('number.espcure_cannatrol_program_day') }}/8 days)
 
       # ── Cannatrol 4+4 program ─────────────────────────────────────────────
       - type: entities
@@ -213,6 +259,18 @@ views:
             name: Dew Point Hysteresis (°C)
           - entity: sensor.espcure_dew_point_error
             name: Dew Point Error
+
+      # ── VPD Control Mode ───────────────────────────────────────────────────
+      - type: entities
+        title: VPD Control Mode
+        icon: mdi:waves
+        entities:
+          - entity: switch.espcure_use_vpd_control
+            name: Enable VPD Control
+          - entity: number.espcure_vpd_setpoint
+            name: VPD Setpoint (kPa)
+          - entity: number.espcure_vpd_hysteresis
+            name: VPD Hysteresis (kPa)
 
       # ── 7-day history ─────────────────────────────────────────────────────
       - type: history-graph

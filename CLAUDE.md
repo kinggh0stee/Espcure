@@ -8,16 +8,19 @@ This file provides guidance to Claude Code when working with this repository.
 
 Capabilities:
 - PID temperature control with live tunable Kp/Ki/Kd (default 55 °F / 12.8 °C)
-- Dual humidity control modes: **RH mode** (rollitup-style, bang-bang on % RH) and **Dew Point mode** (Cannatrol-style, bang-bang on dew point °C)
-- Dew point + VPD sensors derived from SHT45 readings; humidity error and dew-point error diagnostic sensors
+- **Three humidity control modes**: RH mode (bang-bang % RH), Dew Point mode (Cannatrol-style bang-bang on °C), VPD mode (bang-bang on kPa — dehumidifier only)
+- Dew point + VPD derived sensors; humidity error, dew-point error diagnostic sensors
 - **18-day step-down program** (RH mode): −1 %/day from 78 % → 60 %
 - **Cannatrol 4+4 program** (dew-point mode): 4 days dry at 12.2 °C DP → 4 days cure at 11.1 °C DP
 - **One-tap presets**: Dry Profile, Cure Profile, Cold-Plate Profile buttons
 - Chamber Status text sensor (Cooling / Heating / Idle / Frost Guard)
 - Software frost floor (disables Peltier if chamber air drops below configurable floor, default 4 °C)
+- **SSD1306 OLED display**: 3-page cycling (temp/RH/DP/VPD, control settings, program status); BOOT button (GPIO9) cycles pages manually
+- **WS2812 RGB LED** (GPIO8, built-in): cooling=blue, heating=red(dim), idle=green(very dim), frost=white blink
 - Home Assistant integration via encrypted native API (device_class + state_class on all sensors)
 - Device-hosted web UI at `http://espcure.local` — `web_server` v3, dark mode toggle, no HA required
 - OTA updates, fallback AP
+- GitHub Actions CI validates `esphome config` on every PR
 
 ## Repository layout
 
@@ -54,8 +57,12 @@ All ESPHome work lives in **`espcure.yaml`**. Key sections:
 | `number.pid_k*` | Live PID tuning — `on_value` calls `set_control_parameters` |
 | `switch.cure_program_active` | 18-day RH step-down program |
 | `switch.cannatrol_program_active` | Cannatrol 4+4 dew-point program |
+| `switch.use_dew_point_control` | Dew Point mode toggle (mutual-exclusive with VPD mode) |
+| `switch.use_vpd_control` | VPD mode toggle (mutual-exclusive with dew-point mode) |
 | `button.apply_*_profile` | One-tap profile presets |
 | `text_sensor.chamber_status` | Human-readable operating state |
+| `light.status_led` | WS2812 RGB LED (GPIO8) — color reflects PID action |
+| `display.oled` (pages) | SSD1306 OLED, 3-page cycling; `page_button` GPIO9 cycles |
 
 ## Build & flash
 
@@ -119,4 +126,5 @@ esphome run espcure.yaml --device espcure.local
 - **Cannatrol 4+4 program**: `cannatrol_phase` global (0=dry, 1=cure) tracks which phase is active. Phase transitions happen at midnight on day 5. The `cannatrol_program_status` text sensor exposes progress to both HA and the web UI.
 - **Sensor calibration**: SHT45 self-heating is ~0.1–0.2 °C (much less than SHT31). Still calibrate with `offset` in `filters` after install.
 - **Cannatrol dew-point philosophy**: The Cannatrol controls dew point, not raw RH. With `use_dew_point_control` ON, the dehumidifier is driven by `dew_point_setpoint` (°C). Cannatrol cure default is 11.1 °C (52 °F dew point). The `dew_point` sensor is calculated from SHT45 T + RH via Magnus formula — do not replace it with a direct sensor.
+- **Three humidity control modes**: RH mode (default), Dew Point mode, VPD mode. Only one active at a time — `use_vpd_control` and `use_dew_point_control` are mutually exclusive (each `on_turn_on` turns off the other). All three modes control only the dehumidifier relay — there is no humidifier in this build.
 - **ESP32-C6 requires ESP-IDF**: The `framework: type: esp-idf` must not be changed to `arduino`. The C6 variant is not Arduino-compatible in ESPHome.
