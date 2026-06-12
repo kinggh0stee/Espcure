@@ -51,6 +51,11 @@ wifi:
 
 captive_portal:
 
+# WiFi provisioning — required for Made for ESPHome compliance
+esp32_improv:
+
+improv_serial:
+
 # Device-hosted web UI — browse to http://espcure.local
 # version: 3 provides a full React dashboard with dark mode toggle.
 # local: true serves assets from flash (works without internet).
@@ -400,7 +405,7 @@ number:
     id: cannatrol_day
     name: "Cannatrol Program Day"
     min_value: 0
-    max_value: 8
+    max_value: 9
     step: 1
     initial_value: 0
     restore_value: true
