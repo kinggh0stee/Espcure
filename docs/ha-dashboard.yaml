@@ -256,7 +256,7 @@ views:
         title: VPD Control Mode
         icon: mdi:waves
         entities:
-          - entity: switch.espcure_use_vpd_control
+          - entity: switch.espcure_vpd_control_mode
             name: Enable VPD Control
           - entity: number.espcure_vpd_setpoint
             name: VPD Setpoint (kPa)

@@ -21,7 +21,7 @@ Two decoupled control loops: the **Peltier chases dew point / VPD** (cooling the
 - **Software frost floor** — Peltier auto-disables below 4 °C (39 °F), heater aids recovery; no cold-plate sensor needed
 - **SSD1306 OLED display** — 3-page cycling (temp/RH/DP/VPD, control settings, program status); BOOT button (GPIO9) cycles pages
 - **WS2812 RGB LED** (GPIO8, built-in) — cooling=blue, heating=red, idle=green(dim), frost=white blink
-- **Device-hosted web UI** at `http://espcure.local` — full React dashboard, no HA required
+- **Device-hosted web UI** at `http://espcure.local` — full React dashboard with entities organized into groups (Climate, Humidity, VPD, Programs, PID, Hardware, Diagnostics); no HA required
 - **Home Assistant integration** via encrypted native API; all entities with device_class + state_class
 - **GitHub Actions CI** — `esphome config` validation on every PR
 - OTA updates, fallback WiFi AP
