@@ -6,15 +6,19 @@ This file provides guidance to Claude Code when working with this repository.
 
 **EspCure** — an open-source DIY cannabis curing chamber controller built on ESPHome and ESP32-C6. Inspired by the Cannatrol and the thermoelectric wine-cooler modification documented at rollitup.org. The base hardware is a Honeywell thermoelectric (Peltier) fridge with its original control board bypassed and replaced by an ESP32-C6.
 
+**Control topology** (key mental model): the **Peltier chases dew point / VPD** (cold-plate condensation is the dehumidifier), and the **heater chases temperature** (heat-only PID). There is no active temperature *cooling* — chamber temp floats (typically ~63–67 °F); the heater only holds the floor.
+
 Capabilities:
-- PID temperature control with live tunable Kp/Ki/Kd (default 55 °F / 12.8 °C)
-- **Three humidity control modes**: RH mode (bang-bang % RH), Dew Point mode (Cannatrol-style bang-bang on °C), VPD mode (bang-bang on kPa — dehumidifier only)
-- Dew point + VPD derived sensors; humidity error, dew-point error diagnostic sensors
-- **18-day step-down program** (RH mode): −1 %/day from 78 % → 60 %
-- **Cannatrol 4+4 program** (dew-point mode): 4 days dry at 12.2 °C DP → 4 days cure at 11.1 °C DP
-- **One-tap presets**: Dry Profile, Cure Profile, Cold-Plate Profile buttons
+- **Heat-only PID** temperature control with live tunable Kp/Ki/Kd (default target 60 °F / 15.6 °C). Heater rarely runs.
+- **Peltier cold-plate dehumidification** — the TEC is bang-bang driven (15 Hz full-on/off) by the active humidity loop; there is no external dehumidifier relay
+- **Two humidity control modes**: Dew Point mode (default, bang-bang on °C) and VPD mode (bang-bang on kPa); mutually exclusive
+- Dew point + VPD derived sensors; dew-point error diagnostic sensor
+- **10-day dry program** (dew point): day 1 ramps 60→54 °F DP, days 2–5 hold 54 °F, days 6–9 hold 52 °F, day 10 auto-off
+- **Cannatrol 4+4 program** (dew point): 4 days dry at 12.2 °C DP → 4 days cure at 11.1 °C DP
+- **One-tap presets**: Dry Profile, Cure Profile buttons
+- **High-temp safety ceiling** (`max_chamber_temp`, default 27 °C / 80 °F): forces the Peltier on above the limit since the heat-only PID can't cool
 - Chamber Status text sensor (Cooling / Heating / Idle / Frost Guard)
-- Software frost floor (disables Peltier if chamber air drops below configurable floor, default 4 °C)
+- Software frost floor (forces Peltier off if chamber air drops below configurable floor, default 4 °C; heater keeps running)
 - **SSD1306 OLED display**: 3-page cycling (temp/RH/DP/VPD, control settings, program status); BOOT button (GPIO9) cycles pages manually
 - **WS2812 RGB LED** (GPIO8, built-in): cooling=blue, heating=red(dim), idle=green(very dim), frost=white blink
 - Home Assistant integration via encrypted native API (device_class + state_class on all sensors)
@@ -39,7 +43,7 @@ docs/
   setup.md              First-flash and HA integration guide
   calibration.md        Sensor offset calibration procedure
   pid-tuning.md         PID autotune and manual tuning guide
-  cure-programs.md      Cure programs (18-day + Cannatrol 4+4) and HA automations
+  cure-programs.md      Cure programs (10-day dry + Cannatrol 4+4) and HA automations
   ha-dashboard.yaml     Ready-to-import Lovelace dashboard (5 tabs)
   display-plan.md       Display hardware options, wiring, ESPHome config skeleton
   stylesheets/
@@ -61,25 +65,26 @@ All ESPHome work lives in **`espcure.yaml`**. Key sections:
 
 | Section | Purpose |
 |---|---|
-| `climate.pid` | Temperature PID — defaults Kp=0.35, Ki=0.005, Kd=1.2; deadband ±0.5 °C |
-| `output.ledc` (peltier) | 15 Hz; both TECs in parallel on GPIO18 |
-| `output.ledc` (heater) | 15 Hz; PTC element on GPIO19 |
-| `interval` (30 s) | Humidity/dew-point bang-bang loop (switches on `use_dew_point_control`) |
-| `interval` (60 s) | Frost-guard loop |
-| `interval` (2 s) | Status LED update loop — polls PID action, drives WS2812 colour |
-| `switch.fan_relay` | GPIO5 — fan rail SSR; controlled by 2 s interval — ON when PID active, OFF when PID off |
-| `switch.dehumidifier_relay` | GPIO23 — bang-bang controlled by the 30 s humidity loop |
-| `time.on_time` (cron) | Midnight cron — 18-day step + Cannatrol 4+4 advance |
+| `climate.pid` | **Heat-only** temperature PID (heater chases temp) — defaults Kp=0.35, Ki=0.005, Kd=1.2; deadband ±0.5 °C; default target 15.6 °C (60 °F). On boot it is set to `mode: HEAT`. |
+| `output.ledc` (peltier) | 15 Hz; both TECs in parallel on GPIO18. **Not a PID output** — driven directly by the 30 s humidity loop via `set_level(1.0/0.0)`. |
+| `output.ledc` (heater) | 15 Hz; PTC element on GPIO19; `heat_output` of the PID |
+| `interval` (30 s) | Dew-point/VPD bang-bang loop — **drives the Peltier**. Priority: frost guard → high-temp ceiling → VPD → Dew Point → off |
+| `interval` (60 s) | Frost-guard loop — forces Peltier off below the floor; heater keeps running |
+| `interval` (2 s) | Status LED + fan control — fan ON when `peltier_cooling` or heater heating |
+| `switch.fan_relay` | GPIO5 — fan rail SSR; ON when Peltier cooling or heater heating. Commanded ON in the same lambda as the Peltier (hot-side airflow). |
+| `time.on_time` (cron) | Midnight cron — 10-day dry step + Cannatrol 4+4 advance |
 | `number.*_setpoint` | User-facing setpoints exposed to HA and web UI |
+| `number.min_chamber_temp` / `number.max_chamber_temp` | Frost floor (default 4 °C) and high-temp safety ceiling (default 27 °C / 80 °F) |
 | `number.pid_k*` | Live PID tuning — `on_value` calls `set_control_parameters` |
 | `number.vpd_setpoint` / `number.vpd_hysteresis` | VPD control setpoints (kPa) for VPD mode |
-| `switch.cure_program_active` | 18-day RH step-down program |
+| `global.peltier_cooling` | bool — single source of truth for "Peltier is condensing" (float outputs can't be read back) |
+| `switch.dry10_program_active` | 10-day dew-point dry program |
 | `switch.cannatrol_program_active` | Cannatrol 4+4 dew-point program |
-| `switch.use_dew_point_control` | Dew Point mode toggle (mutual-exclusive with VPD mode) |
+| `switch.use_dew_point_control` | Dew Point mode toggle (default ON; mutual-exclusive with VPD mode) |
 | `switch.use_vpd_control` | VPD mode toggle (mutual-exclusive with dew-point mode) |
-| `button.apply_*_profile` | One-tap profile presets |
+| `button.apply_*_profile` | One-tap profile presets (Dry, Cure) |
 | `text_sensor.chamber_status` | Human-readable operating state |
-| `light.status_led` | WS2812 RGB LED (GPIO8) — color reflects PID action |
+| `light.status_led` | WS2812 RGB LED (GPIO8) — color reflects cooling/heating state |
 | `display.oled` (pages) | SSD1306 OLED, 3-page cycling; `page_button` GPIO9 cycles |
 | `esp32_improv` | BLE WiFi provisioning; BOOT button (GPIO9) is the authorizer |
 | `improv_serial` | Serial WiFi provisioning (USB fallback) |
@@ -132,7 +137,7 @@ No real credentials are stored in the repo. The dummy `api_encryption_key` used 
 3. All electrical/safety changes require `safety-reviewer` sign-off.
 4. Keep `secrets.yaml.example` in sync with any new `!secret` keys added.
 5. Don't hard-code WiFi credentials, API keys, or passwords — always use `!secret`.
-6. The `slow_pwm` period for the Peltier must stay ≥ 10 s to avoid thermal cycling damage.
+6. The Peltier (`peltier_output`, GPIO18) must have exactly **one writer** — the 30 s/60 s lambdas. Never add it back as a climate `cool_output`. Whenever it is set to `1.0`, the fan must be commanded ON in the same lambda (hot-side airflow).
 7. PID `kp`/`ki`/`kd` changes must be documented in `docs/pid-tuning.md`.
 8. Install dependencies with `pip install -r requirements.txt` (not bare `pip install esphome`) to stay in sync with the CI-pinned ESPHome version.
 9. Update `CHANGELOG.md` for any user-facing change — new entities, behaviour changes, removals. Follow Keep a Changelog format (`### Added / Changed / Fixed / Removed` under `## [Unreleased]`).
@@ -163,29 +168,30 @@ No real credentials are stored in the repo. The dummy `api_encryption_key` used 
 ## Key constraints & gotchas
 
 - **Peltier and heater outputs**: Both use `ledc` at 15 Hz (`peltier_output` GPIO18, `heater_output` GPIO19). At 15 Hz the TEC junction sees average power rather than thermal cycling, which reduces junction fatigue vs slow_pwm. Do not switch these to `slow_pwm` or reduce below ~10 Hz.
-- **All 3 outputs use SSR-40 DD**: Fan rail (GPIO5), TEC cooling (GPIO18), heater element (GPIO19) — all DC-DC solid-state relays. No mechanical relay modules in this build. SSR-40 DDs must be on heatsinks when carrying > 5 A.
-- **Dehumidifier relay**: GPIO23 — bang-bang controlled by the 30 s `interval` loop. Not part of the SSR-40 DD trio; it is the external dehumidifier plug relay. Restore mode is `RESTORE_DEFAULT_OFF`.
+- **3 outputs use SSR-40 DD**: Fan rail (GPIO5), TEC cooling (GPIO18), heater element (GPIO19) — all DC-DC solid-state relays. No mechanical relay modules. SSR-40 DDs must be on heatsinks when carrying > 5 A. GPIO23 (formerly a dehumidifier relay) is now free/unused.
 - **3.3 V GPIO → SSR-40 DD**: ESP32-C6 outputs 3.3 V; SSR-40 DD spec minimum is 3 V. Verify each SSR triggers reliably at 3.3 V before final install. If marginal, add a 2N2222 NPN driver on the control line.
-- **No cold-plate sensor**: There is no DS18B20. Frost protection is software-only: if `chamber_temp` drops below `min_chamber_temp` (default 4 °C), PID is disabled until chamber recovers 2 °C above the floor. The `frost_active` global tracks this state.
+- **Heat-only PID / no active cooling**: the PID only drives the heater. Temperature has no active cooling path — the chamber floats (typically ~63–67 °F) and the heater holds the floor. The **only** downward authority is the humidity-driven Peltier plus the high-temp safety ceiling (`max_chamber_temp`, default 27 °C), which forces the Peltier on above the limit. Do not re-add `cool_output` to the PID.
+- **No cold-plate sensor**: There is no DS18B20. Frost protection is software-only: if `chamber_temp` drops below `min_chamber_temp` (default 4 °C), the **Peltier is forced off** until the chamber recovers 2 °C above the floor. The heat-only PID keeps running (heating aids recovery). The `frost_active` global tracks this state and short-circuits the 30 s loop.
 - **GPIO reference**:
 
   | GPIO | Function |
   |---|---|
-  | GPIO5 | Fan rail SSR-40 DD (always ON at boot) |
+  | GPIO5 | Fan rail SSR-40 DD (on when Peltier cooling or heater heating) |
   | GPIO8 | WS2812 RGB LED (built-in DevKitC-1 LED) |
   | GPIO9 | BOOT / page button — OLED page cycle + BLE provisioning authorizer |
-  | GPIO18 | Peltier (cooling) SSR-40 DD — `slow_pwm` 20 s period |
-  | GPIO19 | Heater SSR-40 DD — `slow_pwm` 20 s period |
+  | GPIO18 | Peltier (cooling) SSR-40 DD — `ledc` 15 Hz; driven by the 30 s humidity loop |
+  | GPIO19 | Heater SSR-40 DD — `ledc` 15 Hz; `heat_output` of the PID |
   | GPIO21 | I²C SDA (SHT45 + SSD1306) |
   | GPIO22 | I²C SCL (SHT45 + SSD1306) |
-  | GPIO23 | Dehumidifier relay |
+  | GPIO23 | Unused (formerly dehumidifier relay) |
 
 - **Shared I²C bus**: SHT45 sensor (address `0x44`) and SSD1306 OLED (address `0x3C`) share GPIO21/GPIO22. Do not add a second `i2c:` block — add new devices to the existing bus with their own `address:` key.
-- **Humidity loop**: The dehumidifier's primary function is to raise internal temperature slightly, triggering the Peltier to activate and pull moisture through condensation on the cold plate — not direct dehumidification.
-- **Cure programs**: Both the 18-day and Cannatrol 4+4 programs are driven by `time.homeassistant` cron (midnight). Require HA time sync. Day counters use `restore_value: true` — restarting ESPHome does not reset them. Enabling one program automatically disables the other.
+- **Humidity loop drives the Peltier**: the 30 s loop bang-bangs the Peltier (`peltier_output.set_level(1.0/0.0)`) to chase dew point or VPD — cooling the cold plate below the dew point condenses moisture out of the air. The `peltier_cooling` global tracks demand (a float output can't be read back). Whenever the Peltier is commanded on, the fan is turned on in the same lambda (hot-side airflow). Loop priority: frost guard → high-temp ceiling → VPD → Dew Point → off.
+- **Cure programs**: Both the 10-day dry and Cannatrol 4+4 programs are driven by `time.homeassistant` cron (midnight). Require HA time sync. Day counters use `restore_value: true` — restarting ESPHome does not reset them. Enabling one program automatically disables the other.
+- **10-day dry program**: `dry10_day` counter (0–10). Midnight cron sets `dew_point_setpoint`: day 1 → 13.9 °C (57 °F, mid-ramp), days 2–5 → 12.2 °C (54 °F), days 6–9 → 11.1 °C (52 °F), day ≥10 → auto-off. Temp target 15.6 °C (60 °F). The `dry10_program_status` text sensor exposes progress.
 - **Cannatrol 4+4 program**: `cannatrol_phase` global (0=dry, 1=cure) tracks which phase is active. Phase transitions happen at midnight on day 5. The `cannatrol_program_status` text sensor exposes progress to both HA and the web UI.
 - **Sensor calibration**: SHT45 self-heating is ~0.1–0.2 °C (much less than SHT31). Still calibrate with `offset` in `filters` after install.
-- **Cannatrol dew-point philosophy**: The Cannatrol controls dew point, not raw RH. With `use_dew_point_control` ON, the dehumidifier is driven by `dew_point_setpoint` (°C). Cannatrol cure default is 11.1 °C (52 °F dew point). The `dew_point` sensor is calculated from SHT45 T + RH via Magnus formula — do not replace it with a direct sensor.
-- **Three humidity control modes**: RH mode (default), Dew Point mode, VPD mode. Only one active at a time — `use_vpd_control` and `use_dew_point_control` are mutually exclusive (each `on_turn_on` turns off the other). All three modes control only the dehumidifier relay — there is no humidifier in this build.
+- **Dew-point philosophy**: control dew point, not raw RH. With `use_dew_point_control` ON, the Peltier is driven by `dew_point_setpoint` (°C). Cannatrol cure default is 11.1 °C (52 °F dew point). The `dew_point` sensor is calculated from SHT45 T + RH via Magnus formula — do not replace it with a direct sensor.
+- **Two humidity control modes**: Dew Point mode (default ON) and VPD mode. Only one active at a time — `use_vpd_control` and `use_dew_point_control` are mutually exclusive (each `on_turn_on` turns off the other). Both drive only the Peltier — there is no humidifier and no dehumidifier relay in this build. RH-only control was removed (RH without temperature is meaningless).
 - **ESP32-C6 requires ESP-IDF**: The `framework: type: esp-idf` must not be changed to `arduino`. The C6 variant is not Arduino-compatible in ESPHome.
 - **BLE provisioning**: `esp32_improv` is enabled with `authorizer: page_button` (GPIO9 BOOT button). Hold the BOOT button while a phone scans for the device to authorize WiFi provisioning. `improv_serial` provides the same over USB serial.

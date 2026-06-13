@@ -1,6 +1,6 @@
 # PID Tuning Log
 
-The temperature control loop is a `climate.pid` component in ESPHome, driving the Peltier SSR (cool) and PTC heater relay (heat) through `slow_pwm` outputs with a 20 s period.
+The temperature control loop is a heat-only `climate.pid` component in ESPHome, driving the PTC heater relay (heat) via LEDC at 15 Hz. The Peltier is **not PID-driven**; it is controlled by a separate 30 s bang-bang loop that chases dew point or VPD setpoints.
 
 ## Current Parameters
 
@@ -32,12 +32,12 @@ Values are persisted across reboots (`restore_value: true`) and automatically re
 
 ## Autotune Procedure
 
-The `PID Autotune` button in HA / web UI triggers ESPHome's built-in relay-feedback autotune.
+The `PID Autotune` button in HA / web UI triggers ESPHome's built-in relay-feedback autotune. This characterises the **heater only** — the Peltier is bang-bang controlled by a separate dew-point/VPD loop and not part of the heat PID.
 
-1. Let chamber stabilize at a temperature above setpoint (e.g. room temp) with the door closed.
-2. Set target temperature to 12.8 °C (55 °F) via the climate entity.
+1. Let chamber stabilize below setpoint (e.g. 10 °C with door closed).
+2. Set target temperature to 15.6 °C (60 °F) via the climate entity.
 3. Press **PID Autotune** in the HA device page or device web UI.
-4. Wait. The fridge will oscillate deliberately. For a small thermoelectric fridge this takes 30–90 minutes.
+4. Wait. The heater will oscillate deliberately. For a small fridge this typically takes 20–60 minutes.
 5. Watch ESPHome logs (`esphome logs espcure.yaml`) for:
    ```
    [I][pid.autotune:xxx]: PID Autotune finished!
@@ -53,9 +53,9 @@ The `PID Autotune` button in HA / web UI triggers ESPHome's built-in relay-feedb
 | Oscillates around setpoint ±2 °C | kp too high | Reduce kp 20–30 % |
 | Overshoots then slowly recovers | ki too high (integral windup) | Reduce ki, verify `max_integral: 1.0` |
 | Never reaches setpoint (offset) | ki too low | Increase ki 50 % |
-| Very slow approach (> 2 h) | kp too low | Increase kp 25 % |
+| Very slow approach (> 1 h) | kp too low | Increase kp 25 % |
 | Spiky noise on output | kd too high or sensor noise | Increase `derivative_averaging_samples` |
-| PID never uses heat output | Fridge ambient too warm, or heater undersized | Verify heater wattage; accept if cooling-only is sufficient |
+| Heater never activates | Chamber above setpoint or max safety ceiling engaged | Normal — heater only pulls up to 60 °F target; Peltier cools below |
 
 ---
 

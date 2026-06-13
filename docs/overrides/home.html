@@ -42,8 +42,8 @@
           <span class="ec-stat__label">SSR-40 DD outputs</span>
         </div>
         <div class="ec-stat">
-          <span class="ec-stat__value">18-day</span>
-          <span class="ec-stat__label">auto cure program</span>
+          <span class="ec-stat__value">2</span>
+          <span class="ec-stat__label">auto cure programs</span>
         </div>
       </div>
     </div>
@@ -75,20 +75,20 @@
 
     <div class="ec-feature-card">
       <div class="ec-feature-card__icon">🌡️</div>
-      <h3>PID Temperature</h3>
-      <p>Full PID control of your Peltier TECs and heater. Default 55 °F (12.8 °C) for the cold-plate method, or 68 °F (20 °C) for Cannatrol-style. Built-in autotune button.</p>
+      <h3>Heat-Only PID Temperature</h3>
+      <p>The heater chases temperature with a tunable PID (default 60 °F / 15.6 °C); the Peltier chases dew point. A high-temp safety ceiling forces cooling if the chamber ever overheats. Built-in autotune button.</p>
     </div>
 
     <div class="ec-feature-card">
       <div class="ec-feature-card__icon">💧</div>
       <h3>Dew Point + VPD</h3>
-      <p>Controls humidity by dew point — exactly how the Cannatrol works. Switch between raw %RH mode and dew-point mode in Home Assistant. VPD shown as a live sensor.</p>
+      <p>Controls humidity by dew point — exactly how the Cannatrol works — by running the Peltier cold plate to condense moisture. Switch between dew-point and VPD modes in Home Assistant. VPD shown as a live sensor.</p>
     </div>
 
     <div class="ec-feature-card">
       <div class="ec-feature-card__icon">🌱</div>
-      <h3>Auto Cure Program</h3>
-      <p>Enable the cure program and walk away. Humidity steps down 1 %/day from 78 % → 60 % over 18 days. Alternatively run the Cannatrol 4+4 protocol manually from HA.</p>
+      <h3>Auto Cure Programs</h3>
+      <p>Enable a program and walk away. The 10-Day Dry recipe ramps dew point 60→54 °F then holds 54 °F and 52 °F; or run the Cannatrol 4+4 protocol. Both step automatically at midnight.</p>
     </div>
 
     <div class="ec-feature-card">

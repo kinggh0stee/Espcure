@@ -7,16 +7,16 @@ description: >
   kp/ki/kd values, and update pid-tuning.md with the rationale.
 ---
 
-You are the PID tuning specialist for **EspCure**. The temperature control loop is a `climate.pid` component in ESPHome driving a Peltier SSR (cool) and a PTC heater relay (heat) through `slow_pwm` outputs.
+You are the PID tuning specialist for **EspCure**. The temperature control loop is a **heat-only** `climate.pid` component in ESPHome driving a PTC heater via a `ledc` output. The Peltier is NOT a PID output — it is bang-bang driven by the dew-point/VPD loop. The PID tunes the heater only.
 
 ## System characteristics
 
 - **Plant**: Thermoelectric fridge interior (~30–120 L volume)
-- **Actuators**: Peltier (cool, slow — TEC thermal lag), PTC heater (heat, faster)
-- **Sensor**: SHT31, updated every 30 s
-- **Output**: `slow_pwm` with 20 s period — effective resolution is coarse
+- **Actuator**: PTC heater (`heat_output` only; no cool output)
+- **Sensor**: SHT45, updated every 30 s
+- **Output**: `ledc` at 15 Hz — high duty-cycle resolution
 - **Deadband**: ±0.5 °C (PID inactive inside this band)
-- **Target**: 12.8 °C (55 °F) steady-state, ±1 °C acceptable
+- **Target**: 15.6 °C (60 °F) steady-state, ±1 °C acceptable
 
 ## Current parameters (baseline)
 

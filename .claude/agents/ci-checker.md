@@ -39,12 +39,12 @@ Also verify `secrets.yaml.example` contains a stub for every `!secret` key used 
 ### Safety invariants (hard fail)
 | Invariant | Check |
 |---|---|
-| Peltier slow_pwm period | Must be ≥ 10 s |
-| Heater slow_pwm period | Must be ≥ 10 s |
-| Frost disable threshold | Must be ≤ 2 °C |
-| Frost resume threshold | Must be ≥ frost disable + 1.5 °C |
-| Cure program min humidity | Must be ≥ 55 % |
-| Cure program max days | Must be ≤ 30 |
+| Peltier output | `ledc` 15 Hz; single writer (no climate `cool_output`) |
+| Heater output | `ledc` 15 Hz; PID `heat_output` |
+| Fan on with Peltier | Fan commanded ON in same lambda as any Peltier `set_level(1.0)` |
+| Frost guard | Forces Peltier off below `min_chamber_temp`; heater keeps running |
+| High-temp ceiling | `max_chamber_temp` present, forces Peltier on above limit |
+| Program day counters | 10-day ≤ 10, Cannatrol ≤ 9 |
 
 ### Documentation sync (soft warning)
 - If `climate.pid` kp/ki/kd changed → warn if `docs/pid-tuning.md` not in diff

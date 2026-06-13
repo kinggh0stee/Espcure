@@ -73,8 +73,8 @@ The device-hosted dashboard gives full control without Home Assistant:
 |---|---|
 | **Sensors** | Chamber temp (°C + °F), RH, dew point, VPD, error diagnostics |
 | **Climate** | PID thermostat card — adjust target temp, see action state |
-| **Controls** | Cure programs, dehumidifier, fan, dew-point mode toggle |
-| **Presets** | Apply Dry / Cure / Cold-Plate profile in one tap |
+| **Controls** | Cure programs, fan, dew-point/VPD mode toggle |
+| **Presets** | Apply Dry / Cure profile in one tap |
 | **PID Tuning** | Kp/Ki/Kd sliders — changes apply instantly, no reflash |
 | **Status** | Chamber Status, Humidity Control Mode, program progress |
 | **Dark mode** | Toggle in the top-right corner (follows system preference by default) |
@@ -91,7 +91,7 @@ If you wired an SSD1306 OLED to GPIO21/22 (see `docs/display-plan.md`), it auto-
 |---|---|
 | **Main** | Temperature °C + RH % (large), dew point, VPD, chamber status, temp °F, frost banner |
 | **Control** | Humidity control mode, temp setpoint (°C + °F), frost floor, WiFi signal |
-| **Programs** | 18-day + Cannatrol 4+4 status, active humidity/DP error |
+| **Programs** | 10-Day Dry + Cannatrol 4+4 status, active humidity/DP error |
 
 Press the **BOOT button** (GPIO9, on the DevKit board) to manually cycle pages.
 
@@ -124,8 +124,8 @@ A complete 5-tab Lovelace dashboard is at `docs/ha-dashboard.yaml`.
 - [ ] Fan relay turns ON automatically at boot
 - [ ] Status LED shows green (dim) when PID is idle
 - [ ] OLED displays temperature and RH on Page 1 (if connected)
-- [ ] Climate entity shows target 12.8 °C (55 °F)
-- [ ] Dehumidifier relay OFF by default
+- [ ] Climate entity shows target 15.6 °C (60 °F)
+- [ ] Dew-point humidity mode is active by default
 - [ ] Both cure program switches OFF by default
 - [ ] **Apply Dry Profile** sets 20 °C + 12.2 °C DP + dew-point mode ON
 - [ ] HA device shows all entities after integration is added

@@ -7,28 +7,27 @@
 | 1 | **Fridge** | Honeywell thermoelectric wine cooler | Remove original control board |
 | 2 | **MCU** | ESP32-C6 DevKit (e.g. Espressif ESP32-C6-DevKitC-1) | 3.3 V logic; requires ESP-IDF firmware |
 | 3 | **Chamber sensor** | SHT45 breakout (Adafruit #5665 or equiv.) | I²C, 3.3 V; ±0.1 °C / ±1 % RH |
-| 4 | **SSR — Fan rail** | SSR-40 DD (DC-DC solid-state relay) | Controls all 3 fans together (2 TEC hot-side + heater fan); on when PID active |
-| 5 | **SSR — TEC cooling** | SSR-40 DD | Controls both TECs in parallel; LEDC 15 Hz |
-| 6 | **SSR — Heater** | SSR-40 DD | Controls PTC element only (heater fan wired to fan rail); LEDC 15 Hz |
+| 4 | **SSR — Fan rail** | SSR-40 DD (DC-DC solid-state relay) | Controls all 3 fans together (2 TEC hot-side + heater fan); ON when Peltier or heater active |
+| 5 | **SSR — Peltier cooling** | SSR-40 DD | Controls both TECs in parallel; LEDC 15 Hz bang-bang (dew point / VPD driven) |
+| 6 | **SSR — Heater** | SSR-40 DD | Controls PTC element only (heater fan wired to fan rail); LEDC 15 Hz PID driven |
 | 7 | **PTC heater** | 12 V 50 W PTC ceramic heater with integrated 12 V fan, 87.5 × 60 × 42 mm (AliExpress) | Fan and element have **separate connectors** (white JST = fan; bare red/black = PTC element) — no splicing needed |
-| 8 | **Dehumidifier** | Optional — Peltier condensation alone may suffice | If used: add AC SSR (separate part) for 120 V AC load on GPIO23 |
-| 9 | **12 V PSU** | Generic 12 V 300 W switching PSU (25 A) | 25 A headroom covers 2× TECs + heater (4.2 A) + fans comfortably |
-| 10 | **Buck converter** | 12 V → 5 V DC-DC buck (e.g. LM2596 or MP1584EN module) | Steps 12 V rail down to 5 V for ESP32 VIN — eliminates the separate 5 V PSU |
-| 11 | **OLED display** | SSD1306 0.96" 128×64 I²C OLED (e.g. AliExpress ~$3) | Shares GPIO21/22 I²C bus — no extra wiring beyond VCC/GND |
-| 12 | **Misc** | 18 AWG wire, lever nuts (Wago 221), heat shrink, 3× SSR heatsinks | SSR-40 DDs must be mounted on heatsink when carrying > 5 A |
+| 8 | **12 V PSU** | Generic 12 V 300 W switching PSU (25 A) | 25 A headroom covers 2× TECs + heater (4.2 A) + fans comfortably |
+| 9 | **Buck converter** | 12 V → 5 V DC-DC buck (e.g. LM2596 or MP1584EN module) | Steps 12 V rail down to 5 V for ESP32 VIN — eliminates the separate 5 V PSU |
+| 10 | **OLED display** | SSD1306 0.96" 128×64 I²C OLED (e.g. AliExpress ~$3) | Shares GPIO21/22 I²C bus — no extra wiring beyond VCC/GND |
+| 11 | **Misc** | 18 AWG wire, lever nuts (Wago 221), heat shrink, 3× SSR heatsinks | SSR-40 DDs must be mounted on heatsink when carrying > 5 A |
 
 ## GPIO Pinout
 
 | GPIO | Function | Notes |
 |---|---|---|
-| 5 | SSR-40 DD — Fan rail IN | Active HIGH; all 3 fans; on when PID active, off when PID off |
+| 5 | SSR-40 DD — Fan rail IN | Active HIGH; all 3 fans; on when Peltier or heater active |
 | 8 | WS2812 RGB LED | Built into ESP32-C6 DevKitC-1 — no wiring needed |
 | 9 | BOOT button (display page cycle) | Built into DevKitC-1 — INPUT_PULLUP, active low |
-| 18 | SSR-40 DD — TEC cooling IN | LEDC 15 Hz; active HIGH; both TECs in parallel |
-| 19 | SSR-40 DD — Heater IN | LEDC 15 Hz; active HIGH; PTC element only |
+| 18 | SSR-40 DD — Peltier TEC IN | LEDC 15 Hz; active HIGH; both TECs in parallel; bang-bang driven by dew point/VPD loop |
+| 19 | SSR-40 DD — Heater IN | LEDC 15 Hz; active HIGH; PTC element only; driven by heat-only PID |
 | 21 | SDA (SHT45 + OLED) | I²C — shared by both devices |
 | 22 | SCL (SHT45 + OLED) | I²C — shared by both devices |
-| 23 | Dehumidifier relay IN (optional) | Active HIGH; not part of core 3-SSR build |
+| 23 | Unused | (formerly dehumidifier relay; removed) |
 
 > **⚠️ 3.3 V control voltage:** The ESP32-C6 GPIO outputs 3.3 V. SSR-40 DD spec says 3–32 V control, so 3.3 V is at the minimum. Test continuity of each SSR before final install — if an SSR doesn't trigger reliably, add a small NPN transistor (e.g. 2N2222) between the GPIO and SSR input to drive it at a higher current level.
 
@@ -96,11 +95,19 @@ The SSR-40 DDs must be mounted on aluminum heatsinks when carrying more than ~5 
 
 Mount the SHT45 inside the chamber, away from the Peltier cold plate and away from the dehumidifier exhaust. Ideal position: center-rear of the interior air space, elevated off the floor. The SHT45 has negligible self-heating (~0.1–0.2 °C at 3.3 V) — far less than the SHT31. Still calibrate with an offset after install. The SHT45 has an on-chip heater; in a high-humidity chamber, condensation can form on the sensor if the chamber temperature drops rapidly — use the **Clear Sensor Condensation** button in HA to pulse the heater and restore accurate readings.
 
+## Dehumidification
+
+The Peltier cold plate is the sole dehumidification mechanism. When the dew-point or VPD control loop is active, the Peltier condenses moisture from the chamber air by pulling the cold plate temperature below the air's dew point. There is no external dehumidifier relay.
+
 ## Frost Protection (Software-Only)
 
-There is no cold-plate temperature sensor in this build. Frost protection is handled in firmware: if the chamber air temperature (SHT45) drops below the **Min Chamber Temperature** setpoint (default 4 °C / 39 °F), the PID is suspended until the chamber recovers 2 °C above that floor. Adjust the floor in HA under the **Min Chamber Temperature** number entity.
+There is no cold-plate temperature sensor in this build. Frost protection is handled in firmware: if the chamber air temperature (SHT45) drops below the **Min Chamber Temperature** setpoint (default 4 °C / 39 °F), the Peltier is suspended until the chamber recovers 2 °C above that floor. The heater continues running during frost to aid recovery. Adjust the floor in HA under the **Min Chamber Temperature** number entity.
 
 Note: without a cold-plate sensor, the protection reacts to chamber air temperature rather than the Peltier surface directly. If you observe ice forming on the Peltier fins, raise the Min Chamber Temperature setpoint.
+
+## Temperature Safety Ceiling
+
+A **Max Chamber Temperature** number entity (default 27 °C / 80 °F, user-adjustable 22–32 °C) forces the Peltier cooling ON above the ceiling regardless of humidity demand. This gives temperature an emergency downward authority. In normal operation (60–67 °F), this ceiling never activates.
 
 ## Original Control Board Removal
 

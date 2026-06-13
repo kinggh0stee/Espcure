@@ -21,21 +21,23 @@ Your role is to think deeply before any code is written. When invoked, produce:
 
 **Hardware:**
 - Honeywell thermoelectric (Peltier) fridge — original control board bypassed
-- ESP32 DevKit v1 as main controller
-- SHT31 (I²C) for chamber temperature and RH
-- DS18B20 (1-Wire) on cold plate for frost detection
-- DC SSR controlling Peltier 12 V supply
-- PTC heater relay (12 V) for temperature floor
-- Compact dehumidifier relay
-- Always-on circulation fans
+- ESP32-C6 DevKitC-1 as main controller (ESP-IDF)
+- SHT45 (I²C) for chamber temperature and RH; no cold-plate sensor (software frost guard)
+- DC SSR-40 DD controlling the Peltier 12 V supply (`ledc` 15 Hz)
+- PTC heater SSR-40 DD (12 V) for temperature
+- No dehumidifier relay — the Peltier cold plate is the dehumidifier
+- Fan rail (on when Peltier cooling or heater heating)
 
 **Control strategy:**
-- Temperature: PID, target 55 °F (12.8 °C), ±0.5 °C deadband
-- Humidity: Bang-bang, 78 % start → 60 % target, −1 %/day cure program
-- Frost guard: Peltier disabled if cold plate < 1.5 °C, resumes at > 4 °C
+- Temperature: **heat-only** PID, target 60 °F (15.6 °C), ±0.5 °C deadband (heater chases temp)
+- Humidity: Peltier bang-bang on dew point / VPD (cold-plate condensation); two modes (Dew Point default + VPD)
+- Programs: 10-Day Dry (dew-point ramp) and Cannatrol 4+4
+- Frost guard: Peltier forced off below `min_chamber_temp` (default 4 °C), resumes at floor + 2 °C; heater keeps running
+- Safety ceiling: `max_chamber_temp` (default 27 °C) forces the Peltier on (heat-only PID can't cool)
 
 **ESPHome constraints:**
-- `slow_pwm` period ≥ 10 s for Peltier (never rapid-switch a TEC)
+- Peltier (GPIO18) and heater (GPIO19) are `ledc` 15 Hz; Peltier has exactly one writer (never a climate `cool_output`)
+- Whenever the Peltier is set to 1.0, turn the fan on in the same lambda (hot-side airflow)
 - Secrets via `!secret` only — never hard-code credentials
 - Validate with `esphome config espcure.yaml` before any flash
 

@@ -29,19 +29,19 @@ Invoke me after:
 - [ ] No credentials, SSIDs, or passwords hard-coded in YAML
 
 ### 2. Safety rules (non-negotiable)
-- [ ] `slow_pwm` period for Peltier (GPIO18) is ≥ 10 s — reject if violated
-- [ ] `slow_pwm` period for heater (GPIO19) is ≥ 10 s
-- [ ] Frost-guard interval (60 s) is intact and logically equivalent to the original
-- [ ] `frost_active` global is correctly gating PID output
-- [ ] `on_boot` restores fan (GPIO5) to ON
-- [ ] `restore_mode: RESTORE_DEFAULT_ON` on fan; `RESTORE_DEFAULT_OFF` on dehumidifier
+- [ ] Peltier (GPIO18) and heater (GPIO19) are `ledc` at 15 Hz — not `slow_pwm`
+- [ ] Peltier has exactly one writer (the 30 s/60 s lambdas) — never a climate `cool_output`
+- [ ] Frost-guard interval (60 s) is intact — forces the Peltier off below the floor; heater keeps running
+- [ ] `frost_active` global short-circuits the 30 s loop (Peltier off)
+- [ ] High-temp ceiling (`max_chamber_temp`) gives the heat-only PID an emergency downward path
+- [ ] Fan commanded ON in the same lambda as any Peltier `set_level(1.0)`; fan `RESTORE_DEFAULT_OFF`
 - [ ] `isnan()` guard present in every lambda that reads a sensor value
 
 ### 3. Control logic integrity
 - [ ] PID `kp`, `ki`, `kd` changes are documented in `docs/pid-tuning.md`
-- [ ] Humidity bang-bang deadband is symmetric and non-zero
-- [ ] Cure program step cannot push humidity below 55 % or above 98 %
-- [ ] Day counter bounded at 30 days max
+- [ ] Humidity (dew-point/VPD) bang-bang deadband is symmetric and non-zero
+- [ ] Program setpoints stay within entity ranges
+- [ ] Day counters bounded (10-day ≤ 10, Cannatrol ≤ 9)
 - [ ] `use_dew_point_control` switch correctly gates dew-point vs RH path — not both active
 
 ### 4. Documentation sync

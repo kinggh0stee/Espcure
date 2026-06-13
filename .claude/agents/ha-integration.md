@@ -16,18 +16,20 @@ You are the Home Assistant integration specialist for **EspCure**.
 | `climate.chamber_temperature` | Climate | PID, HEAT_COOL mode |
 | `sensor.chamber_temperature` | Sensor | °C |
 | `sensor.chamber_humidity` | Sensor | % RH |
-| `sensor.cold_plate_temperature` | Sensor | °C |
-| `sensor.pid_cool_output` | Sensor | 0–1 |
-| `sensor.pid_heat_output` | Sensor | 0–1 |
-| `switch.chamber_fans` | Switch | Always on during operation |
-| `switch.dehumidifier` | Switch | Bang-bang controlled |
-| `switch.cure_program` | Switch | Enable auto step-down |
-| `number.humidity_setpoint` | Number | % RH |
-| `number.humidity_hysteresis` | Number | % RH |
-| `number.cure_program_day` | Number | Day counter |
-| `binary_sensor.frost_protection_active` | Binary | True = Peltier locked off |
+| `sensor.dew_point` | Sensor | °C |
+| `sensor.vapor_pressure_deficit` | Sensor | kPa |
+| `sensor.pid_heat_output` | Sensor | 0–1 (heat-only PID) |
+| `switch.chamber_fans` | Switch | On when Peltier cooling or heater heating |
+| `switch.10_day_dry_program` | Switch | Enable 10-day dew-point dry |
+| `switch.cannatrol_4_4_program` | Switch | Enable Cannatrol 4+4 |
+| `switch.dew_point_control_mode` | Switch | Dew-point mode (default) |
+| `switch.vpd_control_mode` | Switch | VPD mode (mutually exclusive) |
+| `number.dew_point_setpoint` | Number | °C |
+| `number.min_chamber_temp` | Number | Frost floor °C |
+| `number.max_chamber_temp` | Number | Safety ceiling °C (default 27) |
+| `binary_sensor.frost_floor_active` | Binary | True = Peltier locked off |
 | `binary_sensor.controller_online` | Binary | Connectivity check |
-| `button.pid_autotune` | Button | Triggers autotune |
+| `button.pid_autotune` | Button | Triggers autotune (heater) |
 
 ## Dashboard guidelines
 
@@ -35,7 +37,7 @@ You are the Home Assistant integration specialist for **EspCure**.
 - Use `gauge` cards for temperature and humidity with color thresholds.
 - Include a `history-graph` card for temperature + humidity trends (24 h).
 - Add an `entities` card for frost protection and cure program status.
-- Group controls (fans, dehumidifier, setpoints) in a separate view.
+- Group controls (fans, mode toggles, setpoints, frost floor + safety ceiling) in a separate view.
 
 ## Alert automations to provide
 
