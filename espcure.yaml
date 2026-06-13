@@ -11,6 +11,13 @@ esphome:
   friendly_name: EspCure
   comment: "Thermoelectric curing chamber — DIY Cannatrol"
   on_boot:
+    # Heat-only PID — put the climate in HEAT mode so the heater chases temperature
+    # from boot. The Peltier is driven separately by the dew-point/VPD loop.
+    - priority: -100
+      then:
+        - climate.control:
+            id: temp_pid
+            mode: HEAT
     # Apply restored PID number entity values so tuned gains survive reboots.
     # Must run after component init (lower priority = runs later).
     - priority: -200
@@ -76,6 +83,14 @@ i2c:
 globals:
   # Software frost guard — set when chamber_temp drops below min_chamber_temp floor
   - id: frost_active
+    type: bool
+    restore_value: false
+    initial_value: "false"
+
+  # Peltier cooling demand — tracks the dew-point/VPD bang-bang loop state.
+  # The Peltier is a float (ledc) output that can't be read back in lambda, so
+  # this global is the single source of truth for "cold plate is condensing".
+  - id: peltier_cooling
     type: bool
     restore_value: false
     initial_value: "false"
@@ -156,22 +171,7 @@ sensor:
       return svp * (1.0f - rh / 100.0f);
     update_interval: 30s
 
-  # RH error vs setpoint (positive = too humid; NaN when in dew-point or VPD mode)
-  - platform: template
-    id: humidity_error
-    name: "Humidity Error"
-    unit_of_measurement: "%"
-    state_class: measurement
-    icon: "mdi:water-alert"
-    entity_category: diagnostic
-    lambda: |-
-      if (id(use_dew_point_control).state) return NAN;
-      if (id(use_vpd_control).state) return NAN;
-      if (isnan(id(chamber_rh).state)) return NAN;
-      return id(chamber_rh).state - id(humidity_setpoint).state;
-    update_interval: 30s
-
-  # Dew-point error vs setpoint (positive = too humid; NaN when in RH or VPD mode)
+  # Dew-point error vs setpoint (positive = too humid; NaN when in VPD mode)
   - platform: template
     id: dew_point_error
     name: "Dew Point Error"
@@ -187,12 +187,7 @@ sensor:
       return id(dew_point).state - id(dew_point_setpoint).state;
     update_interval: 30s
 
-  # ── PID diagnostics ──────────────────────────────────────────────────────────
-  - platform: pid
-    climate_id: temp_pid
-    name: "PID Cool Output"
-    type: COOL
-    entity_category: diagnostic
+  # ── PID diagnostics (heat-only — Peltier is not driven by the PID) ───────────
   - platform: pid
     climate_id: temp_pid
     name: "PID Heat Output"
@@ -251,30 +246,29 @@ switch:
     restore_mode: RESTORE_DEFAULT_OFF
     icon: "mdi:fan"
 
-  # Dehumidifier relay — Peltier condensation alone often suffices
-  - platform: gpio
-    id: dehumidifier_relay
-    name: "Dehumidifier"
-    pin: GPIO23
-    restore_mode: RESTORE_DEFAULT_OFF
-    icon: "mdi:water-off"
-
-  # 18-day slow cure program: humidity steps -1 %/day from 78 % → 60 %
+  # 10-day dew-point dry program (proven recipe — replaces the 24 h hang):
+  #   Day 1   : ramp dew point 60 °F → 57 °F → 54 °F
+  #   Days 2–5: hold 54 °F (12.2 °C) dew point
+  #   Days 6–9: hold 52 °F (11.1 °C) dew point
+  #   Day 10  : complete, auto-off
   - platform: template
-    id: cure_program_active
-    name: "Cure Program (18-day)"
+    id: dry10_program_active
+    name: "10-Day Dry Program"
     restore_mode: RESTORE_DEFAULT_OFF
     optimistic: true
     icon: "mdi:sprout"
     on_turn_on:
       - switch.turn_off: cannatrol_program_active  # only one program at a time
-      - switch.turn_off: use_dew_point_control     # 18-day program uses RH mode
       - number.set:
-          id: program_day
+          id: dry10_day
           value: 0
       - number.set:
-          id: humidity_setpoint
-          value: 78
+          id: dew_point_setpoint
+          value: 15.6       # 60 °F — start of the 2-day ramp
+      - climate.control:
+          id: temp_pid
+          target_temperature: 15.6    # 60 °F
+      - switch.turn_on: use_dew_point_control
 
   # Cannatrol 4+4 program: 4 days dry (12.2 °C DP) then 4 days cure (11.1 °C DP)
   - platform: template
@@ -284,7 +278,7 @@ switch:
     optimistic: true
     icon: "mdi:cannabis"
     on_turn_on:
-      - switch.turn_off: cure_program_active       # only one program at a time
+      - switch.turn_off: dry10_program_active      # only one program at a time
       - number.set:
           id: cannatrol_day
           value: 0
@@ -297,21 +291,21 @@ switch:
           target_temperature: 20.0    # 68 °F
       - switch.turn_on: use_dew_point_control
 
-  # Humidity control mode toggle:
-  # OFF → rollitup style (bang-bang on % RH vs humidity_setpoint)
-  # ON  → Cannatrol style (bang-bang on dew point °C vs dew_point_setpoint)
+  # Humidity control mode — Dew Point (default).
+  # The active mode drives the Peltier (cold-plate condensation), not a relay.
+  # Mutually exclusive with VPD mode.
   - platform: template
     id: use_dew_point_control
     name: "Dew Point Control Mode"
-    restore_mode: RESTORE_DEFAULT_OFF
+    restore_mode: RESTORE_DEFAULT_ON
     optimistic: true
     icon: "mdi:thermometer-water"
     on_turn_on:
       - switch.turn_off: use_vpd_control
 
-  # VPD control mode — bang-bang on Vapor Pressure Deficit (kPa)
-  # Highest-priority humidity mode: overrides dew-point and RH modes.
-  # Low VPD = too humid → dehumidify; High VPD = too dry → humidify.
+  # VPD control mode — bang-bang on Vapor Pressure Deficit (kPa).
+  # Low VPD = too humid → Peltier cools to condense moisture. Mutually
+  # exclusive with dew-point mode. No humidifier in this build.
   - platform: template
     id: use_vpd_control
     name: "VPD Control Mode"
@@ -324,31 +318,6 @@ switch:
 # ─── Numbers (user-adjustable setpoints) ──────────────────────────────────────
 
 number:
-  # ── RH mode setpoints ────────────────────────────────────────────────────────
-  - platform: template
-    id: humidity_setpoint
-    name: "Humidity Setpoint"
-    min_value: 55
-    max_value: 85
-    step: 1
-    initial_value: 78
-    restore_value: true
-    optimistic: true
-    unit_of_measurement: "%"
-    icon: "mdi:water-percent"
-
-  - platform: template
-    id: humidity_hysteresis
-    name: "Humidity Hysteresis"
-    min_value: 1
-    max_value: 5
-    step: 0.5
-    initial_value: 2.0
-    restore_value: true
-    optimistic: true
-    unit_of_measurement: "%"
-    icon: "mdi:tune"
-
   # ── Dew-point mode setpoints ─────────────────────────────────────────────────
   # Cannatrol defaults: 12.2 °C (54 °F) for dry, 11.1 °C (52 °F) for cure
   - platform: template
@@ -389,12 +358,28 @@ number:
     unit_of_measurement: "°C"
     icon: "mdi:snowflake-alert"
 
+  # ── High-temperature safety ceiling ──────────────────────────────────────────
+  # Heat-only PID can't cool, so this forces the Peltier ON above this limit
+  # (independent of humidity mode). Default 27 °C (80 °F) — a safety net, well
+  # above the normal 60–67 °F curing range.
+  - platform: template
+    id: max_chamber_temp
+    name: "Max Chamber Temperature (Safety Ceiling)"
+    min_value: 22.0
+    max_value: 32.0
+    step: 0.5
+    initial_value: 27.0
+    restore_value: true
+    optimistic: true
+    unit_of_measurement: "°C"
+    icon: "mdi:fire-alert"
+
   # ── Cure program counters ────────────────────────────────────────────────────
   - platform: template
-    id: program_day
-    name: "Cure Program Day"
+    id: dry10_day
+    name: "10-Day Program Day"
     min_value: 0
-    max_value: 30
+    max_value: 10
     step: 1
     initial_value: 0
     restore_value: true
@@ -497,12 +482,13 @@ number:
 # ─── Climate (Temperature PID) ────────────────────────────────────────────────
 
 climate:
+  # Heat-only PID: the heater chases temperature. The Peltier is NOT a PID output
+  # — it is driven by the dew-point/VPD bang-bang loop (cold-plate condensation).
   - platform: pid
     id: temp_pid
     name: "Chamber Temperature"
     sensor: chamber_temp
-    default_target_temperature: 12.8    # 55 °F — rollitup cold-plate method
-    cool_output: peltier_output
+    default_target_temperature: 15.6    # 60 °F — realistic floor for Peltier strength
     heat_output: heater_output
     control_parameters:
       # Starting values — run PID Autotune after install to refine for your fridge
@@ -528,23 +514,24 @@ time:
     on_time:
       - cron: "0 0 0 * * *"    # midnight daily (ESPHome cron: sec min hour dom mon dow)
         then:
-          # 18-day step-down: -1 %RH/day until 60 %
+          # 10-day dry program: dew-point ramp 60→54 °F over 2 days, then 54, then 52
           - if:
               condition:
-                switch.is_on: cure_program_active
+                switch.is_on: dry10_program_active
               then:
                 - lambda: |-
-                    float sp = id(humidity_setpoint).state;
-                    if (sp > 60.0f) {
-                      auto call = id(humidity_setpoint).make_call();
-                      call.set_value(sp - 1.0f);
-                      call.perform();
-                      auto dc = id(program_day).make_call();
-                      dc.set_value(id(program_day).state + 1.0f);
-                      dc.perform();
-                    } else {
-                      id(cure_program_active).turn_off();
-                    }
+                    int day = (int)id(dry10_day).state + 1;
+                    auto dc = id(dry10_day).make_call();
+                    dc.set_value((float)day);
+                    dc.perform();
+                    float dp;
+                    if (day == 1)                 dp = 13.9f;   // 57 °F — mid-ramp
+                    else if (day >= 2 && day <= 5) dp = 12.2f;  // 54 °F — dry hold
+                    else if (day >= 6 && day <= 9) dp = 11.1f;  // 52 °F — cure hold
+                    else { id(dry10_program_active).turn_off(); return; }
+                    auto sp = id(dew_point_setpoint).make_call();
+                    sp.set_value(dp);
+                    sp.perform();
 
           # Cannatrol 4+4: days 1-4 dry (12.2 °C DP), days 5-8 cure (11.1 °C DP)
           - if:
@@ -573,40 +560,57 @@ time:
 # ─── Interval automations ─────────────────────────────────────────────────────
 
 interval:
-  # Humidity bang-bang control loop (30 s)
-  # Priority order: VPD mode → Dew Point mode → RH mode
-  # All modes control the dehumidifier relay only (downward control).
+  # Dew-point / VPD bang-bang loop (30 s) — drives the PELTIER (cold-plate
+  # condensation). Priority: frost guard → VPD mode → Dew Point mode → off.
+  # Cooling the plate below the dew point condenses moisture out of the air.
   - interval: 30s
     then:
       - lambda: |-
-          bool on = id(dehumidifier_relay).state;
+          // Frost guard overrides everything — never cool below the floor.
+          if (id(frost_active)) {
+            id(peltier_cooling) = false;
+            id(peltier_output).set_level(0.0f);
+            return;
+          }
+          // High-temperature safety ceiling — force cooling regardless of humidity
+          // demand so a heat-only PID can't let the chamber overheat. Default 27 °C
+          // (80 °F) is well above the 60–67 °F operating range, so this never fires
+          // in normal use. The hot-side fan is commanded ON in the same pass.
+          if (!isnan(id(chamber_temp).state) &&
+              id(chamber_temp).state > id(max_chamber_temp).state) {
+            id(peltier_cooling) = true;
+            id(fan_relay).turn_on();
+            id(peltier_output).set_level(1.0f);
+            return;
+          }
+          bool on = id(peltier_cooling);
+          // NOTE: whenever the Peltier is commanded ON, the hot-side fan is turned ON
+          // in the same lambda so the TEC never runs at full duty without airflow.
           if (id(use_vpd_control).state) {
             if (isnan(id(vpd).state)) return;
             float v    = id(vpd).state;
             float sp   = id(vpd_setpoint).state;
             float hyst = id(vpd_hysteresis).state / 2.0f;
-            // Low VPD = too humid → dehumidify; no humidifier in this build
-            if (!on && v < sp - hyst) id(dehumidifier_relay).turn_on();
-            else if (on && v > sp + hyst) id(dehumidifier_relay).turn_off();
+            // Low VPD = too humid → cool the plate to condense moisture
+            if (!on && v < sp - hyst) { id(peltier_cooling) = true;  id(fan_relay).turn_on(); id(peltier_output).set_level(1.0f); }
+            else if (on && v > sp + hyst) { id(peltier_cooling) = false; id(peltier_output).set_level(0.0f); }
           } else if (id(use_dew_point_control).state) {
             if (isnan(id(dew_point).state)) return;
             float dp   = id(dew_point).state;
             float sp   = id(dew_point_setpoint).state;
             float hyst = id(dew_point_hysteresis).state / 2.0f;
-            if (!on && dp > sp + hyst) id(dehumidifier_relay).turn_on();
-            else if (on && dp < sp - hyst) id(dehumidifier_relay).turn_off();
+            if (!on && dp > sp + hyst) { id(peltier_cooling) = true;  id(fan_relay).turn_on(); id(peltier_output).set_level(1.0f); }
+            else if (on && dp < sp - hyst) { id(peltier_cooling) = false; id(peltier_output).set_level(0.0f); }
           } else {
-            if (isnan(id(chamber_rh).state)) return;
-            float rh   = id(chamber_rh).state;
-            float sp   = id(humidity_setpoint).state;
-            float hyst = id(humidity_hysteresis).state / 2.0f;
-            if (!on && rh > sp + hyst) id(dehumidifier_relay).turn_on();
-            else if (on && rh < sp - hyst) id(dehumidifier_relay).turn_off();
+            // No humidity mode active — Peltier idle.
+            if (on) { id(peltier_cooling) = false; id(peltier_output).set_level(0.0f); }
           }
 
   # Software frost guard (60 s)
   # No cold-plate sensor — uses chamber air as proxy.
-  # PID suspends below min_chamber_temp, resumes at floor + 2 °C.
+  # Frost forces the PELTIER (cooling path) OFF below min_chamber_temp and lets it
+  # resume at floor + 2 °C. The heat-only PID is left running — heating helps
+  # recover from a frost event.
   - interval: 60s
     then:
       - lambda: |-
@@ -615,26 +619,24 @@ interval:
           float floor = id(min_chamber_temp).state;
           if (!id(frost_active) && t < floor) {
             id(frost_active) = true;
-            ESP_LOGW("espcure", "Frost floor reached (%.1f°C <= %.1f°C) — PID suspended", t, floor);
-            auto call = id(temp_pid).make_call();
-            call.set_mode("OFF");
-            call.perform();
+            ESP_LOGW("espcure", "Frost floor reached (%.1f°C <= %.1f°C) — Peltier suspended", t, floor);
+            id(peltier_cooling) = false;
+            id(peltier_output).set_level(0.0f);
           } else if (id(frost_active) && t > floor + 2.0f) {
             id(frost_active) = false;
-            ESP_LOGI("espcure", "Chamber recovered (%.1f°C) — PID resumed", t);
-            auto call = id(temp_pid).make_call();
-            call.set_mode("HEAT_COOL");
-            call.perform();
+            ESP_LOGI("espcure", "Chamber recovered (%.1f°C) — Peltier may resume", t);
+            // The 30 s humidity loop re-engages the Peltier on its next pass.
           }
 
   # Status LED update + fan control (2 s)
-  # Fan: on whenever PID is active (cooling/heating/idle); off when PID is off
-  # Blue = cooling · Red = heating · Green (dim) = idle · White blink = frost
+  # Fan: on when the Peltier is cooling OR the heater is heating; off otherwise.
+  # Blue = cooling (Peltier) · Red = heating · Green (dim) = idle · White blink = frost
   - interval: 2s
     then:
       - lambda: |-
-          auto act = id(temp_pid).action;
-          if (act != esphome::climate::CLIMATE_ACTION_OFF) {
+          bool cooling = id(peltier_cooling);
+          bool heating = id(temp_pid).action == esphome::climate::CLIMATE_ACTION_HEATING;
+          if (cooling || heating) {
             id(fan_relay).turn_on();
           } else {
             id(fan_relay).turn_off();
@@ -650,25 +652,18 @@ interval:
             call.set_effect("Frost Blink");
           } else {
             call.set_effect("None");
-            switch (act) {
-              case esphome::climate::CLIMATE_ACTION_COOLING:
-                call.set_state(true);
-                call.set_rgb(0.0f, 0.3f, 1.0f);   // blue
-                call.set_brightness(0.7f);
-                break;
-              case esphome::climate::CLIMATE_ACTION_HEATING:
-                call.set_state(true);
-                call.set_rgb(1.0f, 0.15f, 0.0f);  // red
-                call.set_brightness(0.5f);
-                break;
-              case esphome::climate::CLIMATE_ACTION_IDLE:
-                call.set_state(true);
-                call.set_rgb(0.0f, 1.0f, 0.0f);   // green very dim
-                call.set_brightness(0.04f);
-                break;
-              default:
-                call.set_state(false);
-                break;
+            if (cooling) {
+              call.set_state(true);
+              call.set_rgb(0.0f, 0.3f, 1.0f);   // blue — Peltier condensing
+              call.set_brightness(0.7f);
+            } else if (heating) {
+              call.set_state(true);
+              call.set_rgb(1.0f, 0.15f, 0.0f);  // red — heater on
+              call.set_brightness(0.5f);
+            } else {
+              call.set_state(true);
+              call.set_rgb(0.0f, 1.0f, 0.0f);   // green very dim — idle
+              call.set_brightness(0.04f);
             }
           }
           call.perform();
@@ -727,16 +722,6 @@ button:
             target_temperature: 20.0   # 68 °F
         - switch.turn_on: use_dew_point_control
 
-  - platform: template
-    name: "Apply Cold-Plate Profile"
-    icon: "mdi:snowflake-thermometer"
-    on_press:
-      then:
-        - climate.control:
-            id: temp_pid
-            target_temperature: 12.8   # 55 °F — rollitup cold-plate method
-        - switch.turn_off: use_dew_point_control
-
 # ─── Binary sensors ───────────────────────────────────────────────────────────
 
 binary_sensor:
@@ -780,11 +765,9 @@ text_sensor:
     icon: "mdi:information-outline"
     lambda: |-
       if (id(frost_active)) return std::string("Frost Guard");
-      auto action = id(temp_pid).action;
-      if (action == esphome::climate::CLIMATE_ACTION_COOLING) return std::string("Cooling");
-      if (action == esphome::climate::CLIMATE_ACTION_HEATING) return std::string("Heating");
-      if (action == esphome::climate::CLIMATE_ACTION_IDLE)    return std::string("Idle");
-      return std::string("Off");
+      if (id(peltier_cooling)) return std::string("Cooling");
+      if (id(temp_pid).action == esphome::climate::CLIMATE_ACTION_HEATING) return std::string("Heating");
+      return std::string("Idle");
     update_interval: 30s
 
   # Active humidity control mode with live setpoint readout
@@ -799,21 +782,25 @@ text_sensor:
       } else if (id(use_dew_point_control).state) {
         snprintf(buf, sizeof(buf), "Dew Point %.1f\xc2\xb0C SP", id(dew_point_setpoint).state);
       } else {
-        snprintf(buf, sizeof(buf), "RH Mode %.0f%% SP", id(humidity_setpoint).state);
+        snprintf(buf, sizeof(buf), "Humidity control off");
       }
       return std::string(buf);
     update_interval: 30s
 
-  # 18-day program progress
+  # 10-day dry program progress
   - platform: template
-    id: cure_program_status
-    name: "Cure Program Status"
+    id: dry10_program_status
+    name: "10-Day Program Status"
     icon: "mdi:sprout"
     lambda: |-
-      if (!id(cure_program_active).state) return std::string("Inactive");
-      char buf[48];
-      snprintf(buf, sizeof(buf), "Day %.0f \xe2\x80\x94 %.0f%% RH target",
-               id(program_day).state + 1.0f, id(humidity_setpoint).state);
+      if (!id(dry10_program_active).state) return std::string("Inactive");
+      char buf[56];
+      int day = (int)id(dry10_day).state;
+      const char *phase;
+      if (day <= 1)      phase = "Ramp 60\xe2\x86\x9254\xc2\xb0""F";
+      else if (day <= 5) phase = "Dry 54\xc2\xb0""F";
+      else               phase = "Cure 52\xc2\xb0""F";
+      snprintf(buf, sizeof(buf), "Day %d/10 \xe2\x80\x94 %s", day + 1, phase);
       return std::string(buf);
     update_interval: 30s
 
@@ -908,11 +895,9 @@ display:
         lambda: |-
           it.printf(0,  0, id(font_m), "Programs");
           it.line(0, 15, 128, 15);
-          it.printf(0, 18, id(font_s), "18d: %s", id(cure_program_status).state.c_str());
+          it.printf(0, 18, id(font_s), "10d: %s", id(dry10_program_status).state.c_str());
           it.printf(0, 30, id(font_s), "C44: %s", id(cannatrol_program_status).state.c_str());
-          if (!id(use_dew_point_control).state && !isnan(id(humidity_error).state)) {
-            it.printf(0, 42, id(font_s), "RH err %+.1f%%", id(humidity_error).state);
-          } else if (id(use_dew_point_control).state && !isnan(id(dew_point_error).state)) {
+          if (!isnan(id(dew_point_error).state)) {
             it.printf(0, 42, id(font_s), "DP err %+.1f\xc2\xb0""C", id(dew_point_error).state);
           }
 

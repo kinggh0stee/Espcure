@@ -7,14 +7,16 @@ Priority: 🔴 Critical · 🟡 High · 🟢 Nice-to-have · ✅ Done
 ## ✅ Completed
 
 - [x] ESP32-C6 + SHT45 ESPHome config (ESP-IDF framework)
-- [x] PID temperature control — Peltier (cool) + PTC heater (heat)
-- [x] Dual humidity control: RH mode (bang-bang) + Dew Point mode (Cannatrol)
+- [x] Heat-only PID temperature control — PTC heater chases temp (default 60 °F)
+- [x] Peltier-chases-dew-point topology — TEC bang-bang drives cold-plate condensation
+- [x] Two humidity modes: Dew Point (default) + VPD
 - [x] Dew point + VPD derived sensors
-- [x] 18-day step-down cure program (−1 %/day, 78 %→60 %)
+- [x] 10-Day Dry dew-point program (ramp 60→54 °F, then 54, then 52)
 - [x] Cannatrol 4+4 built-in program (auto dry→cure phase at midnight)
-- [x] One-tap profile presets (Dry, Cure, Cold-Plate)
+- [x] One-tap profile presets (Dry, Cure)
+- [x] High-temp safety ceiling (`max_chamber_temp`, default 27 °C / 80 °F)
 - [x] Live PID tuning (Kp/Ki/Kd number entities, persist across reboots)
-- [x] Software frost floor (no cold-plate sensor required)
+- [x] Software frost floor (no cold-plate sensor required; forces Peltier off)
 - [x] Chamber Status / Humidity Control Mode / Program Status text sensors
 - [x] Device-hosted web UI at `http://espcure.local` (web_server v3, dark mode)
 - [x] Home Assistant native API (encrypted), all entity metadata
@@ -64,7 +66,7 @@ Priority: 🔴 Critical · 🟡 High · 🟢 Nice-to-have · ✅ Done
 > - Run PID autotune and log results in `docs/pid-tuning.md`
 > - Set SHT45 temperature/RH `offset` values in `espcure.yaml` after calibration
 > - Verify each SSR-40 DD triggers reliably at 3.3 V (add 2N2222 NPN if marginal — see `docs/hardware.md`)
-> - Test dehumidifier relay GPIO23 wiring
+> - Confirm the hot-side fan energizes the instant the Peltier turns on (shared fan rail)
 > - Verify `time.homeassistant` syncs (required for midnight cure program cron)
 
 ---
@@ -79,7 +81,8 @@ Priority: 🔴 Critical · 🟡 High · 🟢 Nice-to-have · ✅ Done
 
 ## 🟢 Features (Future Iterations)
 
-- [x] **VPD target mode** — fully implemented (third humidity control mode, dehumidifier-only)
+- [x] **VPD target mode** — fully implemented (humidity control mode; drives the Peltier)
+- [x] **Peltier-chases-dew-point topology** — heat-only PID + Peltier dehumidification + safety ceiling
 - [x] **Cold-plate sensor** — optional commented section in `espcure.yaml`; DS18B20 one-wire on GPIO10
 - [ ] **SD card logging** — local CSV data log without HA dependency (requires SPI SD card module)
 - [ ] **HA energy dashboard** — requires INA219 power sensor hardware
@@ -105,4 +108,5 @@ Priority: 🔴 Critical · 🟡 High · 🟢 Nice-to-have · ✅ Done
 - Frost protection reacts to chamber *air* temperature (SHT45), not cold-plate surface — may be slow to respond to rapid over-cooling
 - SHT45 self-heating (~0.1–0.2 °C) means temperature reads slightly high; calibrate with offset after install
 - SSR-40 DD control voltage is at the minimum spec (3.3 V = 3 V min) — verify each SSR before final install
-- VPD mode controls only the dehumidifier (downward); there is no humidifier in this build
+- Humidity control is downward-only (Peltier condensation); there is no humidifier in this build
+- Temperature has no active cooling (heat-only PID) — the chamber floats (typically ~63–67 °F); the `max_chamber_temp` ceiling is the only forced-cooling path

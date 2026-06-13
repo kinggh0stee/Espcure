@@ -7,18 +7,23 @@ All notable changes to EspCure are documented here.
 ## [Unreleased]
 
 ### Added
-- **VPD target mode** — third humidity control mode (`VPD Control Mode` switch); `VPD Setpoint` and `VPD Hysteresis` number entities; controls dehumidifier to hit target VPD
+- **Control-topology rework** — the Peltier now chases dew point / VPD (cold-plate condensation is the dehumidifier) and the heater chases temperature. The temperature PID is now **heat-only**.
+- **10-Day Dry Program** (`10-Day Dry Program` switch) — dew-point recipe: day 1 ramps 60→54 °F DP, days 2–5 hold 54 °F, days 6–9 hold 52 °F, day 10 auto-off. `10-Day Program Day` counter and `10-Day Program Status` text sensor.
+- **High-temperature safety ceiling** — `Max Chamber Temperature (Safety Ceiling)` number (default 27 °C / 80 °F). Because the PID is heat-only, this forces the Peltier on above the ceiling so the chamber can't overheat.
+- **VPD target mode** — humidity control mode (`VPD Control Mode` switch); `VPD Setpoint` and `VPD Hysteresis` number entities
 - **Optional cold-plate sensor section** (commented YAML): DS18B20 one-wire on GPIO10 for direct frost detection
 - **GitHub Actions CI** — `esphome config` validation runs on every PR that touches `espcure.yaml`; `requirements.txt` added
 - **HA dashboard enhancements** — VPD gauge, color-coded overview badges, conditional program progress bars, 7-day temperature history, VPD control section
 - **Made for ESPHome compliance** — `esp32_improv` and `improv_serial` components added for BLE + serial WiFi provisioning
 
 ### Changed
-- **Peltier output** switched from `slow_pwm` (20 s) to `ledc` at 15 Hz — matches heater output; TEC junction sees average power instead of thermal cycling, reducing long-term junction fatigue.
-- **Fan relay** now controlled dynamically by the 2 s PID-state loop — ON when PID is active (cooling/heating/idle), OFF when PID is off. Removed always-on boot behaviour (`on_boot` + `RESTORE_DEFAULT_ON`). Fans no longer run on idle power-on.
-- **Heater output** switched from `slow_pwm` (20 s period) to `ledc` at 15 Hz for finer PID duty-cycle resolution. Peltier output remains `slow_pwm` 20 s — do not change.
+- **Temperature PID is now heat-only** (`cool_output` removed). Default target raised 55 °F → **60 °F (15.6 °C)** — a realistic floor for Peltier strength. Set to `mode: HEAT` on boot.
+- **Peltier is no longer a PID output** — it is bang-bang driven by the 30 s dew-point/VPD loop via `set_level(1.0/0.0)`. New `peltier_cooling` global tracks demand.
+- **Frost guard** now forces the **Peltier** off below `min_chamber_temp` (was: suspend whole PID). The heater keeps running during frost to aid recovery.
+- **Fan relay** ON when the Peltier is cooling OR the heater is heating; commanded ON in the same lambda as the Peltier so the hot-side fan always has airflow.
+- **Peltier and heater outputs** both use `ledc` at 15 Hz (Peltier switched from `slow_pwm`; junction sees average power, reducing fatigue).
 - **BOM**: replaced 5 V PSU with a 12 V → 5 V buck converter (e.g. LM2596 or MP1584EN module) — one less power brick.
-- **README.md** rewritten to reflect current hardware (ESP32-C6, SHT45, SSR-40 DDs) and all current features (OLED, RGB LED, three humidity modes, Cannatrol 4+4, VPD, CI)
+- **README.md** rewritten to reflect current hardware (ESP32-C6, SHT45, SSR-40 DDs) and current features (OLED, RGB LED, two humidity modes, Cannatrol 4+4 + 10-Day Dry, VPD, CI)
 - `cannatrol_day` max_value raised 8 → 9 to accommodate end-of-program day counter
 - Removed piezo buzzer (`ledc_output`, `rtttl`, frost/program-complete melodies); GPIO10 is now free
 - `docs/display-plan.md` rewritten as an "implemented" reference (OLED live in config); updated GPIO budget to reflect GPIO8/9 assignments
@@ -26,6 +31,14 @@ All notable changes to EspCure are documented here.
 - `docs/hardware.md`: buzzer removed from BOM/GPIO table; OLED wiring section added
 - `docs/calibration.md`: removed DS18B20 section (no cold-plate sensor in this build); added humidity salt reference table
 - `CLAUDE.md`: added OLED and WS2812 RGB LED to capabilities; added display/LED key-section entries
+- `docs/hardware.md`, `docs/cure-programs.md`, `docs/pid-tuning.md`, `docs/ha-dashboard.yaml`, `CLAUDE.md`: updated for the heat-only / Peltier-dehumidification topology, the new 10-Day Dry program, and the safety ceiling
+
+### Removed
+- **External dehumidifier relay** (`Dehumidifier` switch, GPIO23) — the Peltier cold plate is now the sole dehumidification mechanism. GPIO23 is free.
+- **RH humidity control mode** — `Humidity Setpoint` / `Humidity Hysteresis` numbers, the `Humidity Error` sensor, and the RH bang-bang branch. RH without temperature is unreliable.
+- **18-day RH step-down program** — `Cure Program (18-day)` switch, `Cure Program Day` counter, `Cure Program Status` sensor (replaced by the 10-Day Dry program).
+- **Apply Cold-Plate Profile** button — it relied on the removed RH fallback.
+- **PID Cool Output** diagnostic sensor — the PID no longer has a cool output.
 
 ---
 

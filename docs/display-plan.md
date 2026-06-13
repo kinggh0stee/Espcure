@@ -38,7 +38,7 @@ The display cycles every 5 seconds automatically. Press the **BOOT button** (GPI
 |---|---|
 | **Main** | Temperature °C (large) + RH % (large), dew point, VPD, chamber status, temp °F, frost banner |
 | **Control** | Humidity control mode, temp setpoint (°C + °F), frost floor, WiFi signal |
-| **Programs** | 18-day status, Cannatrol 4+4 status, active humidity/DP error |
+| **Programs** | 10-Day Dry status, Cannatrol 4+4 status, active humidity/DP error |
 
 The display auto-updates every 5 s. Page advance respects the 5 s timer — a manual press restarts it from that page.
 
@@ -113,7 +113,7 @@ display:
           auto sc = id(frost_active) ? red : white;
           it.printf(10, 160, id(font_s), sc,     "%s", id(chamber_status).state.c_str());
           it.printf(10, 178, id(font_s), white,  "%s", id(humidity_control_mode).state.c_str());
-          it.printf(10, 210, id(font_s), yellow, "%s", id(cure_program_status).state.c_str());
+          it.printf(10, 210, id(font_s), yellow, "%s", id(dry10_program_status).state.c_str());
           it.printf(10, 228, id(font_s), yellow, "%s", id(cannatrol_program_status).state.c_str());
 ```
 
@@ -137,7 +137,7 @@ Color coding convention:
 | 19 | Heater SSR |
 | 21 | I²C SDA (SHT45 + OLED) |
 | 22 | I²C SCL (SHT45 + OLED) |
-| 23 | Dehumidifier relay (optional) |
+| 23 | **Free** (formerly dehumidifier relay) |
 | **Free** | GPIO0–4, 6–7, 10–11, 20 |
 
 GPIO10–11 are available for the TFT DC/CS lines without reassigning anything.

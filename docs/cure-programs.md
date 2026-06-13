@@ -1,79 +1,92 @@
 # Cure Programs
 
-## Control Mode Overview
+## Control Architecture Overview
 
-EspCure supports two humidity control modes, selectable via the **Dew Point Control Mode** switch:
+EspCure uses a **decoupled control topology**:
 
-| Mode | Switch | Controls | Setpoint entity |
+- **Temperature (heater only)**: PID loop targets 60 °F (15.6 °C) by default, rarely activates (chamber floats 63–67 °F). A safety ceiling at 27 °C (80 °F) forces the Peltier ON above that point regardless of humidity demand.
+- **Humidity (Peltier cold plate)**: Bang-bang loop on dew point or VPD, runs every 30 s at full 15 Hz, condensing moisture from the air onto the Peltier cold plate. This is the sole dehumidification mechanism.
+- **Fan (GPIO5)**: ON when Peltier is cooling OR heater is heating; OFF otherwise.
+
+## Humidity Control Modes
+
+Two mutually exclusive modes control the Peltier:
+
+| Mode | Controls | Setpoint entity | How it works |
 |---|---|---|---|
-| **RH Mode** (default) | OFF | % Relative Humidity | `Humidity Setpoint` |
-| **Dew Point Mode** | ON | Dew point °C | `Dew Point Setpoint` |
+| **Dew Point Mode** (default) | Dew point °C | `Dew Point Setpoint` | Peltier chases dew point; cold plate condenses when below air DP |
+| **VPD Mode** | Vapor Pressure Deficit kPa | `VPD Setpoint` | Peltier chases VPD; dehumidifies when above VPD threshold |
 
-**Dew Point Mode is the Cannatrol-equivalent approach.** The Cannatrol displays dry-bulb temperature + dew point and controls the dehumidifier by maintaining a target dew point. When the cold plate drops below the air's dew point, moisture condenses on the plate and is removed — that's the dehumidification mechanism.
-
-**RH Mode** is simpler and more familiar. Use it if you prefer working in % RH.
-
-Both modes use the same dehumidifier relay and hysteresis logic — only the control variable changes.
+Both modes are available at all times — select one via the **Dew Point Control Mode** or **VPD Control Mode** switch (turning one ON automatically disables the other).
 
 ---
 
 ## Built-in Programs
 
-EspCure has two automated cure programs. Only one can run at a time — enabling one automatically disables the other.
-
-### 18-Day Step-Down Program
-
-Slow, conservative cure based on the rollitup.org cold-plate method.
-
-| Setting | Value |
-|---|---|
-| Temperature | 55 °F (12.8 °C) |
-| Control mode | RH % |
-| Start humidity | 78 % |
-| End humidity | 60 % |
-| Step | −1 %/day at midnight |
-| Duration | ~18 days |
-
-**Enable**: Toggle **Cure Program (18-day)** switch ON — resets day counter to 0 and humidity setpoint to 78 %. Automatically switches to RH mode.
-
-**Pause**: Toggle switch OFF. The current setpoint is retained.
-
-**Resume**: Toggle ON again. Step-down continues from the current setpoint.
-
-**Status sensor**: `Cure Program Status` shows e.g. `Day 3 — 75% RH target`.
-
----
+Two automated cure programs are available. Enabling one automatically disables the other. Both require Home Assistant time sync (midnight cron).
 
 ### Cannatrol 4+4 Program
 
 Fast, commercial-style cure using dew-point control. Matches the Cannatrol's default protocol.
 
-| Phase | Days | Temp | Dew Point | RH Equivalent |
-|---|---|---|---|---|
-| Dry | 1–4 | 68 °F (20 °C) | 12.2 °C (54 °F) | ~61 % |
-| Cure | 5–8 | 68 °F (20 °C) | 11.1 °C (52 °F) | ~57 % |
+| Phase | Days | Temp | Dew Point |
+|---|---|---|---|
+| Dry | 1–4 | 20 °C (68 °F) | 12.2 °C (54 °F) |
+| Cure | 5–8 | 20 °C (68 °F) | 11.1 °C (52 °F) |
 
 **Enable**: Toggle **Cannatrol 4+4 Program** switch ON. This automatically:
 - Enables Dew Point Control Mode
-- Sets temperature to 20.0 °C (68 °F)
+- Sets temperature target to 20.0 °C (68 °F)
 - Sets dew point to 12.2 °C (dry phase)
 - Resets the day counter
 
-**Phase transition**: Midnight on day 5 drops the dew point setpoint to 11.1 °C automatically.
+**Phase transition**: Midnight on day 5 drops the dew point setpoint to 11.1 °C.
 
 **Status sensor**: `Cannatrol Program Status` shows e.g. `Dry Phase — Day 2/4 (12.2°C DP)`.
 
 ---
 
+### 10-Day Dry Program
+
+Proven dew-point recipe with a controlled ramp and steady-state holds. This replaces the previous 18-day RH-based program.
+
+Temperature stays at 60 °F (15.6 °C) throughout — the heater holds the floor while the Peltier chases dew point.
+
+| Day (shown) | Dew Point | Temp | Notes |
+|---|---|---|---|
+| 1 | 60 °F (15.6 °C) | 60 °F (15.6 °C) | Ramp start — set the moment the program is enabled |
+| 2 | 57 °F (13.9 °C) | 60 °F (15.6 °C) | Ramp midpoint |
+| 3–6 | 54 °F (12.2 °C) | 60 °F (15.6 °C) | Dry hold (4 days) |
+| 7–10 | 52 °F (11.1 °C) | 60 °F (15.6 °C) | Cure hold (4 days); program auto-disables at midnight after day 10 |
+
+**Enable**: Toggle the **10-Day Dry Program** switch ON. This automatically:
+- Enables Dew Point Control Mode (disables Cannatrol 4+4)
+- Sets the temperature target to 15.6 °C (60 °F)
+- Sets the dew point to 15.6 °C (60 °F — ramp start)
+- Resets the day counter (shows Day 1)
+
+**The 2-day ramp**: dew point starts at 60 °F on enable, drops to 57 °F at the first midnight, and reaches 54 °F at the second — a gentle ramp that lets the Peltier begin condensing without aggressively drying the material.
+
+**Day progression** (at each midnight):
+- Day 1 → 2: dew point 60 → 57 °F
+- Day 2 → 3: dew point 57 → 54 °F (ramp complete)
+- Days 3–6: hold 54 °F (dry phase, 4 days)
+- Day 6 → 7: dew point 54 → 52 °F (cure phase begins)
+- Days 7–10: hold 52 °F (cure phase, 4 days)
+- After day 10's midnight: program auto-disables
+
+**Status sensor**: `10-Day Program Status` shows e.g. `Day 3/10 — Dry 54°F`.
+
+---
+
 ## One-Tap Profile Presets
 
-Three preset buttons are available on both the device web UI (`http://espcure.local`) and in Home Assistant:
+Two preset buttons available on both the device web UI (`http://espcure.local`) and in Home Assistant:
 
 | Button | Temp | Dew Point | Mode |
 |---|---|---|---|
 | **Apply Dry Profile** | 20 °C (68 °F) | 12.2 °C (54 °F) | Dew Point ON |
 | **Apply Cure Profile** | 20 °C (68 °F) | 11.1 °C (52 °F) | Dew Point ON |
-| **Apply Cold-Plate Profile** | 12.8 °C (55 °F) | — | Dew Point OFF (RH mode) |
 
 These set all relevant setpoints instantly without modifying the cure program switch or day counter.
 
@@ -81,48 +94,46 @@ These set all relevant setpoints instantly without modifying the cure program sw
 
 ## Manual Humidity Control
 
-When no program is running, set setpoints manually:
+When no program is running, set setpoints manually via Dew Point or VPD mode:
 
-- **Humidity Setpoint** — target % RH (RH mode)
-- **Humidity Hysteresis** — dead band ÷ 2; default 2 %, tighten to 1 % for precision
-- **Dew Point Setpoint** — target dew point °C (dew point mode)
+**Dew Point Mode:**
+- **Dew Point Setpoint** — target dew point °C
 - **Dew Point Hysteresis** — dead band ÷ 2; default 0.5 °C
 
-The **Humidity Error** and **Dew Point Error** diagnostic sensors show the current deviation from setpoint (positive = too humid).
+**VPD Mode:**
+- **VPD Setpoint** — target vapor pressure deficit in kPa
+- **VPD Hysteresis** — dead band ÷ 2; default 0.2 kPa
+
+The **Dew Point Error** diagnostic sensor shows the current deviation from dew-point setpoint (positive = too humid).
 
 ---
 
-## Which Protocol to Use?
+## Program Comparison
 
-| Protocol | Duration | Temp | Control mode | Best for |
+| Program | Duration | Temp | Dew Point | Best for |
 |---|---|---|---|---|
-| 18-day step-down | ~18 days | 55 °F (12.8 °C) | RH % | Slow, forgiving — cold plate actively condenses |
-| Cannatrol 4+4 | ~8 days | 68 °F (20.0 °C) | Dew point | Faster — closer to commercial result |
-| Cold-Plate Profile | Manual | 55 °F (12.8 °C) | RH % | Ongoing storage after cure |
-| Cannatrol Storage | Manual | 68 °F (20.0 °C) | Dew point 12.2 °C | Long-term storage |
+| **Cannatrol 4+4** | ~8 days | 68 °F (20 °C) | 54→52 °F | Fast cure; commercial-style; near-ambient |
+| **10-Day Dry** | 10 days | 60 °F (15.6 °C) | 60→57→54→52 °F | Proven recipe; gentle ramp; slower drying |
+| **Manual Dew Point** | Ongoing | User-set | User-set | Storage or custom protocol |
+| **Manual VPD** | Ongoing | User-set | User-set | Advanced growers; VPD-aware control |
 
-The rollitup method works better at lower temperatures where the Peltier is working harder and the cold plate actively condenses moisture. The Cannatrol method works at near-ambient temperature and relies on dew-point regulation to pace moisture loss.
+**Why two programs?** Cannatrol 4+4 starts hard (54 °F DP day 1) and is faster. The 10-Day Dry ramps gently from 60 °F DP to avoid shocking the material.
+
+---
+
+## Safety Controls
+
+### Frost Floor (Min Chamber Temp)
+
+If chamber air temperature (SHT45) drops below the floor (default 4 °C / 39 °F), the Peltier is suspended until the chamber recovers 2 °C above that point. The heater continues running to aid recovery. Adjust in HA via the **Min Chamber Temperature** number entity.
+
+### Safety Ceiling (Max Chamber Temp)
+
+If chamber air temperature exceeds the ceiling (default 27 °C / 80 °F), the Peltier is forced ON regardless of humidity demand, giving temperature an emergency downward authority. User-adjustable 22–32 °C in HA via **Max Chamber Temperature** number entity. This does not normally activate during standard 60–67 °F operation.
 
 ---
 
 ## Home Assistant Automation Examples
-
-### Alert: Cure Program Complete
-
-```yaml
-alias: "EspCure — Cure Program Complete"
-triggers:
-  - trigger: state
-    entity_id: switch.espcure_cure_program_18_day
-    from: "on"
-    to: "off"
-actions:
-  - action: notify.mobile_app_your_phone
-    data:
-      title: "EspCure"
-      message: "18-day cure program complete. Humidity is now at 60 %."
-mode: single
-```
 
 ### Alert: Cannatrol Program Complete
 
@@ -141,6 +152,23 @@ actions:
 mode: single
 ```
 
+### Alert: 10-Day Dry Program Complete
+
+```yaml
+alias: "EspCure — 10-Day Dry Complete"
+triggers:
+  - trigger: state
+    entity_id: switch.espcure_10_day_dry_program
+    from: "on"
+    to: "off"
+actions:
+  - action: notify.mobile_app_your_phone
+    data:
+      title: "EspCure"
+      message: "10-Day Dry program complete. Chamber is in hold mode at 52 °F DP."
+mode: single
+```
+
 ### Alert: Temperature Out of Range
 
 ```yaml
@@ -148,7 +176,7 @@ alias: "EspCure — Temperature Alert"
 triggers:
   - trigger: numeric_state
     entity_id: sensor.espcure_chamber_temperature
-    above: 16
+    above: 22
     for:
       minutes: 30
   - trigger: numeric_state
@@ -169,7 +197,7 @@ mode: single
 ### Alert: Frost Protection Triggered
 
 ```yaml
-alias: "EspCure — Frost Protection"
+alias: "EspCure — Frost Protection Active"
 triggers:
   - trigger: state
     entity_id: binary_sensor.espcure_frost_floor_active
@@ -178,23 +206,23 @@ actions:
   - action: notify.mobile_app_your_phone
     data:
       title: "EspCure Warning"
-      message: "Frost floor active — PID suspended until chamber warms."
+      message: "Frost floor active — Peltier suspended until chamber warms."
 mode: single
 ```
 
-### Alert: Humidity Out of Range
+### Alert: Dew Point Out of Range
 
 ```yaml
-alias: "EspCure — Humidity Alert"
+alias: "EspCure — Dew Point Alert"
 triggers:
   - trigger: numeric_state
-    entity_id: sensor.espcure_chamber_humidity
-    above: 80
+    entity_id: sensor.espcure_chamber_dew_point
+    above: 15
     for:
       hours: 1
   - trigger: numeric_state
-    entity_id: sensor.espcure_chamber_humidity
-    below: 55
+    entity_id: sensor.espcure_chamber_dew_point
+    below: 8
     for:
       hours: 1
 actions:
@@ -202,35 +230,7 @@ actions:
     data:
       title: "EspCure Alert"
       message: >
-        Chamber humidity out of range:
-        {{ states('sensor.espcure_chamber_humidity') }} % RH
-mode: single
-```
-
-### Auto-advance to Cure Phase (18-day program)
-
-Manually transitions to a lower temperature and steady humidity setpoint after 7 days:
-
-```yaml
-alias: "EspCure — Switch to Cure Phase"
-triggers:
-  - trigger: numeric_state
-    entity_id: number.espcure_cure_program_day
-    above: 6
-conditions:
-  - condition: state
-    entity_id: switch.espcure_cure_program_18_day
-    state: "on"
-actions:
-  - action: climate.set_temperature
-    target:
-      entity_id: climate.espcure_chamber_temperature
-    data:
-      temperature: 12.8
-  - action: number.set_value
-    target:
-      entity_id: number.espcure_humidity_setpoint
-    data:
-      value: 63
+        Chamber dew point out of range:
+        {{ states('sensor.espcure_chamber_dew_point') }} °C
 mode: single
 ```

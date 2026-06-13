@@ -139,8 +139,8 @@ views:
                 name: Frost Floor Temp
               - entity: binary_sensor.espcure_frost_floor_active
                 name: Active
-              - entity: sensor.espcure_pid_cool_output
-                name: Cool Output
+              - entity: sensor.espcure_peltier_output
+                name: Peltier Output
               - entity: sensor.espcure_pid_heat_output
                 name: Heat Output
 
@@ -194,39 +194,30 @@ views:
           - entity: button.espcure_apply_cure_profile
             name: Apply Cure Profile (68°F / 11.1°C DP)
             action_name: Apply
-          - entity: button.espcure_apply_cold_plate_profile
-            name: Apply Cold-Plate Profile (55°F / RH mode)
-            action_name: Apply
 
-      # ── 18-day program status (conditional) ───────────────────────────────
+      # ── 10-day program status (conditional) ───────────────────────────────
       - type: conditional
         conditions:
-          - entity: switch.espcure_cure_program_18_day
+          - entity: switch.espcure_10_day_dry_program
             state: "on"
         card:
           type: markdown
           content: >
-            **18-Day Program Active** — {{ states('sensor.espcure_cure_program_status') }}
+            **10-Day Dry Program Active** — {{ states('sensor.espcure_10_day_program_status') }}
 
-            Progress: `{{ '█' * (states('number.espcure_cure_program_day') | int) }}{{ '░' * (18 - (states('number.espcure_cure_program_day') | int)) }}` ({{ states('number.espcure_cure_program_day') }}/18 days)
+            Progress: `{{ '█' * (states('number.espcure_10_day_program_day') | int) }}{{ '░' * (10 - (states('number.espcure_10_day_program_day') | int)) }}` ({{ states('number.espcure_10_day_program_day') }}/10 days)
 
-      # ── 18-day program ────────────────────────────────────────────────────
+      # ── 10-day program ────────────────────────────────────────────────────
       - type: entities
-        title: 18-Day Step-Down Program
+        title: 10-Day Dry Program
         icon: mdi:sprout
         entities:
-          - entity: switch.espcure_cure_program_18_day
-            name: Enable 18-Day Program
-          - entity: sensor.espcure_cure_program_status
+          - entity: switch.espcure_10_day_dry_program
+            name: Enable 10-Day Dry Program
+          - entity: sensor.espcure_10_day_program_status
             name: Status
-          - entity: number.espcure_cure_program_day
+          - entity: number.espcure_10_day_program_day
             name: Current Day
-          - entity: number.espcure_humidity_setpoint
-            name: Humidity Setpoint (%)
-          - entity: number.espcure_humidity_hysteresis
-            name: Humidity Hysteresis (%)
-          - entity: sensor.espcure_humidity_error
-            name: RH Error
 
       # ── Cannatrol 4+4 program status (conditional) ─────────────────────────
       - type: conditional
@@ -294,46 +285,49 @@ views:
         entities:
           - entity: switch.espcure_chamber_fans
             name: Chamber Fans (GPIO5)
-          - entity: switch.espcure_dehumidifier
-            name: Dehumidifier Relay (GPIO23)
           - type: divider
-          - entity: sensor.espcure_pid_cool_output
-            name: Peltier TEC Output (GPIO18)
           - entity: sensor.espcure_pid_heat_output
             name: Heater Output (GPIO19)
+          - entity: sensor.espcure_peltier_output
+            name: Peltier TEC Output (GPIO18)
 
       # ── Output history ────────────────────────────────────────────────────
       - type: history-graph
-        title: PID Outputs — Last 24 Hours
+        title: Heater & Peltier Outputs — Last 24 Hours
         hours_to_show: 24
         entities:
-          - entity: sensor.espcure_pid_cool_output
-            name: Cool %
           - entity: sensor.espcure_pid_heat_output
             name: Heat %
+          - entity: sensor.espcure_peltier_output
+            name: Peltier %
 
-      # ── Frost protection ──────────────────────────────────────────────────
+      # ── Temperature safety limits ─────────────────────────────────────────
       - type: entities
-        title: Frost Protection
+        title: Temperature Safety Limits
         icon: mdi:snowflake-alert
         entities:
-          - entity: binary_sensor.espcure_frost_floor_active
-            name: Frost Guard Active
           - entity: number.espcure_min_chamber_temperature_frost_floor
             name: Frost Floor (°C)
+          - entity: binary_sensor.espcure_frost_floor_active
+            name: Frost Guard Active
+          - entity: number.espcure_max_chamber_temperature_safety_ceiling
+            name: Max Chamber Temp (°C)
 
       # ── Safety notice ─────────────────────────────────────────────────────
       - type: markdown
         content: >
           ### Safety Notes
 
-          - **Fans** run continuously at boot (`RESTORE_DEFAULT_ON`). Do not disable
-            fans unless the chamber is empty — TEC hot-side cooling depends on airflow.
+          - **Fans** run only while the Peltier is cooling or the heater is heating
+            (off when idle). They are commanded on in the same step as the Peltier so
+            the hot side always has airflow — Peltier hot-side cooling depends on it.
           - **SSR-40 DD** relays must be on heatsinks when carrying > 5 A.
-          - **Peltier switching** uses `slow_pwm` (20 s period). The minimum safe
-            period is 10 s — do not reduce this.
-          - **Frost guard** monitors chamber *air* temperature. If ice forms on the
-            Peltier fins, raise the Frost Floor setpoint.
+          - **Peltier** is bang-bang driven (`ledc` 15 Hz, full on/off) by the dew-point
+            / VPD loop — it is the dehumidifier, not a temperature output.
+          - **Frost guard** monitors chamber *air* temperature and forces the Peltier
+            off below the floor. If ice forms on the Peltier fins, raise the Frost Floor.
+          - **Max Chamber Temp** forces the Peltier on above the ceiling — the only
+            active cooling path in heat-only temperature control.
 
 
   # ── PID Tuning ─────────────────────────────────────────────────────────────
@@ -365,10 +359,10 @@ views:
         title: PID State
         icon: mdi:chart-line
         entities:
-          - entity: sensor.espcure_pid_cool_output
-            name: Cool Output
           - entity: sensor.espcure_pid_heat_output
             name: Heat Output
+          - entity: sensor.espcure_peltier_output
+            name: Peltier Output
           - entity: sensor.espcure_pid_integral
             name: Integral Term
           - type: divider
@@ -380,10 +374,10 @@ views:
         title: PID Outputs — Last 4 Hours
         hours_to_show: 4
         entities:
-          - entity: sensor.espcure_pid_cool_output
-            name: Cool %
           - entity: sensor.espcure_pid_heat_output
             name: Heat %
+          - entity: sensor.espcure_peltier_output
+            name: Peltier %
           - entity: sensor.espcure_pid_integral
             name: Integral
 
@@ -429,10 +423,10 @@ views:
         title: Sensor Diagnostics
         icon: mdi:thermometer-lines
         entities:
-          - entity: sensor.espcure_humidity_error
-            name: RH Error (vs setpoint)
           - entity: sensor.espcure_dew_point_error
             name: Dew Point Error (vs setpoint)
+          - entity: sensor.espcure_vpd_error
+            name: VPD Error (vs setpoint)
           - type: divider
           - entity: sensor.espcure_chamber_temperature
             name: Chamber Temp (°C)

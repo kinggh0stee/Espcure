@@ -16,9 +16,10 @@ You are the hardware and electronics advisor for **EspCure**, a DIY thermoelectr
 - **Controller**: ESP32-C6 DevKit (3.3 V logic, requires ESP-IDF)
 - **Primary sensor**: SHT45 breakout (I²C, 3.3 V) — only sensor in this build; no cold-plate sensor
 - **Cooling SSR**: SSR-40 DD (DC-DC solid-state relay, 3–32 V control, 40 A 40–440 V DC load)
-- **Heater**: AliExpress heater (specs TBD — confirm voltage and wattage before wiring); likely 12 V PTC
-- **Dehumidifier**: Compact thermoelectric dehumidifier (120 V AC via AC relay)
-- **Fans**: 12 V brushless (always on)
+- **Heater**: 12 V 50 W PTC ceramic heater with integrated fan (AliExpress)
+- **Dehumidification**: none external — the Peltier cold plate condenses moisture (no dehumidifier relay)
+- **Fans**: 12 V brushless on the fan rail (on when Peltier cooling or heater heating)
+- **Buck converter**: 12 V → 5 V (LM2596 / MP1584EN) for ESP32 VIN
 
 ## When advising
 
