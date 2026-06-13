@@ -6,11 +6,22 @@ All notable changes to EspCure are documented here.
 
 ## [Unreleased]
 
+_Nothing yet._
+
+---
+
+## v1.0.0 — 2026-06-13
+
+First stable release. Major control-loop rework plus a full documentation and UI polish pass.
+
 ### Added
 - **Control-topology rework** — the Peltier now chases dew point / VPD (cold-plate condensation is the dehumidifier) and the heater chases temperature. The temperature PID is now **heat-only**.
-- **10-Day Dry Program** (`10-Day Dry Program` switch) — dew-point recipe: day 1 ramps 60→54 °F DP, days 2–5 hold 54 °F, days 6–9 hold 52 °F, day 10 auto-off. `10-Day Program Day` counter and `10-Day Program Status` text sensor.
+- **10-Day Dry Program** (`10-Day Dry Program` switch) — dew-point recipe: a 2-day ramp 60→57→54 °F DP, hold 54 °F (days 3–6), hold 52 °F (days 7–10), auto-off after day 10. `10-Day Program Day` counter and `10-Day Program Status` text sensor.
 - **High-temperature safety ceiling** — `Max Chamber Temperature (Safety Ceiling)` number (default 27 °C / 80 °F). Because the PID is heat-only, this forces the Peltier on above the ceiling so the chamber can't overheat.
 - **VPD target mode** — humidity control mode (`VPD Control Mode` switch); `VPD Setpoint` and `VPD Hysteresis` number entities
+- **Organized web UI** — entities grouped (Climate & Temperature, Humidity & Dew Point, VPD, Cure Programs, PID Tuning, Hardware & Status, Diagnostics) via `web_server` v3 sorting groups, plus added icons across the board.
+- **Peltier Output** and **VPD Error** sensors — exposed so the Home Assistant dashboard renders without missing entities.
+- **Docs site polish** — SVG favicon, `display-plan.md` added to the MkDocs nav.
 - **Optional cold-plate sensor section** (commented YAML): DS18B20 one-wire on GPIO10 for direct frost detection
 - **GitHub Actions CI** — `esphome config` validation runs on every PR that touches `espcure.yaml`; `requirements.txt` added
 - **HA dashboard enhancements** — VPD gauge, color-coded overview badges, conditional program progress bars, 7-day temperature history, VPD control section

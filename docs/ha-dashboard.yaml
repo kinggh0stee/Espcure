@@ -66,9 +66,9 @@ views:
             max: 30
             needle: true
             severity:
-              green: 10
-              yellow: 18
-              red: 24
+              green: 4
+              yellow: 22
+              red: 26
             unit: "°C"
 
           - type: gauge
@@ -90,8 +90,8 @@ views:
             max: 20
             needle: true
             severity:
-              green: 9
-              yellow: 13
+              green: 2
+              yellow: 14
               red: 16
             unit: "°C"
 
@@ -129,7 +129,7 @@ views:
             features:
               - type: climate-hvac-modes
                 hvac_modes:
-                  - heat_cool
+                  - heat
                   - "off"
 
           - type: entities
@@ -256,7 +256,7 @@ views:
         title: VPD Control Mode
         icon: mdi:waves
         entities:
-          - entity: switch.espcure_use_vpd_control
+          - entity: switch.espcure_vpd_control_mode
             name: Enable VPD Control
           - entity: number.espcure_vpd_setpoint
             name: VPD Setpoint (kPa)
