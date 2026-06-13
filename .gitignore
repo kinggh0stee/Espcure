@@ -1,6 +1,7 @@
 secrets.yaml
 .esphome/
 build/
+site/
 *.bin
 *.elf
 *.map

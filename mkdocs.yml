@@ -39,7 +39,7 @@ theme:
   icon:
     repo: fontawesome/brands/github
     logo: material/leaf
-  favicon: assets/favicon.png
+  favicon: assets/favicon.svg
 
 extra_css:
   - stylesheets/extra.css
@@ -72,6 +72,7 @@ nav:
   - Calibration: calibration.md
   - PID Tuning: pid-tuning.md
   - Cure Programs: cure-programs.md
+  - Display: display-plan.md
 
 extra:
   social:
