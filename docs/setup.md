@@ -27,8 +27,20 @@ ota_password: "<choose a strong password>"
 ```
 
 Generate a random API encryption key:
+
+**macOS / Linux:**
 ```bash
 python3 -c "import base64,os; print(base64.b64encode(os.urandom(32)).decode())"
+```
+
+**Windows (PowerShell):**
+```powershell
+[Convert]::ToBase64String((1..32 | ForEach-Object { [byte](Get-Random -Max 256) }))
+```
+
+Or if Python is installed on Windows:
+```powershell
+python -c "import base64,os; print(base64.b64encode(os.urandom(32)).decode())"
 ```
 
 ---
