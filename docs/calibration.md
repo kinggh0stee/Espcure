@@ -55,11 +55,15 @@ For most users, a 0–1.5 % offset is sufficient.
 
 ## SHT45 On-Chip Heater
 
-The SHT45 has a built-in heater that can clear condensation from the sensor surface. It is **disabled** in `espcure.yaml` (`heater_max_duty: 0.0`) so it never biases the readings.
+The SHT45 has a built-in resistive heater for evaporating condensation off the sensing element. It is **off during normal operation** (`heater_max_duty: 0.0`) so it never biases readings.
 
-> **Known limitation:** the **Clear Sensor Condensation** button currently only writes a log line — it does *not* yet pulse the heater (the `sht4x` platform exposes no on-demand heater action at the pinned ESPHome version). This is tracked in `TODO.md`. If the humidity reading pegs to ~100 % after a rapid temperature drop, improve chamber airflow or briefly raise the temperature setpoint until the condensation clears.
+If the humidity reading pegs near 100 % after a rapid temperature drop (condensation on the sensor face), press the **Clear Sensor Condensation** button in HA or the device web UI. The firmware:
 
-Do not enable the heater continuously — it biases both temperature and RH readings upward.
+1. Enables the heater (duty = 1.0) and forces one measurement cycle — the heater fires during that measurement (~1 s).
+2. Waits 1.5 s for the cycle to complete.
+3. Disables the heater and immediately takes a clean normal reading.
+
+Total button-press-to-fresh-reading time is about 3 s. Avoid pressing the button repeatedly — the heater temporarily biases both temperature and RH upward, and the effect clears within one update cycle after it's disabled.
 
 ---
 
