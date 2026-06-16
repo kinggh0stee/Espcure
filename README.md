@@ -39,14 +39,27 @@ Full BOM and wiring: [`docs/hardware.md`](docs/hardware.md)
 
 ## Quick Start
 
+**Linux / macOS:**
 ```bash
+python3 -m venv venv && source venv/bin/activate
+pip install -r requirements.txt          # pins esphome==2026.5.3 (matches CI)
 cp secrets.yaml.example secrets.yaml
 # edit secrets.yaml with your WiFi credentials, API key, OTA password
-esphome config espcure.yaml    # validate before flashing
-esphome run espcure.yaml       # flash via USB (first time)
+esphome config espcure.yaml              # validate before flashing
+esphome run espcure.yaml                 # flash via USB (first time)
 ```
 
-Full guide: [`docs/setup.md`](docs/setup.md)
+**Windows (PowerShell):**
+```powershell
+py -m venv venv; .\venv\Scripts\Activate.ps1
+pip install -r requirements.txt          # pins esphome==2026.5.3 (matches CI)
+Copy-Item secrets.yaml.example secrets.yaml
+# edit secrets.yaml with your WiFi credentials, API key, OTA password
+esphome config espcure.yaml              # validate before flashing
+esphome run espcure.yaml                 # flash via USB (first time)
+```
+
+Full guide (including key generation on both platforms): [`docs/setup.md`](docs/setup.md)
 
 ## Documentation
 

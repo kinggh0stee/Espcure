@@ -34,6 +34,8 @@ Values are persisted across reboots (`restore_value: true`) and automatically re
 
 The `PID Autotune` button in HA / web UI triggers ESPHome's built-in relay-feedback autotune. This characterises the **heater only** — the Peltier is bang-bang controlled by a separate dew-point/VPD loop and not part of the heat PID.
 
+> **Heat-only caveat:** the climate has no `cool_output`, so the chamber can only be driven *up* by the heater. The autotune action is configured with `negative_output: -1.0`, but with no active cooling the chamber relies on ambient drift to fall back below setpoint, which makes the relay oscillation slow and the result noisy. Start the autotune with the chamber **below** the target and expect it to take a while. If autotune stalls or returns implausible gains, fall back to the manual procedure and the diagnostic table below — the heater rarely runs in normal operation, so precise gains are not critical.
+
 1. Let chamber stabilize below setpoint (e.g. 10 °C with door closed).
 2. Set target temperature to 15.6 °C (60 °F) via the climate entity.
 3. Press **PID Autotune** in the HA device page or device web UI.

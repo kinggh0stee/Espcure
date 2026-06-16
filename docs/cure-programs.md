@@ -101,8 +101,8 @@ When no program is running, set setpoints manually via Dew Point or VPD mode:
 - **Dew Point Hysteresis** — dead band ÷ 2; default 0.5 °C
 
 **VPD Mode:**
-- **VPD Setpoint** — target vapor pressure deficit in kPa
-- **VPD Hysteresis** — dead band ÷ 2; default 0.2 kPa
+- **VPD Setpoint** — target vapor pressure deficit in kPa (default 0.8 kPa)
+- **VPD Hysteresis** — dead band ÷ 2; default 0.1 kPa
 
 The **Dew Point Error** diagnostic sensor shows the current deviation from dew-point setpoint (positive = too humid).
 

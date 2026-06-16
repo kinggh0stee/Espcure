@@ -6,7 +6,20 @@ All notable changes to EspCure are documented here.
 
 ## [Unreleased]
 
+### Added
+- **Cross-platform setup instructions** — `README.md` and `docs/setup.md` now give both Linux/macOS and Windows (PowerShell) commands for creating a venv, installing the pinned ESPHome, copying `secrets.yaml`, and generating the API key. `CLAUDE.md` notes the Windows `py -m esphome` / `Copy-Item` equivalents.
+
+### Changed
+- **Docs sweep / accuracy pass** across every document:
+  - `docs/setup.md` now installs ESPHome via the pinned `requirements.txt` (was bare `pip install esphome`), matching CI.
+  - `docs/cure-programs.md` corrected the VPD Hysteresis default to **0.1 kPa** (config value; doc previously said 0.2) and added the 0.8 kPa VPD Setpoint default.
+  - `docs/hardware.md` removed a stale "dehumidifier exhaust" mention (no dehumidifier in this build) and fixed the fusing example to match the 300 W / 25 A BOM PSU.
+  - `docs/pid-tuning.md` documents the heat-only autotune caveat (`negative_output: -1.0` with no `cool_output`).
+  - `docs/display-plan.md` / `CLAUDE.md` flag that GPIO10 is claimed by *either* the optional cold-plate DS18B20 *or* the ST7789 TFT DC line, not both.
+  - `CLAUDE.md` updated for the grouped web UI (`web_server` sorting groups), the UTF-8 byte-escape convention, diagnostic sensors, and per-program temp targets.
+
 ### Fixed
+- **Documentation accuracy: Clear Sensor Condensation button** — clarified that the button currently only logs the request and does **not** pulse the SHT45 heater (the `sht4x` platform exposes no on-demand heater action at the pinned ESPHome version). `docs/calibration.md`, `docs/hardware.md`, and `CLAUDE.md` now describe it as a known limitation; tracked in `TODO.md`. No firmware change.
 - **Text-sensor states crashing the Home Assistant API connection** — the `°C` glyph in several status strings was written as `\xc2\xb0C`, where C's `\x` escape greedily absorbs the following hex-digit `C`, producing the byte `0x0C` and invalid UTF-8 on the wire. HA's protobuf parser rejected the malformed `TextSensorStateResponse`, throwing a fatal `data_received()` error that dropped and reconnected the API connection in a loop (logged on the device as `CONNECTION_CLOSED errno=128`). Terminated each affected escape with `""` (`\xc2\xb0""C`) — the same workaround already used for the `°F` cases. Affected the `Humidity Control Mode`, `10-Day Program Status`, and `Cannatrol Program Status` text sensors, plus two OLED display strings. Display-only; no behavior change beyond a stable HA connection.
 
 ---

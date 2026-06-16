@@ -93,7 +93,9 @@ The SSR-40 DDs must be mounted on aluminum heatsinks when carrying more than ~5 
 
 ## Mounting the SHT45
 
-Mount the SHT45 inside the chamber, away from the Peltier cold plate and away from the dehumidifier exhaust. Ideal position: center-rear of the interior air space, elevated off the floor. The SHT45 has negligible self-heating (~0.1–0.2 °C at 3.3 V) — far less than the SHT31. Still calibrate with an offset after install. The SHT45 has an on-chip heater; in a high-humidity chamber, condensation can form on the sensor if the chamber temperature drops rapidly — use the **Clear Sensor Condensation** button in HA to pulse the heater and restore accurate readings.
+Mount the SHT45 inside the chamber, away from the Peltier cold plate and out of the direct hot-side fan stream. Ideal position: center-rear of the interior air space, elevated off the floor. The SHT45 has negligible self-heating (~0.1–0.2 °C at 3.3 V) — far less than the SHT31. Still calibrate with an offset after install.
+
+> The SHT45 on-chip heater is **disabled** in this build (`heater_max_duty: 0.0`) so it can't bias readings. The **Clear Sensor Condensation** button currently only logs the request — an on-demand heater pulse is not yet wired up (see `TODO.md`). If condensation forms after a rapid temperature drop, improve airflow or briefly raise the temperature setpoint.
 
 ## Dehumidification
 
@@ -123,4 +125,4 @@ A **Max Chamber Temperature** number entity (default 27 °C / 80 °F, user-adjus
 Add an automotive blade fuse holder on the 12 V positive rail:
 - Peltier branch: 15 A fuse
 - Heater + fan branch: 5 A fuse
-- Total 12 V main: match your PSU rating (e.g. 20 A for LRS-100-12)
+- Total 12 V main: match your PSU rating (e.g. 25 A for the 300 W supply in the BOM, or ~8 A for a 100 W Mean Well LRS-100-12)
