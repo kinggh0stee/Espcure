@@ -12,8 +12,8 @@ Capabilities:
 - **Selectable chamber sensor**: SHT31 (`sht3xd`) or SHT45 (`sht4x`), both at I²C 0x44, chosen via the `sht_platform` substitution at the top of `espcure.yaml`. No wiring change.
 - **Heat-only PID** temperature control with live tunable Kp/Ki/Kd (default target 15.6 °C). Heater rarely runs.
 - **Peltier cold-plate dehumidification** — the TEC is bang-bang driven (15 Hz full-on/off) by the active humidity loop; there is no external dehumidifier relay
-- **Two humidity control modes**: Dew Point mode (default, bang-bang on °C) and VPD mode (bang-bang on kPa); mutually exclusive
-- Dew point + VPD derived sensors; dew-point error diagnostic sensor
+- **Humidity control by dew point** (bang-bang on °C). A VPD mode exists in the code but is `internal: true` (hidden from the web UI and HA, not user-selectable) — see the web-UI declutter note below
+- Dew point derived sensor (+ an internal VPD sensor for the OLED); dew-point error diagnostic sensor
 - **10-day dry program** (dew point): day 1 ramps 15.6→12.2 °C DP, days 2–5 hold 12.2 °C, days 6–9 hold 11.1 °C, day 10 auto-off
 - **Cannatrol 4+4 program** (dew point): 4 days dry at 12.2 °C DP → 4 days cure at 11.1 °C DP
 - **One-tap presets**: Dry Profile, Cure Profile buttons
@@ -23,8 +23,8 @@ Capabilities:
 - **SSD1306 OLED display**: 3-page cycling (temp/RH/DP/VPD, control settings, program status); BOOT button (GPIO9) cycles pages manually
 - **WS2812 RGB LED** (GPIO8, built-in): cooling=blue, heating=red(dim), idle=green(very dim), frost=white blink
 - Home Assistant integration via encrypted native API (device_class + state_class on all sensors)
-- Diagnostic sensors: Peltier (Dehumidify) Duty (%), Dew Point Error, VPD Error, PID Heat Output, PID Integral, uptime, WiFi signal
-- Device-hosted web UI at `http://espcure.local` — `web_server` v3, dark mode toggle, entities in 6 sorting groups (Climate, Humidity & Dehumidification, Cure Programs, PID Tuning, Hardware, Diagnostics); set-once tuning/config knobs use `entity_category: config` to keep the live view clean; no HA required
+- Diagnostic sensors: Peltier (Dehumidify) Duty (%), Dew Point Error, PID Heat Output, PID Integral, uptime, WiFi signal
+- Device-hosted web UI at `http://espcure.local` — `web_server` v3, dark mode toggle, entities in 6 sorting groups (Climate & Temperature, Humidity & Dew Point, Cure Programs, Status & Indicators, Setup & Tuning, Diagnostics); no HA required. **Web-UI declutter:** `entity_category: config`/`diagnostic` does NOT hide entities from the device web page (it only tucks them away in HA), so the page is decluttered by (a) grouping set-once knobs into the bottom "Setup & Tuning" + "Diagnostics" groups and (b) `internal: true` on never-used entities (the whole VPD suite, the `page_button` BOOT sensor, the `humidity_control_mode` text) — `internal: true` removes from BOTH the web page and HA
 - OTA updates, fallback AP
 - GitHub Actions CI validates `esphome config` on every PR
 
@@ -84,11 +84,11 @@ All ESPHome work lives in **`espcure.yaml`**. Key sections:
 | `switch.dry10_program_active` | 10-day dew-point dry program |
 | `switch.cannatrol_program_active` | Cannatrol 4+4 dew-point program |
 | `switch.use_dew_point_control` | Dew Point mode toggle (default ON; mutual-exclusive with VPD mode) |
-| `switch.use_vpd_control` | VPD mode toggle (mutual-exclusive with dew-point mode) |
+| `switch.use_vpd_control` | VPD mode toggle — now `internal: true` (hidden from web UI + HA, not selectable). VPD branch in the 30 s loop is dead-but-harmless. Kept for one-line revert. |
 | `button.apply_*_profile` | One-tap profile presets (Dry, Cure) — set dew-point setpoint + temp target 20 °C + enable dew-point mode |
 | `button` (Autotune / Restart / Clear Sensor Condensation) | PID autotune, controller restart, sensor condensation-clear heater pulse (API matches `sht_platform`) |
 | `text_sensor.chamber_status` | Human-readable operating state (Cooling / Heating / Idle / Frost Guard) |
-| `web_server.sorting_groups` | 6 UI groups for the device web UI + HA — every entity sets a `sorting_group_id` + `sorting_weight`. VPD lives in the Humidity group (one loop, two modes). Set-once knobs use `entity_category: config`. |
+| `web_server.sorting_groups` | 6 UI groups (Climate & Temperature, Humidity & Dew Point, Cure Programs, Status & Indicators, Setup & Tuning, Diagnostics) — every visible entity sets `sorting_group_id` + `sorting_weight`. Essentials on top; all `entity_category: config` knobs cluster in "Setup & Tuning", diagnostics last. NOTE: `entity_category` does NOT hide entities from the web page (HA-only); web declutter = grouping + `internal: true`. |
 | `light.status_led` | WS2812 RGB LED (GPIO8) — color reflects cooling/heating state |
 | `display.oled` (pages) | SSD1306 OLED, 3-page cycling; `page_button` GPIO9 cycles |
 | `esp32_improv` | BLE WiFi provisioning; BOOT button (GPIO9) is the authorizer |
@@ -202,7 +202,7 @@ No real credentials are stored in the repo. The dummy `api_encryption_key` used 
 - **Cannatrol 4+4 program**: `cannatrol_phase` global (0=dry, 1=cure) tracks which phase is active. Phase transitions happen at midnight on day 5. The `cannatrol_program_status` text sensor exposes progress to both HA and the web UI.
 - **Sensor calibration**: SHT45 self-heating is ~0.1–0.2 °C (much less than SHT31). Still calibrate with `offset` in `filters` after install.
 - **Dew-point philosophy**: control dew point, not raw RH. With `use_dew_point_control` ON, the Peltier is driven by `dew_point_setpoint` (°C). Cannatrol cure default is 11.1 °C dew point. The `dew_point` sensor is calculated from SHT45 T + RH via Magnus formula — do not replace it with a direct sensor.
-- **Two humidity control modes**: Dew Point mode (default ON) and VPD mode. Only one active at a time — `use_vpd_control` and `use_dew_point_control` are mutually exclusive (each `on_turn_on` turns off the other). Both drive only the Peltier — there is no humidifier and no dehumidifier relay in this build. RH-only control was removed (RH without temperature is meaningless).
+- **Humidity control modes**: Dew Point mode is the only user-selectable mode. A VPD mode still exists in the code (`use_vpd_control`, `vpd_setpoint`, `vpd_hysteresis`, the `vpd`/`vpd_error` sensors) but all of it is now `internal: true` — hidden from the web UI and HA, so VPD can't be enabled and the VPD branch in the 30 s loop is dead-but-harmless. The mutual-exclusion (`use_dew_point_control` on_turn_on turns off `use_vpd_control`) is still wired. To bring VPD back, remove the `internal: true` flags (and restore the `web_server` sorting keys + the HA dashboard cards). Both modes drive only the Peltier — no humidifier/dehumidifier relay. RH-only control was removed (RH without temperature is meaningless).
 - **ESP32-C6 requires ESP-IDF**: The `framework: type: esp-idf` must not be changed to `arduino`. The C6 variant is not Arduino-compatible in ESPHome.
 - **BLE provisioning**: `esp32_improv` is enabled with `authorizer: page_button` (GPIO9 BOOT button). Hold the BOOT button while a phone scans for the device to authorize WiFi provisioning. `improv_serial` provides the same over USB serial.
 - **UTF-8 in text-sensor / display lambdas**: non-ASCII glyphs must be emitted as terminated hex byte escapes. Write `°C` as `\xc2\xb0""C`, **not** `\xc2\xb0C` — in the latter the `\x` escape greedily absorbs the following `C` hex digit, producing byte `0x0C` and invalid UTF-8. HA's protobuf parser rejects the malformed `TextSensorStateResponse` and drops the API connection in a reconnect loop (`CONNECTION_CLOSED errno=128`). The `""` terminates the escape. Applies to all `°`, `→` (`\xe2\x86\x92`), and `—` (`\xe2\x80\x94`) glyphs in `chamber_status`, `humidity_control_mode`, `dry10_program_status`, `cannatrol_program_status`, and the OLED page lambdas.
