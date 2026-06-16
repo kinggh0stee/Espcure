@@ -131,6 +131,15 @@ globals:
     restore_value: true
     initial_value: "0"
 
+  # Last status-LED state applied by the 2 s loop, so the LED is updated only
+  # on a genuine state change (edge-triggered). Re-asserting every cycle
+  # restarts the Frost Blink pulse effect and stomps manual control.
+  # -1 = uninitialised, 0 = idle, 1 = cooling, 2 = heating, 3 = frost.
+  - id: led_state
+    type: int
+    restore_value: false
+    initial_value: "-1"
+
 # ─── Sensors ──────────────────────────────────────────────────────────────────
 
 sensor:
@@ -789,27 +798,41 @@ interval:
       - lambda: |-
           bool cooling = id(peltier_cooling);
           bool heating = id(temp_pid).action == esphome::climate::CLIMATE_ACTION_HEATING;
+          // Fan runs unconditionally every cycle — on when cooling or heating.
           if (cooling || heating) {
             id(fan_relay).turn_on();
           } else {
             id(fan_relay).turn_off();
           }
 
+          // Resolve the desired LED state, then bail out unless it changed.
+          // Edge-triggering keeps the Frost Blink pulse running smoothly (a
+          // fresh set_effect() each cycle would restart it) and stops the loop
+          // from stomping the light's state every 2 s.
+          int state;
+          if (id(frost_active))   state = 3;
+          else if (cooling)       state = 1;
+          else if (heating)       state = 2;
+          else                    state = 0;
+          if (state == id(led_state)) return;
+          id(led_state) = state;
+
           auto call = id(status_led).make_call();
-          call.set_transition_length(300);
-          if (id(frost_active)) {
-            // White fast blink — frost guard active
+          if (state == 3) {
+            // White fast blink — frost guard active.
+            // No transition: transitions are incompatible with effects.
             call.set_state(true);
             call.set_rgb(1.0f, 1.0f, 1.0f);
             call.set_brightness(0.5f);
             call.set_effect("Frost Blink");
           } else {
+            call.set_transition_length(300);
             call.set_effect("None");
-            if (cooling) {
+            if (state == 1) {
               call.set_state(true);
               call.set_rgb(0.0f, 0.3f, 1.0f);   // blue — Peltier condensing
               call.set_brightness(0.7f);
-            } else if (heating) {
+            } else if (state == 2) {
               call.set_state(true);
               call.set_rgb(1.0f, 0.15f, 0.0f);  // red — heater on
               call.set_brightness(0.5f);

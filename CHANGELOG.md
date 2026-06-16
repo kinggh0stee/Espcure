@@ -7,6 +7,7 @@ All notable changes to EspCure are documented here.
 ## [Unreleased]
 
 ### Fixed
+- **Status LED now toggles reliably** — the 2 s status-LED loop previously re-issued a full light call every cycle. That restarted the "Frost Blink" pulse effect each pass (so it never blinked smoothly), mixed `set_transition_length()` with `set_effect()` in the same call (ESPHome drops the transition), and stomped any manual control of the `Status LED` entity within 2 s — so toggling it from HA/the web UI appeared to do nothing. The loop is now **edge-triggered** via a new `led_state` global: it only issues a light call when the cooling/heating/idle/frost state actually changes. Fan control still runs unconditionally every 2 s.
 - **PID autotune `negative_output` on heat-only loop** — the autotune button previously used `negative_output: -1.0`, but the temperature PID has no `cool_output`. With no cooling actuator the `-1.0` level goes nowhere, making the relay-feedback oscillation asymmetric and the resulting gains unreliable. Changed to `negative_output: 0.0` so the test correctly oscillates between "heater full on" and "heater off (passive cool-down)". Updated `docs/pid-tuning.md` with heat-only timing expectations (60–120 min) and a recommendation to prefer manual tuning.
 
 ### Added
