@@ -36,8 +36,8 @@ The display cycles every 5 seconds automatically. Press the **BOOT button** (GPI
 
 | Page | Content |
 |---|---|
-| **Main** | Temperature °C (large) + RH % (large), dew point, VPD, chamber status, temp °F, frost banner |
-| **Control** | Humidity control mode, temp setpoint (°C + °F), frost floor, WiFi signal |
+| **Main** | Temperature °C (large) + RH % (large), dew point, VPD, chamber status, temp setpoint, frost banner |
+| **Control** | Humidity control mode, temp setpoint (°C), frost floor, WiFi signal |
 | **Programs** | 10-Day Dry status, Cannatrol 4+4 status, active humidity/DP error |
 
 The display auto-updates every 5 s. Page advance respects the 5 s timer — a manual press restarts it from that page.

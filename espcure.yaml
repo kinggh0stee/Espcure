@@ -168,22 +168,6 @@ sensor:
         sorting_group_id: grp_humidity
         sorting_weight: 1
 
-  # Chamber temperature in °F — Cannatrol display convention
-  - platform: template
-    id: chamber_temp_f
-    name: "Chamber Temperature (°F)"
-    unit_of_measurement: "°F"
-    device_class: temperature
-    state_class: measurement
-    icon: "mdi:thermometer"
-    lambda: |-
-      if (isnan(id(chamber_temp).state)) return NAN;
-      return id(chamber_temp).state * 9.0f / 5.0f + 32.0f;
-    update_interval: 30s
-    web_server:
-      sorting_group_id: grp_climate
-      sorting_weight: 2
-
   # ── Derived humidity metrics ─────────────────────────────────────────────────
 
   # Dew point via Magnus formula — Cannatrol controls this, not raw RH
@@ -204,22 +188,6 @@ sensor:
     web_server:
       sorting_group_id: grp_humidity
       sorting_weight: 2
-
-  # Dew point in °F — Cannatrol display convention (mirrors chamber_temp_f)
-  - platform: template
-    id: dew_point_f
-    name: "Dew Point (°F)"
-    unit_of_measurement: "°F"
-    device_class: temperature
-    state_class: measurement
-    icon: "mdi:thermometer-water"
-    lambda: |-
-      if (isnan(id(dew_point).state)) return NAN;
-      return id(dew_point).state * 9.0f / 5.0f + 32.0f;
-    update_interval: 30s
-    web_server:
-      sorting_group_id: grp_humidity
-      sorting_weight: 3
 
   # Vapor Pressure Deficit — plant stress indicator (VPD mode lives in the
   # Humidity group alongside Dew Point — they are two modes of one loop)
@@ -374,9 +342,9 @@ switch:
       sorting_weight: 1
 
   # 10-day dew-point dry program (proven recipe — replaces the 24 h hang):
-  #   Day 1   : ramp dew point 60 °F → 57 °F → 54 °F
-  #   Days 2–5: hold 54 °F (12.2 °C) dew point
-  #   Days 6–9: hold 52 °F (11.1 °C) dew point
+  #   Day 1   : ramp dew point 15.6 °C → 13.9 °C → 12.2 °C
+  #   Days 2–5: hold 12.2 °C dew point
+  #   Days 6–9: hold 11.1 °C dew point
   #   Day 10  : complete, auto-off
   - platform: template
     id: dry10_program_active
@@ -394,10 +362,10 @@ switch:
           value: 0
       - number.set:
           id: dew_point_setpoint
-          value: 15.6       # 60 °F — start of the 2-day ramp
+          value: 15.6       # start of the 2-day ramp
       - climate.control:
           id: temp_pid
-          target_temperature: 15.6    # 60 °F
+          target_temperature: 15.6    # 15.6 °C
       - switch.turn_on: use_dew_point_control
 
   # Cannatrol 4+4 program: 4 days dry (12.2 °C DP) then 4 days cure (11.1 °C DP)
@@ -418,10 +386,10 @@ switch:
       - lambda: id(cannatrol_phase) = 0;
       - number.set:
           id: dew_point_setpoint
-          value: 12.2       # 54 °F — Cannatrol dry profile
+          value: 12.2       # Cannatrol dry profile
       - climate.control:
           id: temp_pid
-          target_temperature: 20.0    # 68 °F
+          target_temperature: 20.0    # 20 °C
       - switch.turn_on: use_dew_point_control
 
   # Humidity control mode — Dew Point (default).
@@ -458,14 +426,14 @@ switch:
 
 number:
   # ── Dew-point mode setpoints ─────────────────────────────────────────────────
-  # Cannatrol defaults: 12.2 °C (54 °F) for dry, 11.1 °C (52 °F) for cure
+  # Cannatrol defaults: 12.2 °C for dry, 11.1 °C for cure
   - platform: template
     id: dew_point_setpoint
     name: "Dew Point Setpoint"
     min_value: 4.0
     max_value: 18.0
     step: 0.1
-    initial_value: 11.1    # 52 °F — Cannatrol cure default
+    initial_value: 11.1    # Cannatrol cure default
     restore_value: true
     optimistic: true
     unit_of_measurement: "°C"
@@ -510,8 +478,8 @@ number:
 
   # ── High-temperature safety ceiling ──────────────────────────────────────────
   # Heat-only PID can't cool, so this forces the Peltier ON above this limit
-  # (independent of humidity mode). Default 27 °C (80 °F) — a safety net, well
-  # above the normal 60–67 °F curing range.
+  # (independent of humidity mode). Default 27 °C — a safety net, well
+  # above the normal 17–19 °C curing range.
   - platform: template
     id: max_chamber_temp
     name: "Max Chamber Temperature (Safety Ceiling)"
@@ -670,7 +638,7 @@ climate:
     name: "Temperature Control"
     sensor: chamber_temp
     icon: "mdi:thermometer"
-    default_target_temperature: 15.6    # 60 °F — realistic floor for Peltier strength
+    default_target_temperature: 15.6    # 15.6 °C — realistic floor for Peltier strength
     heat_output: heater_output
     web_server:
       sorting_group_id: grp_climate
@@ -699,7 +667,7 @@ time:
     on_time:
       - cron: "0 0 0 * * *"    # midnight daily (ESPHome cron: sec min hour dom mon dow)
         then:
-          # 10-day dry program: dew-point ramp 60→54 °F over 2 days, then 54, then 52
+          # 10-day dry program: dew-point ramp 15.6→12.2 °C over 2 days, then 12.2, then 11.1
           - if:
               condition:
                 switch.is_on: dry10_program_active
@@ -710,9 +678,9 @@ time:
                     dc.set_value((float)day);
                     dc.perform();
                     float dp;
-                    if (day == 1)                 dp = 13.9f;   // 57 °F — mid-ramp
-                    else if (day >= 2 && day <= 5) dp = 12.2f;  // 54 °F — dry hold
-                    else if (day >= 6 && day <= 9) dp = 11.1f;  // 52 °F — cure hold
+                    if (day == 1)                 dp = 13.9f;   // 13.9 °C — mid-ramp
+                    else if (day >= 2 && day <= 5) dp = 12.2f;  // 12.2 °C — dry hold
+                    else if (day >= 6 && day <= 9) dp = 11.1f;  // 11.1 °C — cure hold
                     else { id(dry10_program_active).turn_off(); return; }
                     auto sp = id(dew_point_setpoint).make_call();
                     sp.set_value(dp);
@@ -759,7 +727,7 @@ interval:
           }
           // High-temperature safety ceiling — force cooling regardless of humidity
           // demand so a heat-only PID can't let the chamber overheat. Default 27 °C
-          // (80 °F) is well above the 60–67 °F operating range, so this never fires
+          // (27 °C) is well above the 17–19 °C operating range, so this never fires
           // in normal use. The hot-side fan is commanded ON in the same pass.
           if (!isnan(id(chamber_temp).state) &&
               id(chamber_temp).state > id(max_chamber_temp).state) {
@@ -925,10 +893,10 @@ button:
       then:
         - number.set:
             id: dew_point_setpoint
-            value: 12.2        # 54 °F — Cannatrol dry
+            value: 12.2        # Cannatrol dry
         - climate.control:
             id: temp_pid
-            target_temperature: 20.0   # 68 °F
+            target_temperature: 20.0   # 20 °C
         - switch.turn_on: use_dew_point_control
 
   - platform: template
@@ -941,10 +909,10 @@ button:
       then:
         - number.set:
             id: dew_point_setpoint
-            value: 11.1        # 52 °F — Cannatrol cure
+            value: 11.1        # Cannatrol cure
         - climate.control:
             id: temp_pid
-            target_temperature: 20.0   # 68 °F
+            target_temperature: 20.0   # 20 °C
         - switch.turn_on: use_dew_point_control
 
 # ─── Binary sensors ───────────────────────────────────────────────────────────
@@ -1042,9 +1010,9 @@ text_sensor:
       char buf[56];
       int day = (int)id(dry10_day).state;
       const char *phase;
-      if (day <= 1)      phase = "Ramp 60\xe2\x86\x92""54\xc2\xb0""F";
-      else if (day <= 5) phase = "Dry 54\xc2\xb0""F";
-      else               phase = "Cure 52\xc2\xb0""F";
+      if (day <= 1)      phase = "Ramp\xe2\x86\x92""12.2\xc2\xb0""C";
+      else if (day <= 5) phase = "Dry 12.2\xc2\xb0""C";
+      else               phase = "Cure 11.1\xc2\xb0""C";
       snprintf(buf, sizeof(buf), "Day %d/10 \xe2\x80\x94 %s", day + 1, phase);
       return std::string(buf);
     update_interval: 30s
@@ -1111,7 +1079,7 @@ display:
             return;
           }
           // Temp (large, left half)
-          it.printf(0,  0, id(font_l), "%.1f\xc2\xb0", id(chamber_temp).state);
+          it.printf(0,  0, id(font_l), "%.1f\xc2\xb0""C", id(chamber_temp).state);
           // RH (large, right half)
           it.printf(68, 0, id(font_l), "%.0f%%", id(chamber_rh).state);
           // Dew point
@@ -1122,8 +1090,8 @@ display:
           it.line(0, 37, 128, 37);
           // Status bar
           it.printf(0, 40, id(font_s), "%s", id(chamber_status).state.c_str());
-          // Temp in °F (Cannatrol-style)
-          it.printf(68, 40, id(font_s), "%.0f\xc2\xb0""F", id(chamber_temp).state * 9.0f / 5.0f + 32.0f);
+          // Temp target setpoint
+          it.printf(68, 40, id(font_s), "SP %.0f\xc2\xb0""C", id(temp_pid).target_temperature);
           // Frost warning (bottom row when active)
           if (id(frost_active)) {
             it.printf(0, 54, id(font_s), "! FROST GUARD ACTIVE");
@@ -1135,9 +1103,7 @@ display:
           it.printf(0,  0, id(font_m), "Control");
           it.line(0, 15, 128, 15);
           it.printf(0, 18, id(font_s), "%s", id(humidity_control_mode).state.c_str());
-          it.printf(0, 30, id(font_s), "SP %.1f\xc2\xb0""C / %.0f\xc2\xb0""F",
-            id(temp_pid).target_temperature,
-            id(temp_pid).target_temperature * 9.0f / 5.0f + 32.0f);
+          it.printf(0, 30, id(font_s), "Temp SP %.1f\xc2\xb0""C", id(temp_pid).target_temperature);
           it.printf(0, 42, id(font_s), "Frost floor %.0f\xc2\xb0""C", id(min_chamber_temp).state);
           it.printf(0, 54, id(font_s), "WiFi %d dBm", (int)id(wifi_signal_sensor).state);
 

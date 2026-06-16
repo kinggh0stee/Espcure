@@ -24,7 +24,7 @@ Edit `espcure.yaml` to implement requested changes. Always:
 - **Credentials**: All via `!secret` — never inline values.
 - **Lambda C++**: Use `isnan()` guard before reading sensor values in lambdas.
 - **Globals**: Use `restore_value: true` for state that must survive reboots (`peltier_cooling` is non-restored runtime state).
-- **Climate PID**: Heat-only; target temperature in Celsius (`default_target_temperature: 15.6` = 60 °F).
+- **Climate PID**: Heat-only; target temperature in Celsius (`default_target_temperature: 15.6`).
 - **Frost guard**: Never remove or weaken the frost-protection interval. If refactoring, ensure equivalent logic exists.
 
 ## GPIO pinout (don't change without hardware-advisor review)

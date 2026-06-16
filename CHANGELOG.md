@@ -11,7 +11,6 @@ All notable changes to EspCure are documented here.
 
 ### Added
 - **Selectable chamber sensor (SHT31 or SHT45)** — added a `sht_platform` substitution at the top of `espcure.yaml` to switch between the SHT31 (`sht3xd`) and SHT45 (`sht4x`). Both share I²C 0x44 and the same wiring; only the platform and the on-chip heater API differ. The sensor block now omits `precision`/`heater_max_duty` (both platforms default to highest-quality measurement + heater-off). The "Clear Sensor Condensation" button carries both heater-API variants (`set_heater_enabled` for SHT31, `set_heater_max_duty` for SHT45) — the active one is toggled alongside the substitution. Default ships as `sht3xd` (SHT31). Docs: `docs/hardware.md` "Swapping the chamber sensor" + `docs/calibration.md` re-calibration note.
-- **Dew Point (°F)** sensor — `dew_point_f`, mirroring the existing `chamber_temp_f`, for the °F-centric Cannatrol workflow. Added to the web UI Humidity group and the HA dashboard status strip.
 - **Clear Sensor Condensation button now works** — the button previously only logged a message. It now pulses the sensor's on-chip heater for one measurement cycle to evaporate condensation, then takes a clean reading. Added `id: sht45` to the sensor platform block to enable on-demand component calls.
 - **Cross-platform setup instructions** — `README.md` and `docs/setup.md` now give both Linux/macOS and Windows (PowerShell) commands for creating a venv, installing the pinned ESPHome, copying `secrets.yaml`, and generating the API key. `CLAUDE.md` notes the Windows `py -m esphome` / `Copy-Item` equivalents.
 
@@ -23,7 +22,7 @@ All notable changes to EspCure are documented here.
   - **"Peltier Output" → "Peltier (Dehumidify) Duty"**, moved to Diagnostics with `entity_category: diagnostic` (renames HA entity to `sensor.espcure_peltier_dehumidify_duty`).
   - **Reordered** — Apply Dry/Cure presets promoted to the top of Cure Programs; Frost Floor Active promoted to the top of Diagnostics.
   - **`Chamber Fans`** marked `diagnostic` (it is auto-driven by the 2 s loop; manual toggling fights the controller).
-  - `docs/ha-dashboard.yaml` updated for the two renamed entity_ids and the new Dew Point °F readout.
+  - `docs/ha-dashboard.yaml` updated for the two renamed entity_ids.
 - **Docs sweep / accuracy pass** across every document:
   - `docs/setup.md` now installs ESPHome via the pinned `requirements.txt` (was bare `pip install esphome`), matching CI.
   - `docs/cure-programs.md` corrected the VPD Hysteresis default to **0.1 kPa** (config value; doc previously said 0.2) and added the 0.8 kPa VPD Setpoint default.
@@ -32,9 +31,12 @@ All notable changes to EspCure are documented here.
   - `docs/display-plan.md` / `CLAUDE.md` flag that GPIO10 is claimed by *either* the optional cold-plate DS18B20 *or* the ST7789 TFT DC line, not both.
   - `CLAUDE.md` updated for the grouped web UI (`web_server` sorting groups), the UTF-8 byte-escape convention, diagnostic sensors, and per-program temp targets.
 
+### Removed
+- **Fahrenheit, entirely — the build is now Celsius-only.** Removed the `chamber_temp_f` and `dew_point_f` °F template sensors, the OLED's °F temperature/setpoint readouts, and every °F reference from the web UI, the HA dashboard (`docs/ha-dashboard.yaml`), and the documentation. The OLED main page now shows the temperature setpoint in the slot the °F readout used to occupy. Numeric temperatures are reported in °C only. (A `Fahrenheit Display` toggle was prototyped and then dropped in favor of Celsius-only.)
+
 ### Fixed
 - **Documentation accuracy: Clear Sensor Condensation button** — clarified that the button currently only logs the request and does **not** pulse the SHT45 heater (the `sht4x` platform exposes no on-demand heater action at the pinned ESPHome version). `docs/calibration.md`, `docs/hardware.md`, and `CLAUDE.md` now describe it as a known limitation; tracked in `TODO.md`. No firmware change.
-- **Text-sensor states crashing the Home Assistant API connection** — the `°C` glyph in several status strings was written as `\xc2\xb0C`, where C's `\x` escape greedily absorbs the following hex-digit `C`, producing the byte `0x0C` and invalid UTF-8 on the wire. HA's protobuf parser rejected the malformed `TextSensorStateResponse`, throwing a fatal `data_received()` error that dropped and reconnected the API connection in a loop (logged on the device as `CONNECTION_CLOSED errno=128`). Terminated each affected escape with `""` (`\xc2\xb0""C`) — the same workaround already used for the `°F` cases. Affected the `Humidity Control Mode`, `10-Day Program Status`, and `Cannatrol Program Status` text sensors, plus two OLED display strings. Display-only; no behavior change beyond a stable HA connection.
+- **Text-sensor states crashing the Home Assistant API connection** — the `°C` glyph in several status strings was written as `\xc2\xb0C`, where C's `\x` escape greedily absorbs the following hex-digit `C`, producing the byte `0x0C` and invalid UTF-8 on the wire. HA's protobuf parser rejected the malformed `TextSensorStateResponse`, throwing a fatal `data_received()` error that dropped and reconnected the API connection in a loop (logged on the device as `CONNECTION_CLOSED errno=128`). Terminated each affected escape with `""` (`\xc2\xb0""C`) — the same workaround used for the arrow/em-dash glyphs. Affected the `Humidity Control Mode`, `10-Day Program Status`, and `Cannatrol Program Status` text sensors, plus two OLED display strings. Display-only; no behavior change beyond a stable HA connection.
 
 ---
 

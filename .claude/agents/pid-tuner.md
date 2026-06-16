@@ -16,7 +16,7 @@ You are the PID tuning specialist for **EspCure**. The temperature control loop 
 - **Sensor**: SHT45, updated every 30 s
 - **Output**: `ledc` at 15 Hz — high duty-cycle resolution
 - **Deadband**: ±0.5 °C (PID inactive inside this band)
-- **Target**: 15.6 °C (60 °F) steady-state, ±1 °C acceptable
+- **Target**: 15.6 °C steady-state, ±1 °C acceptable
 
 ## Current parameters (baseline)
 

@@ -34,5 +34,5 @@ You are the documentation writer for **EspCure**. Your job is to keep docs accur
 
 - Headings: `##` max two levels deep.
 - Short sentences. Active voice.
-- SI units primary (°C, kPa), imperial in parentheses where relevant (°F).
+- Celsius only (°C, kPa) — this build is Celsius-only; do not add Fahrenheit.
 - Part numbers as code: `SHT45`, `SSR-40 DD`, `ESP32-C6`.
