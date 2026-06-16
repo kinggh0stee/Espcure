@@ -128,9 +128,10 @@ globals:
 sensor:
   # ── Chamber air (SHT45) ──────────────────────────────────────────────────────
   - platform: sht4x
+    id: sht45
     address: 0x44
     precision: High
-    heater_max_duty: 0.0    # on-chip heater off by default; use "Clear Condensation" button
+    heater_max_duty: 0.0    # on-chip heater off in normal operation; pulsed by "Clear Condensation" button
     update_interval: 30s
     temperature:
       id: chamber_temp
@@ -833,7 +834,9 @@ button:
       sorting_group_id: grp_diag
       sorting_weight: 10
 
-  # Pulse the SHT45 on-chip heater briefly to clear condensation from sensor face
+  # Pulse the SHT45 on-chip heater briefly to clear condensation from sensor face.
+  # Sequence: enable heater → force one measurement cycle (heater fires during it) →
+  # disable heater → force a clean normal reading. Total time ~1.5 s.
   - platform: template
     name: "Clear Sensor Condensation"
     icon: "mdi:heat-wave"
@@ -842,7 +845,14 @@ button:
       sorting_weight: 6
     on_press:
       - lambda: |-
-          ESP_LOGI("espcure", "SHT45 condensation-clear heater pulse triggered");
+          ESP_LOGI("espcure", "SHT45 condensation-clear: enabling heater for one cycle");
+          id(sht45).set_heater_max_duty(1.0f);
+      - component.update: sht45
+      - delay: 1500ms
+      - lambda: |-
+          id(sht45).set_heater_max_duty(0.0f);
+          ESP_LOGI("espcure", "SHT45 condensation-clear: heater off, taking clean reading");
+      - component.update: sht45
 
   # ── Cannatrol one-tap presets ────────────────────────────────────────────────
   # Apply full profile: temp + dew point setpoints + enable dew-point mode.

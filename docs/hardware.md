@@ -95,7 +95,7 @@ The SSR-40 DDs must be mounted on aluminum heatsinks when carrying more than ~5 
 
 Mount the SHT45 inside the chamber, away from the Peltier cold plate and out of the direct hot-side fan stream. Ideal position: center-rear of the interior air space, elevated off the floor. The SHT45 has negligible self-heating (~0.1–0.2 °C at 3.3 V) — far less than the SHT31. Still calibrate with an offset after install.
 
-> The SHT45 on-chip heater is **disabled** in this build (`heater_max_duty: 0.0`) so it can't bias readings. The **Clear Sensor Condensation** button currently only logs the request — an on-demand heater pulse is not yet wired up (see `TODO.md`). If condensation forms after a rapid temperature drop, improve airflow or briefly raise the temperature setpoint.
+The SHT45 on-chip heater is **off during normal operation** (`heater_max_duty: 0.0`). If condensation forms on the sensor face (humidity reads ~100 % after a rapid temperature drop), press **Clear Sensor Condensation** in HA or the device web UI — it briefly enables the heater for one measurement cycle to evaporate the condensation, then immediately disables it and takes a clean reading. See `docs/calibration.md` for details.
 
 ## Dehumidification
 
