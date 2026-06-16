@@ -6,6 +6,9 @@ All notable changes to EspCure are documented here.
 
 ## [Unreleased]
 
+### Fixed
+- **PID autotune `negative_output` on heat-only loop** — the autotune button previously used `negative_output: -1.0`, but the temperature PID has no `cool_output`. With no cooling actuator the `-1.0` level goes nowhere, making the relay-feedback oscillation asymmetric and the resulting gains unreliable. Changed to `negative_output: 0.0` so the test correctly oscillates between "heater full on" and "heater off (passive cool-down)". Updated `docs/pid-tuning.md` with heat-only timing expectations (60–120 min) and a recommendation to prefer manual tuning.
+
 ### Added
 - **Clear Sensor Condensation button now works** — the button previously only logged a message. It now pulses the SHT45 on-chip heater for one measurement cycle to evaporate condensation: `set_heater_max_duty(1.0)` → force update → 1.5 s wait → `set_heater_max_duty(0.0)` → force clean reading. Added `id: sht45` to the SHT45 platform block to enable on-demand component calls.
 - **Cross-platform setup instructions** — `README.md` and `docs/setup.md` now give both Linux/macOS and Windows (PowerShell) commands for creating a venv, installing the pinned ESPHome, copying `secrets.yaml`, and generating the API key. `CLAUDE.md` notes the Windows `py -m esphome` / `Copy-Item` equivalents.

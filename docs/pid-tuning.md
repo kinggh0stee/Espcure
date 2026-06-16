@@ -34,19 +34,21 @@ Values are persisted across reboots (`restore_value: true`) and automatically re
 
 The `PID Autotune` button in HA / web UI triggers ESPHome's built-in relay-feedback autotune. This characterises the **heater only** — the Peltier is bang-bang controlled by a separate dew-point/VPD loop and not part of the heat PID.
 
-> **Heat-only caveat:** the climate has no `cool_output`, so the chamber can only be driven *up* by the heater. The autotune action is configured with `negative_output: -1.0`, but with no active cooling the chamber relies on ambient drift to fall back below setpoint, which makes the relay oscillation slow and the result noisy. Start the autotune with the chamber **below** the target and expect it to take a while. If autotune stalls or returns implausible gains, fall back to the manual procedure and the diagnostic table below — the heater rarely runs in normal operation, so precise gains are not critical.
+> **Heat-only loop — what to expect:** The relay-feedback autotune oscillates between two output levels: `positive_output: 1.0` (heater full on) and `negative_output: 0.0` (heater off, chamber drifts down passively). This matches how the loop works in production. Because passive cool-down is slow, the downward half-cycles are much longer than the upward half-cycles — expect the test to take **60–120 minutes** for a small thermoelectric fridge. The asymmetry means the resulting gains are approximate; if they produce oscillation or overshoot, follow the diagnostic table below to adjust manually. The heater rarely runs in normal curing operation, so very precise gains are not essential.
 
-1. Let chamber stabilize below setpoint (e.g. 10 °C with door closed).
+> **Prefer manual tuning** if you're impatient: the default values (Kp 0.35 / Ki 0.005 / Kd 1.2) are a reasonable starting point and the heater runs so infrequently that fine-tuning matters less than for an active heating/cooling loop.
+
+1. Let the chamber warm to **at or above** the target setpoint (e.g. 16 °C with door closed and fridge running normally for 30 min). Autotune needs room to cool passively — starting below setpoint means the first half-cycle is a very long downward coast.
 2. Set target temperature to 15.6 °C (60 °F) via the climate entity.
 3. Press **PID Autotune** in the HA device page or device web UI.
-4. Wait. The heater will oscillate deliberately. For a small fridge this typically takes 20–60 minutes.
+4. Wait. The heater will cycle on and off deliberately. Expect 60–120 minutes.
 5. Watch ESPHome logs (`esphome logs espcure.yaml`) for:
    ```
    [I][pid.autotune:xxx]: PID Autotune finished!
    [I][pid.autotune:xxx]:   Calculated kp=X, ki=Y, kd=Z
    ```
-6. Apply the new values via the `PID Kp/Ki/Kd` sliders in the web UI or HA — no reflash needed.
-7. Update `control_parameters` in `espcure.yaml` and log them below.
+6. Apply the new values via the **PID Kp / Ki / Kd** sliders in the web UI or HA — takes effect immediately, no reflash needed.
+7. Update `control_parameters` in `espcure.yaml` to match and log the session below.
 
 ## Diagnostic Quick Reference
 

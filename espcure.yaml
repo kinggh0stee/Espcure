@@ -825,7 +825,7 @@ button:
           id: temp_pid
           noiseband: 0.25
           positive_output: 1.0
-          negative_output: -1.0
+          negative_output: 0.0   # heat-only: no cool_output; off is the correct low state
 
   - platform: restart
     name: "Restart Controller"
