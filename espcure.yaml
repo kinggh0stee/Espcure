@@ -953,7 +953,7 @@ text_sensor:
       if (id(use_vpd_control).state) {
         snprintf(buf, sizeof(buf), "VPD Mode %.2f kPa SP", id(vpd_setpoint).state);
       } else if (id(use_dew_point_control).state) {
-        snprintf(buf, sizeof(buf), "Dew Point %.1f\xc2\xb0C SP", id(dew_point_setpoint).state);
+        snprintf(buf, sizeof(buf), "Dew Point %.1f\xc2\xb0""C SP", id(dew_point_setpoint).state);
       } else {
         snprintf(buf, sizeof(buf), "Humidity control off");
       }
@@ -973,7 +973,7 @@ text_sensor:
       char buf[56];
       int day = (int)id(dry10_day).state;
       const char *phase;
-      if (day <= 1)      phase = "Ramp 60\xe2\x86\x9254\xc2\xb0""F";
+      if (day <= 1)      phase = "Ramp 60\xe2\x86\x92""54\xc2\xb0""F";
       else if (day <= 5) phase = "Dry 54\xc2\xb0""F";
       else               phase = "Cure 52\xc2\xb0""F";
       snprintf(buf, sizeof(buf), "Day %d/10 \xe2\x80\x94 %s", day + 1, phase);
@@ -995,10 +995,10 @@ text_sensor:
       if (id(cannatrol_phase) == 0) {
         // days 0-3 display as Day 1/4 – Day 4/4; day=4 is transitional (still dry)
         int d = (day + 1 <= 4) ? day + 1 : 4;
-        snprintf(buf, sizeof(buf), "Dry Phase \xe2\x80\x94 Day %d/4 (12.2\xc2\xb0C DP)", d);
+        snprintf(buf, sizeof(buf), "Dry Phase \xe2\x80\x94 Day %d/4 (12.2\xc2\xb0""C DP)", d);
       } else {
         // cure days start at cannatrol_day=5; day-4 gives 1-4
-        snprintf(buf, sizeof(buf), "Cure Phase \xe2\x80\x94 Day %d/4 (11.1\xc2\xb0C DP)", day - 4);
+        snprintf(buf, sizeof(buf), "Cure Phase \xe2\x80\x94 Day %d/4 (11.1\xc2\xb0""C DP)", day - 4);
       }
       return std::string(buf);
     update_interval: 30s
@@ -1046,7 +1046,7 @@ display:
           // RH (large, right half)
           it.printf(68, 0, id(font_l), "%.0f%%", id(chamber_rh).state);
           // Dew point
-          it.printf(0, 26, id(font_s), "DP %.1f\xc2\xb0C", id(dew_point).state);
+          it.printf(0, 26, id(font_s), "DP %.1f\xc2\xb0""C", id(dew_point).state);
           // VPD
           it.printf(68, 26, id(font_s), "VPD%.2f", id(vpd).state);
           // Horizontal divider
@@ -1066,7 +1066,7 @@ display:
           it.printf(0,  0, id(font_m), "Control");
           it.line(0, 15, 128, 15);
           it.printf(0, 18, id(font_s), "%s", id(humidity_control_mode).state.c_str());
-          it.printf(0, 30, id(font_s), "SP %.1f\xc2\xb0C / %.0f\xc2\xb0""F",
+          it.printf(0, 30, id(font_s), "SP %.1f\xc2\xb0""C / %.0f\xc2\xb0""F",
             id(temp_pid).target_temperature,
             id(temp_pid).target_temperature * 9.0f / 5.0f + 32.0f);
           it.printf(0, 42, id(font_s), "Frost floor %.0f\xc2\xb0""C", id(min_chamber_temp).state);
