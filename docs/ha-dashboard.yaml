@@ -52,6 +52,9 @@ views:
           - entity: sensor.espcure_dew_point_f
             name: Dew Point °F
             icon: mdi:thermometer-water
+          - entity: switch.espcure_fahrenheit_display
+            name: Fahrenheit Display
+            icon: mdi:temperature-fahrenheit
           - entity: binary_sensor.espcure_controller_online
             name: Controller Online
         show_header_toggle: false

@@ -454,6 +454,25 @@ switch:
     on_turn_on:
       - switch.turn_off: use_dew_point_control
 
+  # Display units — Celsius by default (OFF). When ON, the OLED display and the
+  # composed text readouts (humidity mode, program status) show °F. The numeric
+  # web-UI/HA sensors keep their fixed units — both °C and °F sensors exist
+  # (chamber_temp / chamber_temp_f, dew_point / dew_point_f) regardless.
+  - platform: template
+    id: use_fahrenheit
+    name: "Fahrenheit Display"
+    restore_mode: RESTORE_DEFAULT_OFF
+    optimistic: true
+    icon: "mdi:temperature-fahrenheit"
+    entity_category: config
+    web_server:
+      sorting_group_id: grp_climate
+      sorting_weight: 6
+    on_turn_on:
+      - component.update: oled
+    on_turn_off:
+      - component.update: oled
+
 # ─── Numbers (user-adjustable setpoints) ──────────────────────────────────────
 
 number:
@@ -1022,7 +1041,11 @@ text_sensor:
       if (id(use_vpd_control).state) {
         snprintf(buf, sizeof(buf), "VPD Mode %.2f kPa SP", id(vpd_setpoint).state);
       } else if (id(use_dew_point_control).state) {
-        snprintf(buf, sizeof(buf), "Dew Point %.1f\xc2\xb0""C SP", id(dew_point_setpoint).state);
+        float sp = id(dew_point_setpoint).state;
+        if (id(use_fahrenheit).state)
+          snprintf(buf, sizeof(buf), "Dew Point %.1f\xc2\xb0""F SP", sp * 9.0f / 5.0f + 32.0f);
+        else
+          snprintf(buf, sizeof(buf), "Dew Point %.1f\xc2\xb0""C SP", sp);
       } else {
         snprintf(buf, sizeof(buf), "Humidity control off");
       }
@@ -1110,20 +1133,29 @@ display:
             it.printf(0, 24, id(font_m), "Sensor init...");
             return;
           }
-          // Temp (large, left half)
-          it.printf(0,  0, id(font_l), "%.1f\xc2\xb0", id(chamber_temp).state);
+          // Display units follow the Fahrenheit Display toggle (default °C).
+          bool f   = id(use_fahrenheit).state;
+          float t  = id(chamber_temp).state;
+          float dp = id(dew_point).state;
+          float t_main  = f ? (t  * 9.0f / 5.0f + 32.0f) : t;
+          float t_alt   = f ? t : (t  * 9.0f / 5.0f + 32.0f);
+          float dp_main = f ? (dp * 9.0f / 5.0f + 32.0f) : dp;
+          // Temp (large, left half) — primary unit
+          it.printf(0,  0, id(font_l), "%.1f\xc2\xb0", t_main);
           // RH (large, right half)
           it.printf(68, 0, id(font_l), "%.0f%%", id(chamber_rh).state);
-          // Dew point
-          it.printf(0, 26, id(font_s), "DP %.1f\xc2\xb0""C", id(dew_point).state);
+          // Dew point — primary unit
+          if (f) it.printf(0, 26, id(font_s), "DP %.1f\xc2\xb0""F", dp_main);
+          else   it.printf(0, 26, id(font_s), "DP %.1f\xc2\xb0""C", dp_main);
           // VPD
           it.printf(68, 26, id(font_s), "VPD%.2f", id(vpd).state);
           // Horizontal divider
           it.line(0, 37, 128, 37);
           // Status bar
           it.printf(0, 40, id(font_s), "%s", id(chamber_status).state.c_str());
-          // Temp in °F (Cannatrol-style)
-          it.printf(68, 40, id(font_s), "%.0f\xc2\xb0""F", id(chamber_temp).state * 9.0f / 5.0f + 32.0f);
+          // Temp in the OTHER unit (secondary readout)
+          if (f) it.printf(68, 40, id(font_s), "%.1f\xc2\xb0""C", t_alt);
+          else   it.printf(68, 40, id(font_s), "%.0f\xc2\xb0""F", t_alt);
           // Frost warning (bottom row when active)
           if (id(frost_active)) {
             it.printf(0, 54, id(font_s), "! FROST GUARD ACTIVE");
@@ -1132,13 +1164,17 @@ display:
       # Page 2 — humidity control & setpoints
       - id: page_control
         lambda: |-
+          bool f = id(use_fahrenheit).state;
           it.printf(0,  0, id(font_m), "Control");
           it.line(0, 15, 128, 15);
           it.printf(0, 18, id(font_s), "%s", id(humidity_control_mode).state.c_str());
-          it.printf(0, 30, id(font_s), "SP %.1f\xc2\xb0""C / %.0f\xc2\xb0""F",
-            id(temp_pid).target_temperature,
-            id(temp_pid).target_temperature * 9.0f / 5.0f + 32.0f);
-          it.printf(0, 42, id(font_s), "Frost floor %.0f\xc2\xb0""C", id(min_chamber_temp).state);
+          // Setpoint — primary unit follows the toggle, other unit shown after
+          float sp = id(temp_pid).target_temperature;
+          if (f) it.printf(0, 30, id(font_s), "SP %.0f\xc2\xb0""F / %.1f\xc2\xb0""C", sp * 9.0f / 5.0f + 32.0f, sp);
+          else   it.printf(0, 30, id(font_s), "SP %.1f\xc2\xb0""C / %.0f\xc2\xb0""F", sp, sp * 9.0f / 5.0f + 32.0f);
+          float ff = id(min_chamber_temp).state;
+          if (f) it.printf(0, 42, id(font_s), "Frost floor %.0f\xc2\xb0""F", ff * 9.0f / 5.0f + 32.0f);
+          else   it.printf(0, 42, id(font_s), "Frost floor %.0f\xc2\xb0""C", ff);
           it.printf(0, 54, id(font_s), "WiFi %d dBm", (int)id(wifi_signal_sensor).state);
 
       # Page 3 — active cure program
@@ -1149,7 +1185,11 @@ display:
           it.printf(0, 18, id(font_s), "10d: %s", id(dry10_program_status).state.c_str());
           it.printf(0, 30, id(font_s), "C44: %s", id(cannatrol_program_status).state.c_str());
           if (!isnan(id(dew_point_error).state)) {
-            it.printf(0, 42, id(font_s), "DP err %+.1f\xc2\xb0""C", id(dew_point_error).state);
+            // Error is a temperature difference — convert with ×9/5 (no +32 offset)
+            if (id(use_fahrenheit).state)
+              it.printf(0, 42, id(font_s), "DP err %+.1f\xc2\xb0""F", id(dew_point_error).state * 9.0f / 5.0f);
+            else
+              it.printf(0, 42, id(font_s), "DP err %+.1f\xc2\xb0""C", id(dew_point_error).state);
           }
 
 # ─── Status LED (WS2812 RGB, built into ESP32-C6 DevKitC-1 on GPIO8) ─────────

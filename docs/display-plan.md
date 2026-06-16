@@ -42,6 +42,8 @@ The display cycles every 5 seconds automatically. Press the **BOOT button** (GPI
 
 The display auto-updates every 5 s. Page advance respects the 5 s timer — a manual press restarts it from that page.
 
+Temperature, dew point, setpoint, frost floor, and DP-error readouts follow the **Fahrenheit Display** toggle (default OFF = °C). Turn it on to render those values in °F; the secondary readout on the main page shows the opposite unit. Toggling forces an immediate OLED refresh.
+
 ---
 
 ## Upgrading to a 1.3" SH1106 OLED

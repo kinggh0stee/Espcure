@@ -19,6 +19,7 @@ Two decoupled control loops: the **Peltier chases dew point / VPD** (cooling the
 - **Dew point + VPD sensors** — derived from SHT45 readings via Magnus formula
 - **Temperature safety ceiling** — forces Peltier cooling ON if chamber exceeds 27 °C (80 °F) regardless of humidity demand
 - **Software frost floor** — Peltier auto-disables below 4 °C (39 °F), heater aids recovery; no cold-plate sensor needed
+- **Fahrenheit display toggle** — `Fahrenheit Display` switch (default Celsius); flips the OLED and text readouts to °F. Both °C and °F numeric sensors are always available
 - **SSD1306 OLED display** — 3-page cycling (temp/RH/DP/VPD, control settings, program status); BOOT button (GPIO9) cycles pages
 - **WS2812 RGB LED** (GPIO8, built-in) — cooling=blue, heating=red, idle=green(dim), frost=white blink
 - **Device-hosted web UI** at `http://espcure.local` — full React dashboard with entities organized into groups (Climate, Humidity, VPD, Programs, PID, Hardware, Diagnostics); no HA required

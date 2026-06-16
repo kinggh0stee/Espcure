@@ -20,6 +20,7 @@ Capabilities:
 - **High-temp safety ceiling** (`max_chamber_temp`, default 27 °C / 80 °F): forces the Peltier on above the limit since the heat-only PID can't cool
 - Chamber Status text sensor (Cooling / Heating / Idle / Frost Guard)
 - Software frost floor (forces Peltier off if chamber air drops below configurable floor, default 4 °C; heater keeps running)
+- **Fahrenheit display toggle** (`use_fahrenheit`, default OFF = Celsius): switches the OLED + composed text readouts to °F. Numeric sensors keep fixed units (both °C and °F sensors exist — ESPHome can't reunit at runtime).
 - **SSD1306 OLED display**: 3-page cycling (temp/RH/DP/VPD, control settings, program status); BOOT button (GPIO9) cycles pages manually
 - **WS2812 RGB LED** (GPIO8, built-in): cooling=blue, heating=red(dim), idle=green(very dim), frost=white blink
 - Home Assistant integration via encrypted native API (device_class + state_class on all sensors)
@@ -85,6 +86,7 @@ All ESPHome work lives in **`espcure.yaml`**. Key sections:
 | `switch.cannatrol_program_active` | Cannatrol 4+4 dew-point program |
 | `switch.use_dew_point_control` | Dew Point mode toggle (default ON; mutual-exclusive with VPD mode) |
 | `switch.use_vpd_control` | VPD mode toggle (mutual-exclusive with dew-point mode) |
+| `switch.use_fahrenheit` | Display-units toggle (default OFF = °C). Drives the OLED + composed text readouts only; numeric sensors keep fixed units. Forces an OLED refresh on change. |
 | `button.apply_*_profile` | One-tap profile presets (Dry, Cure) — set dew-point setpoint + temp target 20 °C (68 °F) + enable dew-point mode |
 | `button` (Autotune / Restart / Clear Sensor Condensation) | PID autotune, controller restart, sensor condensation-clear heater pulse (API matches `sht_platform`) |
 | `text_sensor.chamber_status` | Human-readable operating state (Cooling / Heating / Idle / Frost Guard) |
