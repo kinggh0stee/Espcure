@@ -49,9 +49,6 @@ views:
           - entity: sensor.espcure_humidity_control_mode
             name: Humidity Control Mode
             icon: mdi:water-check
-          - entity: sensor.espcure_dew_point_f
-            name: Dew Point °F
-            icon: mdi:thermometer-water
           - entity: binary_sensor.espcure_controller_online
             name: Controller Online
         show_header_toggle: false
@@ -114,9 +111,9 @@ views:
             unit: "kPa"
 
           - type: entity
-            entity: sensor.espcure_chamber_temperature_f
-            name: "Temp (°F)"
-            icon: mdi:thermometer
+            entity: sensor.espcure_dew_point
+            name: Dew Point
+            icon: mdi:thermometer-water
 
           - type: entity
             entity: binary_sensor.espcure_frost_floor_active
@@ -192,10 +189,10 @@ views:
         icon: mdi:lightning-bolt
         entities:
           - entity: button.espcure_apply_dry_profile
-            name: Apply Dry Profile (68°F / 12.2°C DP)
+            name: Apply Dry Profile (20°C / 12.2°C DP)
             action_name: Apply
           - entity: button.espcure_apply_cure_profile
-            name: Apply Cure Profile (68°F / 11.1°C DP)
+            name: Apply Cure Profile (20°C / 11.1°C DP)
             action_name: Apply
 
       # ── 10-day program status (conditional) ───────────────────────────────
@@ -433,8 +430,8 @@ views:
           - type: divider
           - entity: sensor.espcure_chamber_temperature
             name: Chamber Temp (°C)
-          - entity: sensor.espcure_chamber_temperature_f
-            name: Chamber Temp (°F)
+          - entity: sensor.espcure_dew_point
+            name: Dew Point (°C)
 
       # ── Actions ───────────────────────────────────────────────────────────
       - type: entities

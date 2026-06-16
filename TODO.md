@@ -7,14 +7,14 @@ Priority: 🔴 Critical · 🟡 High · 🟢 Nice-to-have · ✅ Done
 ## ✅ Completed
 
 - [x] ESP32-C6 + SHT45 ESPHome config (ESP-IDF framework)
-- [x] Heat-only PID temperature control — PTC heater chases temp (default 60 °F)
+- [x] Heat-only PID temperature control — PTC heater chases temp (default 15.6 °C)
 - [x] Peltier-chases-dew-point topology — TEC bang-bang drives cold-plate condensation
 - [x] Two humidity modes: Dew Point (default) + VPD
 - [x] Dew point + VPD derived sensors
-- [x] 10-Day Dry dew-point program (ramp 60→54 °F, then 54, then 52)
+- [x] 10-Day Dry dew-point program (ramp 15.6→12.2 °C, then 12.2, then 11.1)
 - [x] Cannatrol 4+4 built-in program (auto dry→cure phase at midnight)
 - [x] One-tap profile presets (Dry, Cure)
-- [x] High-temp safety ceiling (`max_chamber_temp`, default 27 °C / 80 °F)
+- [x] High-temp safety ceiling (`max_chamber_temp`, default 27 °C)
 - [x] Live PID tuning (Kp/Ki/Kd number entities, persist across reboots)
 - [x] Software frost floor (no cold-plate sensor required; forces Peltier off)
 - [x] Chamber Status / Humidity Control Mode / Program Status text sensors
@@ -117,4 +117,4 @@ Priority: 🔴 Critical · 🟡 High · 🟢 Nice-to-have · ✅ Done
 - SHT45 self-heating (~0.1–0.2 °C) means temperature reads slightly high; calibrate with offset after install
 - SSR-40 DD control voltage is at the minimum spec (3.3 V = 3 V min) — verify each SSR before final install
 - Humidity control is downward-only (Peltier condensation); there is no humidifier in this build
-- Temperature has no active cooling (heat-only PID) — the chamber floats (typically ~63–67 °F); the `max_chamber_temp` ceiling is the only forced-cooling path
+- Temperature has no active cooling (heat-only PID) — the chamber floats (typically ~17–19 °C); the `max_chamber_temp` ceiling is the only forced-cooling path

@@ -4,7 +4,7 @@
 
 EspCure uses a **decoupled control topology**:
 
-- **Temperature (heater only)**: PID loop targets 60 °F (15.6 °C) by default, rarely activates (chamber floats 63–67 °F). A safety ceiling at 27 °C (80 °F) forces the Peltier ON above that point regardless of humidity demand.
+- **Temperature (heater only)**: PID loop targets 15.6 °C by default, rarely activates (chamber floats 17–19 °C). A safety ceiling at 27 °C forces the Peltier ON above that point regardless of humidity demand.
 - **Humidity (Peltier cold plate)**: Bang-bang loop on dew point or VPD, runs every 30 s at full 15 Hz, condensing moisture from the air onto the Peltier cold plate. This is the sole dehumidification mechanism.
 - **Fan (GPIO5)**: ON when Peltier is cooling OR heater is heating; OFF otherwise.
 
@@ -31,12 +31,12 @@ Fast, commercial-style cure using dew-point control. Matches the Cannatrol's def
 
 | Phase | Days | Temp | Dew Point |
 |---|---|---|---|
-| Dry | 1–4 | 20 °C (68 °F) | 12.2 °C (54 °F) |
-| Cure | 5–8 | 20 °C (68 °F) | 11.1 °C (52 °F) |
+| Dry | 1–4 | 20 °C | 12.2 °C |
+| Cure | 5–8 | 20 °C | 11.1 °C |
 
 **Enable**: Toggle **Cannatrol 4+4 Program** switch ON. This automatically:
 - Enables Dew Point Control Mode
-- Sets temperature target to 20.0 °C (68 °F)
+- Sets temperature target to 20.0 °C
 - Sets dew point to 12.2 °C (dry phase)
 - Resets the day counter
 
@@ -50,32 +50,32 @@ Fast, commercial-style cure using dew-point control. Matches the Cannatrol's def
 
 Proven dew-point recipe with a controlled ramp and steady-state holds. This replaces the previous 18-day RH-based program.
 
-Temperature stays at 60 °F (15.6 °C) throughout — the heater holds the floor while the Peltier chases dew point.
+Temperature stays at 15.6 °C throughout — the heater holds the floor while the Peltier chases dew point.
 
 | Day (shown) | Dew Point | Temp | Notes |
 |---|---|---|---|
-| 1 | 60 °F (15.6 °C) | 60 °F (15.6 °C) | Ramp start — set the moment the program is enabled |
-| 2 | 57 °F (13.9 °C) | 60 °F (15.6 °C) | Ramp midpoint |
-| 3–6 | 54 °F (12.2 °C) | 60 °F (15.6 °C) | Dry hold (4 days) |
-| 7–10 | 52 °F (11.1 °C) | 60 °F (15.6 °C) | Cure hold (4 days); program auto-disables at midnight after day 10 |
+| 1 | 15.6 °C | 15.6 °C | Ramp start — set the moment the program is enabled |
+| 2 | 13.9 °C | 15.6 °C | Ramp midpoint |
+| 3–6 | 12.2 °C | 15.6 °C | Dry hold (4 days) |
+| 7–10 | 11.1 °C | 15.6 °C | Cure hold (4 days); program auto-disables at midnight after day 10 |
 
 **Enable**: Toggle the **10-Day Dry Program** switch ON. This automatically:
 - Enables Dew Point Control Mode (disables Cannatrol 4+4)
-- Sets the temperature target to 15.6 °C (60 °F)
-- Sets the dew point to 15.6 °C (60 °F — ramp start)
+- Sets the temperature target to 15.6 °C
+- Sets the dew point to 15.6 °C (ramp start)
 - Resets the day counter (shows Day 1)
 
-**The 2-day ramp**: dew point starts at 60 °F on enable, drops to 57 °F at the first midnight, and reaches 54 °F at the second — a gentle ramp that lets the Peltier begin condensing without aggressively drying the material.
+**The 2-day ramp**: dew point starts at 15.6 °C on enable, drops to 13.9 °C at the first midnight, and reaches 12.2 °C at the second — a gentle ramp that lets the Peltier begin condensing without aggressively drying the material.
 
 **Day progression** (at each midnight):
-- Day 1 → 2: dew point 60 → 57 °F
-- Day 2 → 3: dew point 57 → 54 °F (ramp complete)
-- Days 3–6: hold 54 °F (dry phase, 4 days)
-- Day 6 → 7: dew point 54 → 52 °F (cure phase begins)
-- Days 7–10: hold 52 °F (cure phase, 4 days)
+- Day 1 → 2: dew point 15.6 → 13.9 °C
+- Day 2 → 3: dew point 13.9 → 12.2 °C (ramp complete)
+- Days 3–6: hold 12.2 °C (dry phase, 4 days)
+- Day 6 → 7: dew point 12.2 → 11.1 °C (cure phase begins)
+- Days 7–10: hold 11.1 °C (cure phase, 4 days)
 - After day 10's midnight: program auto-disables
 
-**Status sensor**: `10-Day Program Status` shows e.g. `Day 3/10 — Dry 54°F`.
+**Status sensor**: `10-Day Program Status` shows e.g. `Day 3/10 — Dry 12.2°C`.
 
 ---
 
@@ -85,8 +85,8 @@ Two preset buttons available on both the device web UI (`http://espcure.local`) 
 
 | Button | Temp | Dew Point | Mode |
 |---|---|---|---|
-| **Apply Dry Profile** | 20 °C (68 °F) | 12.2 °C (54 °F) | Dew Point ON |
-| **Apply Cure Profile** | 20 °C (68 °F) | 11.1 °C (52 °F) | Dew Point ON |
+| **Apply Dry Profile** | 20 °C | 12.2 °C | Dew Point ON |
+| **Apply Cure Profile** | 20 °C | 11.1 °C | Dew Point ON |
 
 These set all relevant setpoints instantly without modifying the cure program switch or day counter.
 
@@ -112,12 +112,12 @@ The **Dew Point Error** diagnostic sensor shows the current deviation from dew-p
 
 | Program | Duration | Temp | Dew Point | Best for |
 |---|---|---|---|---|
-| **Cannatrol 4+4** | ~8 days | 68 °F (20 °C) | 54→52 °F | Fast cure; commercial-style; near-ambient |
-| **10-Day Dry** | 10 days | 60 °F (15.6 °C) | 60→57→54→52 °F | Proven recipe; gentle ramp; slower drying |
+| **Cannatrol 4+4** | ~8 days | 20 °C | 12.2→11.1 °C | Fast cure; commercial-style; near-ambient |
+| **10-Day Dry** | 10 days | 15.6 °C | 15.6→13.9→12.2→11.1 °C | Proven recipe; gentle ramp; slower drying |
 | **Manual Dew Point** | Ongoing | User-set | User-set | Storage or custom protocol |
 | **Manual VPD** | Ongoing | User-set | User-set | Advanced growers; VPD-aware control |
 
-**Why two programs?** Cannatrol 4+4 starts hard (54 °F DP day 1) and is faster. The 10-Day Dry ramps gently from 60 °F DP to avoid shocking the material.
+**Why two programs?** Cannatrol 4+4 starts hard (12.2 °C DP day 1) and is faster. The 10-Day Dry ramps gently from 15.6 °C DP to avoid shocking the material.
 
 ---
 
@@ -125,11 +125,11 @@ The **Dew Point Error** diagnostic sensor shows the current deviation from dew-p
 
 ### Frost Floor (Min Chamber Temp)
 
-If chamber air temperature (SHT45) drops below the floor (default 4 °C / 39 °F), the Peltier is suspended until the chamber recovers 2 °C above that point. The heater continues running to aid recovery. Adjust in HA via the **Min Chamber Temperature** number entity.
+If chamber air temperature (SHT45) drops below the floor (default 4 °C), the Peltier is suspended until the chamber recovers 2 °C above that point. The heater continues running to aid recovery. Adjust in HA via the **Min Chamber Temperature** number entity.
 
 ### Safety Ceiling (Max Chamber Temp)
 
-If chamber air temperature exceeds the ceiling (default 27 °C / 80 °F), the Peltier is forced ON regardless of humidity demand, giving temperature an emergency downward authority. User-adjustable 22–32 °C in HA via **Max Chamber Temperature** number entity. This does not normally activate during standard 60–67 °F operation.
+If chamber air temperature exceeds the ceiling (default 27 °C), the Peltier is forced ON regardless of humidity demand, giving temperature an emergency downward authority. User-adjustable 22–32 °C in HA via **Max Chamber Temperature** number entity. This does not normally activate during standard 17–19 °C operation.
 
 ---
 
@@ -165,7 +165,7 @@ actions:
   - action: notify.mobile_app_your_phone
     data:
       title: "EspCure"
-      message: "10-Day Dry program complete. Chamber is in hold mode at 52 °F DP."
+      message: "10-Day Dry program complete. Chamber is in hold mode at 11.1 °C DP."
 mode: single
 ```
 

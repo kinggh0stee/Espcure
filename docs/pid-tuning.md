@@ -39,7 +39,7 @@ The `PID Autotune` button in HA / web UI triggers ESPHome's built-in relay-feedb
 > **Prefer manual tuning** if you're impatient: the default values (Kp 0.35 / Ki 0.005 / Kd 1.2) are a reasonable starting point and the heater runs so infrequently that fine-tuning matters less than for an active heating/cooling loop.
 
 1. Let the chamber warm to **at or above** the target setpoint (e.g. 16 °C with door closed and fridge running normally for 30 min). Autotune needs room to cool passively — starting below setpoint means the first half-cycle is a very long downward coast.
-2. Set target temperature to 15.6 °C (60 °F) via the climate entity.
+2. Set target temperature to 15.6 °C via the climate entity.
 3. Press **PID Autotune** in the HA device page or device web UI.
 4. Wait. The heater will cycle on and off deliberately. Expect 60–120 minutes.
 5. Watch ESPHome logs (`esphome logs espcure.yaml`) for:
@@ -59,7 +59,7 @@ The `PID Autotune` button in HA / web UI triggers ESPHome's built-in relay-feedb
 | Never reaches setpoint (offset) | ki too low | Increase ki 50 % |
 | Very slow approach (> 1 h) | kp too low | Increase kp 25 % |
 | Spiky noise on output | kd too high or sensor noise | Increase `derivative_averaging_samples` |
-| Heater never activates | Chamber above setpoint or max safety ceiling engaged | Normal — heater only pulls up to 60 °F target; Peltier cools below |
+| Heater never activates | Chamber above setpoint or max safety ceiling engaged | Normal — heater only pulls up to the 15.6 °C target; Peltier cools below |
 
 ---
 

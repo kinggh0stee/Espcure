@@ -119,13 +119,13 @@ The Peltier cold plate is the sole dehumidification mechanism. When the dew-poin
 
 ## Frost Protection (Software-Only)
 
-There is no cold-plate temperature sensor in this build. Frost protection is handled in firmware: if the chamber air temperature (SHT45) drops below the **Min Chamber Temperature** setpoint (default 4 °C / 39 °F), the Peltier is suspended until the chamber recovers 2 °C above that floor. The heater continues running during frost to aid recovery. Adjust the floor in HA under the **Min Chamber Temperature** number entity.
+There is no cold-plate temperature sensor in this build. Frost protection is handled in firmware: if the chamber air temperature (SHT45) drops below the **Min Chamber Temperature** setpoint (default 4 °C), the Peltier is suspended until the chamber recovers 2 °C above that floor. The heater continues running during frost to aid recovery. Adjust the floor in HA under the **Min Chamber Temperature** number entity.
 
 Note: without a cold-plate sensor, the protection reacts to chamber air temperature rather than the Peltier surface directly. If you observe ice forming on the Peltier fins, raise the Min Chamber Temperature setpoint.
 
 ## Temperature Safety Ceiling
 
-A **Max Chamber Temperature** number entity (default 27 °C / 80 °F, user-adjustable 22–32 °C) forces the Peltier cooling ON above the ceiling regardless of humidity demand. This gives temperature an emergency downward authority. In normal operation (60–67 °F), this ceiling never activates.
+A **Max Chamber Temperature** number entity (default 27 °C, user-adjustable 22–32 °C) forces the Peltier cooling ON above the ceiling regardless of humidity demand. This gives temperature an emergency downward authority. In normal operation (17–19 °C), this ceiling never activates.
 
 ## Original Control Board Removal
 
