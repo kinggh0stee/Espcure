@@ -134,7 +134,8 @@ globals:
   # Last status-LED state applied by the 2 s loop, so the LED is updated only
   # on a genuine state change (edge-triggered). Re-asserting every cycle
   # restarts the Frost Blink pulse effect and stomps manual control.
-  # -1 = uninitialised, 0 = idle, 1 = cooling, 2 = heating, 3 = frost.
+  # -2 = disabled (Status LED Enable off), -1 = uninitialised,
+  #  0 = idle, 1 = cooling, 2 = heating, 3 = frost.
   - id: led_state
     type: int
     restore_value: false
@@ -349,6 +350,20 @@ switch:
     web_server:
       sorting_group_id: grp_hardware
       sorting_weight: 1
+
+  # Status LED enable — gates the 2 s status-LED loop. When ON (default), the
+  # WS2812 automatically reflects the cooling/heating/idle/frost state. When
+  # OFF, the loop turns the LED off and stops driving it (e.g. to kill the
+  # glow in a dark room). Fan control is unaffected — it always runs.
+  - platform: template
+    id: status_led_enable
+    name: "Status LED Enable"
+    restore_mode: RESTORE_DEFAULT_ON
+    optimistic: true
+    icon: "mdi:led-on"
+    web_server:
+      sorting_group_id: grp_hardware
+      sorting_weight: 4
 
   # 10-day dew-point dry program (proven recipe — replaces the 24 h hang):
   #   Day 1   : ramp dew point 15.6 °C → 13.9 °C → 12.2 °C
@@ -723,7 +738,8 @@ time:
 
 interval:
   # Dew-point / VPD bang-bang loop (30 s) — drives the PELTIER (cold-plate
-  # condensation). Priority: frost guard → VPD mode → Dew Point mode → off.
+  # condensation). Priority: frost guard → high-temp ceiling → VPD mode →
+  # Dew Point mode → off.
   # Cooling the plate below the dew point condenses moisture out of the air.
   - interval: 30s
     then:
@@ -792,7 +808,8 @@ interval:
 
   # Status LED update + fan control (2 s)
   # Fan: on when the Peltier is cooling OR the heater is heating; off otherwise.
-  # Blue = cooling (Peltier) · Red = heating · Green (dim) = idle · White blink = frost
+  # LED (when enabled via Status LED Enable):
+  #   Blue = cooling (Peltier) · Red = heating · Green (dim) = idle · White blink = frost
   - interval: 2s
     then:
       - lambda: |-
@@ -803,6 +820,17 @@ interval:
             id(fan_relay).turn_on();
           } else {
             id(fan_relay).turn_off();
+          }
+
+          // Status LED disabled — turn it off once, then leave it alone.
+          if (!id(status_led_enable).state) {
+            if (id(led_state) != -2) {
+              id(led_state) = -2;
+              auto off = id(status_led).make_call();
+              off.set_state(false);
+              off.perform();
+            }
+            return;
           }
 
           // Resolve the desired LED state, then bail out unless it changed.
