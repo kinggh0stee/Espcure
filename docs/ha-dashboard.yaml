@@ -49,6 +49,9 @@ views:
           - entity: sensor.espcure_humidity_control_mode
             name: Humidity Control Mode
             icon: mdi:water-check
+          - entity: sensor.espcure_dew_point_f
+            name: Dew Point °F
+            icon: mdi:thermometer-water
           - entity: binary_sensor.espcure_controller_online
             name: Controller Online
         show_header_toggle: false
@@ -124,7 +127,7 @@ views:
       - type: horizontal-stack
         cards:
           - type: thermostat
-            entity: climate.espcure_chamber_temperature
+            entity: climate.espcure_temperature_control
             name: Chamber PID
             features:
               - type: climate-hvac-modes
@@ -139,8 +142,8 @@ views:
                 name: Frost Floor Temp
               - entity: binary_sensor.espcure_frost_floor_active
                 name: Active
-              - entity: sensor.espcure_peltier_output
-                name: Peltier Output
+              - entity: sensor.espcure_peltier_dehumidify_duty
+                name: Peltier Duty
               - entity: sensor.espcure_pid_heat_output
                 name: Heat Output
 
@@ -288,7 +291,7 @@ views:
           - type: divider
           - entity: sensor.espcure_pid_heat_output
             name: Heater Output (GPIO19)
-          - entity: sensor.espcure_peltier_output
+          - entity: sensor.espcure_peltier_dehumidify_duty
             name: Peltier TEC Output (GPIO18)
 
       # ── Output history ────────────────────────────────────────────────────
@@ -298,7 +301,7 @@ views:
         entities:
           - entity: sensor.espcure_pid_heat_output
             name: Heat %
-          - entity: sensor.espcure_peltier_output
+          - entity: sensor.espcure_peltier_dehumidify_duty
             name: Peltier %
 
       # ── Temperature safety limits ─────────────────────────────────────────
@@ -361,12 +364,12 @@ views:
         entities:
           - entity: sensor.espcure_pid_heat_output
             name: Heat Output
-          - entity: sensor.espcure_peltier_output
-            name: Peltier Output
+          - entity: sensor.espcure_peltier_dehumidify_duty
+            name: Peltier Duty
           - entity: sensor.espcure_pid_integral
             name: Integral Term
           - type: divider
-          - entity: climate.espcure_chamber_temperature
+          - entity: climate.espcure_temperature_control
             name: Climate Entity
 
       # ── PID output history ────────────────────────────────────────────────
@@ -376,7 +379,7 @@ views:
         entities:
           - entity: sensor.espcure_pid_heat_output
             name: Heat %
-          - entity: sensor.espcure_peltier_output
+          - entity: sensor.espcure_peltier_dehumidify_duty
             name: Peltier %
           - entity: sensor.espcure_pid_integral
             name: Integral

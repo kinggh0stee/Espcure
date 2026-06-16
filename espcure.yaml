@@ -1,10 +1,21 @@
 ################################################################################
 # EspCure — Thermoelectric Curing Chamber Controller
 # Target board : ESP32-C6  (requires ESP-IDF framework)
-# Sensor       : SHT45 (I²C, chamber temp/RH only — no cold-plate sensor)
+# Sensor       : SHT31 or SHT45 (I²C 0x44, chamber temp/RH; no cold-plate sensor)
+#                Selected via the `sht_platform` substitution below.
 # Outputs      : 3× SSR-40 DD (fan rail / Peltier TECs / heater)
 # Web UI       : http://espcure.local  (no Home Assistant required)
 ################################################################################
+
+# ─── Build-time options ───────────────────────────────────────────────────────
+# Chamber sensor select. Both the SHT31 and SHT45 use I²C address 0x44 and the
+# same wiring — only the ESPHome platform and the on-chip heater API differ.
+# To swap sensors you must change TWO things, then reflash:
+#   1. `sht_platform` below  (sht3xd = SHT31, sht4x = SHT45)
+#   2. the "Clear Sensor Condensation" button lambda (heater API differs —
+#      see the commented alternative in that button's on_press block)
+substitutions:
+  sht_platform: sht3xd        # SHT31 (temporary). Change to sht4x when the SHT45 arrives.
 
 esphome:
   name: espcure
@@ -74,11 +85,8 @@ web_server:
       name: "Climate & Temperature"
       sorting_weight: 10
     - id: grp_humidity
-      name: "Humidity & Dew Point"
+      name: "Humidity & Dehumidification"
       sorting_weight: 20
-    - id: grp_vpd
-      name: "VPD"
-      sorting_weight: 30
     - id: grp_programs
       name: "Cure Programs"
       sorting_weight: 40
@@ -90,9 +98,9 @@ web_server:
       sorting_weight: 60
     - id: grp_diag
       name: "Diagnostics"
-      sorting_weight: 90
+      sorting_weight: 70
 
-# ─── I²C (SHT45 chamber sensor) ───────────────────────────────────────────────
+# ─── I²C (SHT31/SHT45 chamber sensor) ─────────────────────────────────────────
 # SDA → GPIO21   SCL → GPIO22
 
 i2c:
@@ -126,12 +134,16 @@ globals:
 # ─── Sensors ──────────────────────────────────────────────────────────────────
 
 sensor:
-  # ── Chamber air (SHT45) ──────────────────────────────────────────────────────
-  - platform: sht4x
+  # ── Chamber air (SHT31 or SHT45) ─────────────────────────────────────────────
+  # Platform set by the `sht_platform` substitution at the top of this file.
+  # `precision`/`heater_max_duty` (sht4x) and `repeatability`/`heater_enabled`
+  # (sht3xd) are omitted: both platforms default to highest-quality measurement
+  # and on-chip heater OFF, which is exactly what we want. The "Clear Sensor
+  # Condensation" button pulses the heater on-demand (heater API differs — see
+  # that button below). id stays `sht45` so downstream id() refs are untouched.
+  - platform: ${sht_platform}
     id: sht45
     address: 0x44
-    precision: High
-    heater_max_duty: 0.0    # on-chip heater off in normal operation; pulsed by "Clear Condensation" button
     update_interval: 30s
     temperature:
       id: chamber_temp
@@ -193,7 +205,24 @@ sensor:
       sorting_group_id: grp_humidity
       sorting_weight: 2
 
-  # Vapor Pressure Deficit — plant stress indicator
+  # Dew point in °F — Cannatrol display convention (mirrors chamber_temp_f)
+  - platform: template
+    id: dew_point_f
+    name: "Dew Point (°F)"
+    unit_of_measurement: "°F"
+    device_class: temperature
+    state_class: measurement
+    icon: "mdi:thermometer-water"
+    lambda: |-
+      if (isnan(id(dew_point).state)) return NAN;
+      return id(dew_point).state * 9.0f / 5.0f + 32.0f;
+    update_interval: 30s
+    web_server:
+      sorting_group_id: grp_humidity
+      sorting_weight: 3
+
+  # Vapor Pressure Deficit — plant stress indicator (VPD mode lives in the
+  # Humidity group alongside Dew Point — they are two modes of one loop)
   - platform: template
     id: vpd
     name: "Vapor Pressure Deficit"
@@ -208,8 +237,8 @@ sensor:
       return svp * (1.0f - rh / 100.0f);
     update_interval: 30s
     web_server:
-      sorting_group_id: grp_vpd
-      sorting_weight: 1
+      sorting_group_id: grp_humidity
+      sorting_weight: 8
 
   # Dew-point error vs setpoint (positive = too humid; NaN when in VPD mode)
   - platform: template
@@ -228,22 +257,24 @@ sensor:
     update_interval: 30s
     web_server:
       sorting_group_id: grp_diag
-      sorting_weight: 3
+      sorting_weight: 5
 
   # Peltier duty as a readable entity (bang-bang: 0 or 100 %). Reads the
   # peltier_cooling global since a float output can't be read back in lambda.
+  # It's a derived diagnostic of the humidity loop, not a hardware control.
   - platform: template
     id: peltier_output_pct
-    name: "Peltier Output"
+    name: "Peltier (Dehumidify) Duty"
     unit_of_measurement: "%"
     state_class: measurement
     icon: "mdi:snowflake"
+    entity_category: diagnostic
     lambda: |-
       return id(peltier_cooling) ? 100.0f : 0.0f;
     update_interval: 5s
     web_server:
-      sorting_group_id: grp_hardware
-      sorting_weight: 5
+      sorting_group_id: grp_diag
+      sorting_weight: 2
 
   # VPD error vs setpoint (NaN unless VPD mode is active)
   - platform: template
@@ -260,7 +291,7 @@ sensor:
     update_interval: 30s
     web_server:
       sorting_group_id: grp_diag
-      sorting_weight: 4
+      sorting_weight: 6
 
   # ── PID diagnostics (heat-only — Peltier is not driven by the PID) ───────────
   - platform: pid
@@ -271,7 +302,7 @@ sensor:
     icon: "mdi:fire"
     web_server:
       sorting_group_id: grp_diag
-      sorting_weight: 1
+      sorting_weight: 3
   - platform: pid
     climate_id: temp_pid
     name: "PID Integral"
@@ -280,7 +311,7 @@ sensor:
     icon: "mdi:sigma"
     web_server:
       sorting_group_id: grp_diag
-      sorting_weight: 2
+      sorting_weight: 4
 
   # ── System diagnostics ───────────────────────────────────────────────────────
   - platform: uptime
@@ -289,7 +320,7 @@ sensor:
     icon: "mdi:clock-outline"
     web_server:
       sorting_group_id: grp_diag
-      sorting_weight: 5
+      sorting_weight: 7
   - platform: wifi_signal
     id: wifi_signal_sensor
     name: "WiFi Signal"
@@ -299,7 +330,7 @@ sensor:
     update_interval: 60s
     web_server:
       sorting_group_id: grp_diag
-      sorting_weight: 6
+      sorting_weight: 8
 
 # ─── Outputs ──────────────────────────────────────────────────────────────────
 
@@ -329,12 +360,15 @@ output:
 switch:
   # Fan rail — all 3 fans together (2× TEC hot-side + heater fan)
   # GPIO5 → SSR-40 DD → fan rail 12 V (controlled by PID state — on when active, off when idle)
+  # Auto-driven by the 2 s interval (on when Peltier cooling or heater heating);
+  # diagnostic category so users don't toggle it expecting it to stick.
   - platform: gpio
     id: fan_relay
     name: "Chamber Fans"
     pin: GPIO5
     restore_mode: RESTORE_DEFAULT_OFF
     icon: "mdi:fan"
+    entity_category: diagnostic
     web_server:
       sorting_group_id: grp_hardware
       sorting_weight: 1
@@ -352,7 +386,7 @@ switch:
     icon: "mdi:sprout"
     web_server:
       sorting_group_id: grp_programs
-      sorting_weight: 1
+      sorting_weight: 3
     on_turn_on:
       - switch.turn_off: cannatrol_program_active  # only one program at a time
       - number.set:
@@ -375,7 +409,7 @@ switch:
     icon: "mdi:cannabis"
     web_server:
       sorting_group_id: grp_programs
-      sorting_weight: 4
+      sorting_weight: 5
     on_turn_on:
       - switch.turn_off: dry10_program_active      # only one program at a time
       - number.set:
@@ -401,7 +435,7 @@ switch:
     icon: "mdi:thermometer-water"
     web_server:
       sorting_group_id: grp_humidity
-      sorting_weight: 5
+      sorting_weight: 6
     on_turn_on:
       - switch.turn_off: use_vpd_control
 
@@ -415,8 +449,8 @@ switch:
     optimistic: true
     icon: "mdi:waves"
     web_server:
-      sorting_group_id: grp_vpd
-      sorting_weight: 4
+      sorting_group_id: grp_humidity
+      sorting_weight: 11
     on_turn_on:
       - switch.turn_off: use_dew_point_control
 
@@ -435,10 +469,10 @@ number:
     restore_value: true
     optimistic: true
     unit_of_measurement: "°C"
-    icon: "mdi:thermometer-water"
+    icon: "mdi:target"
     web_server:
       sorting_group_id: grp_humidity
-      sorting_weight: 3
+      sorting_weight: 4
 
   - platform: template
     id: dew_point_hysteresis
@@ -451,9 +485,10 @@ number:
     optimistic: true
     unit_of_measurement: "°C"
     icon: "mdi:tune"
+    entity_category: config
     web_server:
       sorting_group_id: grp_humidity
-      sorting_weight: 4
+      sorting_weight: 5
 
   # ── Frost floor ──────────────────────────────────────────────────────────────
   # PID suspends if chamber air drops below this — software-only, no cold-plate sensor
@@ -468,6 +503,7 @@ number:
     optimistic: true
     unit_of_measurement: "°C"
     icon: "mdi:snowflake-alert"
+    entity_category: config
     web_server:
       sorting_group_id: grp_climate
       sorting_weight: 4
@@ -487,6 +523,7 @@ number:
     optimistic: true
     unit_of_measurement: "°C"
     icon: "mdi:fire-alert"
+    entity_category: config
     web_server:
       sorting_group_id: grp_climate
       sorting_weight: 5
@@ -502,9 +539,10 @@ number:
     restore_value: true
     optimistic: true
     icon: "mdi:calendar-today"
+    entity_category: config
     web_server:
       sorting_group_id: grp_programs
-      sorting_weight: 2
+      sorting_weight: 12
 
   - platform: template
     id: cannatrol_day
@@ -516,9 +554,10 @@ number:
     restore_value: true
     optimistic: true
     icon: "mdi:calendar-today"
+    entity_category: config
     web_server:
       sorting_group_id: grp_programs
-      sorting_weight: 5
+      sorting_weight: 13
 
   # ── Live PID tuning ──────────────────────────────────────────────────────────
   # Changing any coefficient immediately applies via set_control_parameters.
@@ -533,6 +572,7 @@ number:
     restore_value: true
     optimistic: true
     icon: "mdi:alpha-p-circle"
+    entity_category: config
     web_server:
       sorting_group_id: grp_pid
       sorting_weight: 1
@@ -554,6 +594,7 @@ number:
     restore_value: true
     optimistic: true
     icon: "mdi:alpha-i-circle"
+    entity_category: config
     web_server:
       sorting_group_id: grp_pid
       sorting_weight: 2
@@ -575,6 +616,7 @@ number:
     restore_value: true
     optimistic: true
     icon: "mdi:alpha-d-circle"
+    entity_category: config
     web_server:
       sorting_group_id: grp_pid
       sorting_weight: 3
@@ -586,7 +628,7 @@ number:
             ki: !lambda return id(pid_ki).state;
             kd: !lambda return x;
 
-  # ── VPD mode setpoints ───────────────────────────────────────────────────────
+  # ── VPD mode setpoints (live in the Humidity group with Dew Point) ───────────
   - platform: template
     id: vpd_setpoint
     name: "VPD Setpoint"
@@ -597,10 +639,10 @@ number:
     restore_value: true
     optimistic: true
     unit_of_measurement: "kPa"
-    icon: "mdi:waves"
+    icon: "mdi:target"
     web_server:
-      sorting_group_id: grp_vpd
-      sorting_weight: 2
+      sorting_group_id: grp_humidity
+      sorting_weight: 9
 
   - platform: template
     id: vpd_hysteresis
@@ -613,9 +655,10 @@ number:
     optimistic: true
     unit_of_measurement: "kPa"
     icon: "mdi:tune"
+    entity_category: config
     web_server:
-      sorting_group_id: grp_vpd
-      sorting_weight: 3
+      sorting_group_id: grp_humidity
+      sorting_weight: 10
 
 # ─── Climate (Temperature PID) ────────────────────────────────────────────────
 
@@ -624,7 +667,7 @@ climate:
   # — it is driven by the dew-point/VPD bang-bang loop (cold-plate condensation).
   - platform: pid
     id: temp_pid
-    name: "Chamber Temperature"
+    name: "Temperature Control"
     sensor: chamber_temp
     icon: "mdi:thermometer"
     default_target_temperature: 15.6    # 60 °F — realistic floor for Peltier strength
@@ -817,6 +860,7 @@ button:
   - platform: template
     name: "PID Autotune"
     icon: "mdi:auto-fix"
+    entity_category: config
     web_server:
       sorting_group_id: grp_pid
       sorting_weight: 4
@@ -832,27 +876,41 @@ button:
     icon: "mdi:restart"
     web_server:
       sorting_group_id: grp_diag
-      sorting_weight: 10
+      sorting_weight: 11
 
-  # Pulse the SHT45 on-chip heater briefly to clear condensation from sensor face.
-  # Sequence: enable heater → force one measurement cycle (heater fires during it) →
-  # disable heater → force a clean normal reading. Total time ~1.5 s.
+  # Pulse the on-chip heater briefly to clear condensation from the sensor face,
+  # then take a clean reading. The heater API differs by sensor platform — the
+  # ACTIVE block below is for the SHT31 (sht3xd). When you switch to the SHT45
+  # (sht4x) via the `sht_platform` substitution, comment out the SHT31 block and
+  # uncomment the SHT45 block.
   - platform: template
     name: "Clear Sensor Condensation"
     icon: "mdi:heat-wave"
+    entity_category: config
     web_server:
       sorting_group_id: grp_hardware
       sorting_weight: 6
     on_press:
+      # ── SHT31 (sht3xd): set_heater_enabled(bool), ~1 s pulse ──────────────────
       - lambda: |-
-          ESP_LOGI("espcure", "SHT45 condensation-clear: enabling heater for one cycle");
-          id(sht45).set_heater_max_duty(1.0f);
+          ESP_LOGI("espcure", "SHT31 condensation-clear: enabling heater for one cycle");
+          id(sht45).set_heater_enabled(true);
       - component.update: sht45
-      - delay: 1500ms
+      - delay: 1000ms
       - lambda: |-
-          id(sht45).set_heater_max_duty(0.0f);
-          ESP_LOGI("espcure", "SHT45 condensation-clear: heater off, taking clean reading");
+          id(sht45).set_heater_enabled(false);
+          ESP_LOGI("espcure", "SHT31 condensation-clear: heater off, taking clean reading");
       - component.update: sht45
+      # ── SHT45 (sht4x): set_heater_max_duty(float), ~1.5 s pulse ───────────────
+      # - lambda: |-
+      #     ESP_LOGI("espcure", "SHT45 condensation-clear: enabling heater for one cycle");
+      #     id(sht45).set_heater_max_duty(1.0f);
+      # - component.update: sht45
+      # - delay: 1500ms
+      # - lambda: |-
+      #     id(sht45).set_heater_max_duty(0.0f);
+      #     ESP_LOGI("espcure", "SHT45 condensation-clear: heater off, taking clean reading");
+      # - component.update: sht45
 
   # ── Cannatrol one-tap presets ────────────────────────────────────────────────
   # Apply full profile: temp + dew point setpoints + enable dew-point mode.
@@ -862,7 +920,7 @@ button:
     icon: "mdi:weather-sunny"
     web_server:
       sorting_group_id: grp_programs
-      sorting_weight: 7
+      sorting_weight: 1
     on_press:
       then:
         - number.set:
@@ -878,7 +936,7 @@ button:
     icon: "mdi:leaf"
     web_server:
       sorting_group_id: grp_programs
-      sorting_weight: 8
+      sorting_weight: 2
     on_press:
       then:
         - number.set:
@@ -897,15 +955,16 @@ binary_sensor:
     icon: "mdi:wifi-check"
     web_server:
       sorting_group_id: grp_diag
-      sorting_weight: 7
+      sorting_weight: 9
 
+  # Live safety state — promoted to the top of Diagnostics
   - platform: template
     name: "Frost Floor Active"
     device_class: problem
     lambda: return id(frost_active);
     web_server:
       sorting_group_id: grp_diag
-      sorting_weight: 8
+      sorting_weight: 1
 
   # BOOT button (GPIO9, built into ESP32-C6 DevKitC-1) — cycles display pages.
   # INPUT_PULLUP + inverted: no extra hardware needed.
@@ -919,7 +978,7 @@ binary_sensor:
     entity_category: diagnostic
     web_server:
       sorting_group_id: grp_diag
-      sorting_weight: 9
+      sorting_weight: 10
     on_click:
       min_length: 50ms
       max_length: 350ms
@@ -936,7 +995,7 @@ text_sensor:
       entity_category: diagnostic
       web_server:
         sorting_group_id: grp_diag
-        sorting_weight: 11
+        sorting_weight: 12
 
   # Human-readable chamber operating state (shown on web UI dashboard)
   - platform: template
@@ -971,7 +1030,7 @@ text_sensor:
     update_interval: 30s
     web_server:
       sorting_group_id: grp_humidity
-      sorting_weight: 6
+      sorting_weight: 7
 
   # 10-day dry program progress
   - platform: template
@@ -991,7 +1050,7 @@ text_sensor:
     update_interval: 30s
     web_server:
       sorting_group_id: grp_programs
-      sorting_weight: 3
+      sorting_weight: 4
 
   # Cannatrol 4+4 program progress
   - platform: template
