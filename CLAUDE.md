@@ -22,7 +22,8 @@ Capabilities:
 - **SSD1306 OLED display**: 3-page cycling (temp/RH/DP/VPD, control settings, program status); BOOT button (GPIO9) cycles pages manually
 - **WS2812 RGB LED** (GPIO8, built-in): cooling=blue, heating=red(dim), idle=green(very dim), frost=white blink
 - Home Assistant integration via encrypted native API (device_class + state_class on all sensors)
-- Device-hosted web UI at `http://espcure.local` — `web_server` v3, dark mode toggle, no HA required
+- Diagnostic sensors: Peltier Output (%), Dew Point Error, VPD Error, PID Heat Output, PID Integral, uptime, WiFi signal
+- Device-hosted web UI at `http://espcure.local` — `web_server` v3, dark mode toggle, entities organized into sorting groups (Climate, Humidity, VPD, Cure Programs, PID Tuning, Hardware, Diagnostics); no HA required
 - OTA updates, fallback AP
 - GitHub Actions CI validates `esphome config` on every PR
 
@@ -82,8 +83,10 @@ All ESPHome work lives in **`espcure.yaml`**. Key sections:
 | `switch.cannatrol_program_active` | Cannatrol 4+4 dew-point program |
 | `switch.use_dew_point_control` | Dew Point mode toggle (default ON; mutual-exclusive with VPD mode) |
 | `switch.use_vpd_control` | VPD mode toggle (mutual-exclusive with dew-point mode) |
-| `button.apply_*_profile` | One-tap profile presets (Dry, Cure) |
-| `text_sensor.chamber_status` | Human-readable operating state |
+| `button.apply_*_profile` | One-tap profile presets (Dry, Cure) — set dew-point setpoint + temp target 20 °C (68 °F) + enable dew-point mode |
+| `button` (Autotune / Restart / Clear Sensor Condensation) | PID autotune, controller restart, SHT45 condensation-clear pulse |
+| `text_sensor.chamber_status` | Human-readable operating state (Cooling / Heating / Idle / Frost Guard) |
+| `web_server.sorting_groups` | UI grouping for both the device web UI and HA — every entity sets a `sorting_group_id` + `sorting_weight` |
 | `light.status_led` | WS2812 RGB LED (GPIO8) — color reflects cooling/heating state |
 | `display.oled` (pages) | SSD1306 OLED, 3-page cycling; `page_button` GPIO9 cycles |
 | `esp32_improv` | BLE WiFi provisioning; BOOT button (GPIO9) is the authorizer |
@@ -141,6 +144,8 @@ No real credentials are stored in the repo. The dummy `api_encryption_key` used 
 7. PID `kp`/`ki`/`kd` changes must be documented in `docs/pid-tuning.md`.
 8. Install dependencies with `pip install -r requirements.txt` (not bare `pip install esphome`) to stay in sync with the CI-pinned ESPHome version.
 9. Update `CHANGELOG.md` for any user-facing change — new entities, behaviour changes, removals. Follow Keep a Changelog format (`### Added / Changed / Fixed / Removed` under `## [Unreleased]`).
+10. Any non-ASCII glyph in a `text_sensor` or `display` lambda must be written as terminated hex byte escapes (e.g. `\xc2\xb0""C` for `°C`). See the UTF-8 gotcha below — an unterminated escape produces invalid UTF-8 that crashes the HA API connection.
+11. New entities should declare a `web_server: sorting_group_id` + `sorting_weight` so they land in the right web-UI group.
 
 ## Sub-agents
 
@@ -179,6 +184,7 @@ No real credentials are stored in the repo. The dummy `api_encryption_key` used 
   | GPIO5 | Fan rail SSR-40 DD (on when Peltier cooling or heater heating) |
   | GPIO8 | WS2812 RGB LED (built-in DevKitC-1 LED) |
   | GPIO9 | BOOT / page button — OLED page cycle + BLE provisioning authorizer |
+  | GPIO10 | Free (commented optional cold-plate DS18B20 — DATA + 4.7 kΩ pull-up to 3.3 V) |
   | GPIO18 | Peltier (cooling) SSR-40 DD — `ledc` 15 Hz; driven by the 30 s humidity loop |
   | GPIO19 | Heater SSR-40 DD — `ledc` 15 Hz; `heat_output` of the PID |
   | GPIO21 | I²C SDA (SHT45 + SSD1306) |
@@ -195,3 +201,6 @@ No real credentials are stored in the repo. The dummy `api_encryption_key` used 
 - **Two humidity control modes**: Dew Point mode (default ON) and VPD mode. Only one active at a time — `use_vpd_control` and `use_dew_point_control` are mutually exclusive (each `on_turn_on` turns off the other). Both drive only the Peltier — there is no humidifier and no dehumidifier relay in this build. RH-only control was removed (RH without temperature is meaningless).
 - **ESP32-C6 requires ESP-IDF**: The `framework: type: esp-idf` must not be changed to `arduino`. The C6 variant is not Arduino-compatible in ESPHome.
 - **BLE provisioning**: `esp32_improv` is enabled with `authorizer: page_button` (GPIO9 BOOT button). Hold the BOOT button while a phone scans for the device to authorize WiFi provisioning. `improv_serial` provides the same over USB serial.
+- **UTF-8 in text-sensor / display lambdas**: non-ASCII glyphs must be emitted as terminated hex byte escapes. Write `°C` as `\xc2\xb0""C`, **not** `\xc2\xb0C` — in the latter the `\x` escape greedily absorbs the following `C` hex digit, producing byte `0x0C` and invalid UTF-8. HA's protobuf parser rejects the malformed `TextSensorStateResponse` and drops the API connection in a reconnect loop (`CONNECTION_CLOSED errno=128`). The `""` terminates the escape. Applies to all `°`, `→` (`\xe2\x86\x92`), and `—` (`\xe2\x80\x94`) glyphs in `chamber_status`, `humidity_control_mode`, `dry10_program_status`, `cannatrol_program_status`, and the OLED page lambdas.
+- **SHT45 on-chip heater**: `heater_max_duty: 0.0` keeps the sensor's self-heater off in normal operation (avoids biasing the reading). The "Clear Sensor Condensation" button is the manual escape hatch for clearing condensation off the sensor face.
+- **Temp targets differ by program**: the 10-Day Dry program holds temp target 15.6 °C (60 °F); the Cannatrol 4+4 program and the Dry/Cure preset buttons set 20 °C (68 °F). Dew-point setpoints drive the Peltier in all cases.
