@@ -1,0 +1,466 @@
+# EspCure — Home Assistant Lovelace Dashboard
+#
+# Full featured dashboard. Uses only built-in HA cards — no HACS required.
+#
+# Import: Settings → Dashboards → Add Dashboard → toggle "Show code editor"
+# and paste this YAML, or add under views: in your existing lovelace config.
+#
+# Entity prefix: espcure  (change if you renamed the device in ESPHome)
+
+title: EspCure
+path: espcure
+icon: mdi:cannabis
+theme: default
+
+views:
+  # ── Overview (main tab) ───────────────────────────────────────────────────
+  - title: Overview
+    path: overview
+    icon: mdi:view-dashboard
+    badges:
+      - entity: sensor.espcure_chamber_status
+        name: Status
+      - entity: binary_sensor.espcure_frost_floor_active
+        name: Frost
+      - entity: binary_sensor.espcure_controller_online
+        name: Online
+      - entity: sensor.espcure_humidity_control_mode
+        name: Mode
+    cards:
+
+      # ── Offline warning (only visible when device is offline) ─────────────
+      - type: conditional
+        conditions:
+          - entity: binary_sensor.espcure_controller_online
+            state: "off"
+        card:
+          type: markdown
+          content: >
+            ## ⚠️ EspCure Offline
+            The controller is not responding. Check power and WiFi.
+            Last seen IP: **{{ states('sensor.espcure_ip_address') }}**
+
+      # ── Status strip ─────────────────────────────────────────────────────
+      - type: entities
+        entities:
+          - entity: sensor.espcure_chamber_status
+            name: Chamber Status
+            icon: mdi:information-outline
+          - entity: sensor.espcure_humidity_control_mode
+            name: Humidity Control Mode
+            icon: mdi:water-check
+          - entity: binary_sensor.espcure_controller_online
+            name: Controller Online
+        show_header_toggle: false
+        card_mod:
+          style: |
+            ha-card { border-radius: 12px; }
+
+      # ── Primary sensor gauges ─────────────────────────────────────────────
+      - type: horizontal-stack
+        cards:
+          - type: gauge
+            entity: sensor.espcure_chamber_temperature
+            name: Temp
+            min: 0
+            max: 30
+            needle: true
+            severity:
+              green: 4
+              yellow: 22
+              red: 26
+            unit: "°C"
+
+          - type: gauge
+            entity: sensor.espcure_chamber_humidity
+            name: RH
+            min: 40
+            max: 95
+            needle: true
+            severity:
+              green: 58
+              yellow: 75
+              red: 83
+            unit: "%"
+
+          - type: gauge
+            entity: sensor.espcure_dew_point
+            name: Dew Pt
+            min: 2
+            max: 20
+            needle: true
+            severity:
+              green: 2
+              yellow: 14
+              red: 16
+            unit: "°C"
+
+      # ── Secondary metrics ─────────────────────────────────────────────────
+      - type: horizontal-stack
+        cards:
+          - type: gauge
+            entity: sensor.espcure_vapor_pressure_deficit
+            name: VPD
+            min: 0
+            max: 2.0
+            needle: true
+            severity:
+              green: 0.4
+              yellow: 0.8
+              red: 1.2
+            unit: "kPa"
+
+          - type: entity
+            entity: sensor.espcure_dew_point
+            name: Dew Point
+            icon: mdi:thermometer-water
+
+          - type: entity
+            entity: binary_sensor.espcure_frost_floor_active
+            name: Frost Guard
+            icon: mdi:snowflake-alert
+
+      # ── Climate + Frost floor ─────────────────────────────────────────────
+      - type: horizontal-stack
+        cards:
+          - type: thermostat
+            entity: climate.espcure_temperature_control
+            name: Chamber PID
+            features:
+              - type: climate-hvac-modes
+                hvac_modes:
+                  - heat
+                  - "off"
+
+          - type: entities
+            title: Frost Floor
+            entities:
+              - entity: number.espcure_min_chamber_temperature_frost_floor
+                name: Frost Floor Temp
+              - entity: binary_sensor.espcure_frost_floor_active
+                name: Active
+              - entity: sensor.espcure_peltier_dehumidify_duty
+                name: Peltier Duty
+              - entity: sensor.espcure_pid_heat_output
+                name: Heat Output
+
+      # ── Temperature history ───────────────────────────────────────────────
+      - type: history-graph
+        title: Temperature — Last 24 Hours
+        hours_to_show: 24
+        logarithmic_scale: false
+        entities:
+          - entity: sensor.espcure_chamber_temperature
+            name: Temp °C
+          - entity: sensor.espcure_dew_point
+            name: Dew Point °C
+
+      # ── Humidity history ──────────────────────────────────────────────────
+      - type: history-graph
+        title: Humidity & VPD — Last 24 Hours
+        hours_to_show: 24
+        entities:
+          - entity: sensor.espcure_chamber_humidity
+            name: RH %
+          - entity: sensor.espcure_vapor_pressure_deficit
+            name: VPD kPa
+
+      # ── Temperature history (7-day) ───────────────────────────────────────
+      - type: history-graph
+        title: Temperature — Last 7 Days
+        hours_to_show: 168
+        logarithmic_scale: false
+        entities:
+          - entity: sensor.espcure_chamber_temperature
+            name: Temp °C
+          - entity: sensor.espcure_dew_point
+            name: Dew Point °C
+
+
+  # ── Programs & Control ────────────────────────────────────────────────────
+  - title: Programs
+    path: programs
+    icon: mdi:sprout
+    cards:
+
+      # ── One-tap profile presets ───────────────────────────────────────────
+      - type: entities
+        title: Quick Profiles
+        icon: mdi:lightning-bolt
+        entities:
+          - entity: button.espcure_apply_dry_profile
+            name: Apply Dry Profile (20°C / 12.2°C DP)
+            action_name: Apply
+          - entity: button.espcure_apply_cure_profile
+            name: Apply Cure Profile (20°C / 11.1°C DP)
+            action_name: Apply
+
+      # ── 10-day program status (conditional) ───────────────────────────────
+      - type: conditional
+        conditions:
+          - entity: switch.espcure_10_day_dry_program
+            state: "on"
+        card:
+          type: markdown
+          content: >
+            **10-Day Dry Program Active** — {{ states('sensor.espcure_10_day_program_status') }}
+
+            Progress: `{{ '█' * (states('number.espcure_10_day_program_day') | int) }}{{ '░' * (10 - (states('number.espcure_10_day_program_day') | int)) }}` ({{ states('number.espcure_10_day_program_day') }}/10 days)
+
+      # ── 10-day program ────────────────────────────────────────────────────
+      - type: entities
+        title: 10-Day Dry Program
+        icon: mdi:sprout
+        entities:
+          - entity: switch.espcure_10_day_dry_program
+            name: Enable 10-Day Dry Program
+          - entity: sensor.espcure_10_day_program_status
+            name: Status
+          - entity: number.espcure_10_day_program_day
+            name: Current Day
+
+      # ── Cannatrol 4+4 program status (conditional) ─────────────────────────
+      - type: conditional
+        conditions:
+          - entity: switch.espcure_cannatrol_4_4_program
+            state: "on"
+        card:
+          type: markdown
+          content: >
+            **Cannatrol 4+4 Active** — {{ states('sensor.espcure_cannatrol_program_status') }}
+
+            Progress: `{{ '█' * (states('number.espcure_cannatrol_program_day') | int) }}{{ '░' * (8 - (states('number.espcure_cannatrol_program_day') | int)) }}` ({{ states('number.espcure_cannatrol_program_day') }}/8 days)
+
+      # ── Cannatrol 4+4 program ─────────────────────────────────────────────
+      - type: entities
+        title: Cannatrol 4+4 Program
+        icon: mdi:cannabis
+        entities:
+          - entity: switch.espcure_cannatrol_4_4_program
+            name: Enable Cannatrol 4+4
+          - entity: sensor.espcure_cannatrol_program_status
+            name: Status
+          - entity: number.espcure_cannatrol_program_day
+            name: Current Day
+          - entity: switch.espcure_dew_point_control_mode
+            name: Dew Point Control Mode
+          - entity: number.espcure_dew_point_setpoint
+            name: Dew Point Setpoint (°C)
+          - entity: number.espcure_dew_point_hysteresis
+            name: Dew Point Hysteresis (°C)
+          - entity: sensor.espcure_dew_point_error
+            name: Dew Point Error
+
+      # ── VPD Control Mode ───────────────────────────────────────────────────
+      - type: entities
+        title: VPD Control Mode
+        icon: mdi:waves
+        entities:
+          - entity: switch.espcure_vpd_control_mode
+            name: Enable VPD Control
+          - entity: number.espcure_vpd_setpoint
+            name: VPD Setpoint (kPa)
+          - entity: number.espcure_vpd_hysteresis
+            name: VPD Hysteresis (kPa)
+
+      # ── 7-day history ─────────────────────────────────────────────────────
+      - type: history-graph
+        title: Humidity — Last 7 Days
+        hours_to_show: 168
+        entities:
+          - entity: sensor.espcure_chamber_humidity
+            name: RH %
+
+
+  # ── Outputs & Safety ──────────────────────────────────────────────────────
+  - title: Outputs
+    path: outputs
+    icon: mdi:electric-switch
+    cards:
+
+      # ── Output states ─────────────────────────────────────────────────────
+      - type: entities
+        title: Relay Outputs
+        icon: mdi:electric-switch
+        entities:
+          - entity: switch.espcure_chamber_fans
+            name: Chamber Fans (GPIO5)
+          - type: divider
+          - entity: sensor.espcure_pid_heat_output
+            name: Heater Output (GPIO19)
+          - entity: sensor.espcure_peltier_dehumidify_duty
+            name: Peltier TEC Output (GPIO18)
+
+      # ── Output history ────────────────────────────────────────────────────
+      - type: history-graph
+        title: Heater & Peltier Outputs — Last 24 Hours
+        hours_to_show: 24
+        entities:
+          - entity: sensor.espcure_pid_heat_output
+            name: Heat %
+          - entity: sensor.espcure_peltier_dehumidify_duty
+            name: Peltier %
+
+      # ── Temperature safety limits ─────────────────────────────────────────
+      - type: entities
+        title: Temperature Safety Limits
+        icon: mdi:snowflake-alert
+        entities:
+          - entity: number.espcure_min_chamber_temperature_frost_floor
+            name: Frost Floor (°C)
+          - entity: binary_sensor.espcure_frost_floor_active
+            name: Frost Guard Active
+          - entity: number.espcure_max_chamber_temperature_safety_ceiling
+            name: Max Chamber Temp (°C)
+
+      # ── Safety notice ─────────────────────────────────────────────────────
+      - type: markdown
+        content: >
+          ### Safety Notes
+
+          - **Fans** run only while the Peltier is cooling or the heater is heating
+            (off when idle). They are commanded on in the same step as the Peltier so
+            the hot side always has airflow — Peltier hot-side cooling depends on it.
+          - **SSR-40 DD** relays must be on heatsinks when carrying > 5 A.
+          - **Peltier** is bang-bang driven (`ledc` 15 Hz, full on/off) by the dew-point
+            / VPD loop — it is the dehumidifier, not a temperature output.
+          - **Frost guard** monitors chamber *air* temperature and forces the Peltier
+            off below the floor. If ice forms on the Peltier fins, raise the Frost Floor.
+          - **Max Chamber Temp** forces the Peltier on above the ceiling — the only
+            active cooling path in heat-only temperature control.
+
+
+  # ── PID Tuning ─────────────────────────────────────────────────────────────
+  - title: PID
+    path: pid
+    icon: mdi:chart-bell-curve
+    cards:
+
+      # ── Live coefficient sliders ──────────────────────────────────────────
+      - type: entities
+        title: PID Coefficients (Live Tuning)
+        icon: mdi:tune
+        entities:
+          - entity: number.espcure_pid_kp
+            name: Kp — Proportional
+          - entity: number.espcure_pid_ki
+            name: Ki — Integral
+          - entity: number.espcure_pid_kd
+            name: Kd — Derivative
+          - type: divider
+          - entity: button.espcure_pid_autotune
+            name: Run PID Autotune
+            action_name: Start
+          - type: section
+            label: "Changes apply instantly — no reflash needed"
+
+      # ── PID state ─────────────────────────────────────────────────────────
+      - type: entities
+        title: PID State
+        icon: mdi:chart-line
+        entities:
+          - entity: sensor.espcure_pid_heat_output
+            name: Heat Output
+          - entity: sensor.espcure_peltier_dehumidify_duty
+            name: Peltier Duty
+          - entity: sensor.espcure_pid_integral
+            name: Integral Term
+          - type: divider
+          - entity: climate.espcure_temperature_control
+            name: Climate Entity
+
+      # ── PID output history ────────────────────────────────────────────────
+      - type: history-graph
+        title: PID Outputs — Last 4 Hours
+        hours_to_show: 4
+        entities:
+          - entity: sensor.espcure_pid_heat_output
+            name: Heat %
+          - entity: sensor.espcure_peltier_dehumidify_duty
+            name: Peltier %
+          - entity: sensor.espcure_pid_integral
+            name: Integral
+
+      # ── Tuning reference ──────────────────────────────────────────────────
+      - type: markdown
+        content: >
+          ### Quick Tuning Reference
+
+          | Symptom | Fix |
+          |---|---|
+          | Oscillates ±2 °C | Reduce Kp 20–30 % |
+          | Overshoots, slow recovery | Reduce Ki; check Integral value |
+          | Steady-state offset | Increase Ki |
+          | Very slow approach (> 2 h) | Increase Kp 25 % |
+          | Spiky output | Increase `derivative_averaging_samples` in YAML |
+
+          After tuning: update `control_parameters` in `espcure.yaml` to match
+          and log in `docs/pid-tuning.md`.
+
+
+  # ── Diagnostics ───────────────────────────────────────────────────────────
+  - title: Diagnostics
+    path: diagnostics
+    icon: mdi:information
+    cards:
+
+      # ── Device info ───────────────────────────────────────────────────────
+      - type: entities
+        title: Device
+        icon: mdi:chip
+        entities:
+          - entity: binary_sensor.espcure_controller_online
+            name: Controller Online
+          - entity: sensor.espcure_ip_address
+            name: IP Address
+          - entity: sensor.espcure_wifi_signal
+            name: WiFi Signal (dBm)
+          - entity: sensor.espcure_uptime
+            name: Uptime
+
+      # ── Sensor diagnostics ────────────────────────────────────────────────
+      - type: entities
+        title: Sensor Diagnostics
+        icon: mdi:thermometer-lines
+        entities:
+          - entity: sensor.espcure_dew_point_error
+            name: Dew Point Error (vs setpoint)
+          - entity: sensor.espcure_vpd_error
+            name: VPD Error (vs setpoint)
+          - type: divider
+          - entity: sensor.espcure_chamber_temperature
+            name: Chamber Temp (°C)
+          - entity: sensor.espcure_dew_point
+            name: Dew Point (°C)
+
+      # ── Actions ───────────────────────────────────────────────────────────
+      - type: entities
+        title: Actions
+        icon: mdi:wrench
+        entities:
+          - entity: button.espcure_clear_sensor_condensation
+            name: Clear Sensor Condensation
+            action_name: Run
+          - entity: button.espcure_restart_controller
+            name: Restart Controller
+            action_name: Restart
+
+      # ── WiFi history ──────────────────────────────────────────────────────
+      - type: history-graph
+        title: WiFi Signal — Last 24 Hours
+        hours_to_show: 24
+        entities:
+          - entity: sensor.espcure_wifi_signal
+            name: WiFi dBm
+
+      # ── Web UI link ───────────────────────────────────────────────────────
+      - type: markdown
+        content: >
+          ### Device Web UI
+
+          Browse directly to the controller for a full dashboard without Home Assistant:
+
+          **[http://espcure.local](http://espcure.local)**
+
+          The web UI runs from the ESP32's flash — works on any device on your local
+          network. Dark mode toggle in the top-right corner.

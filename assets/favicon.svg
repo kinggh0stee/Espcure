@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="EspCure">
+  <rect width="64" height="64" rx="14" fill="#0b7d8a"/>
+  <!-- leaf -->
+  <path d="M32 13c-12 4-19 13-19 24 0 5 2 9 5 12 1-13 7-21 17-27-7 7-11 15-12 26 2 1 5 2 8 2 11 0 20-9 20-22 0-9-7-15-19-15z"
+        fill="#7fe0c9"/>
+  <!-- cold accent: snow dot -->
+  <circle cx="46" cy="20" r="4" fill="#ffd54f"/>
+</svg>
