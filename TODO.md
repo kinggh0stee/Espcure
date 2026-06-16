@@ -92,12 +92,20 @@ Priority: 🔴 Critical · 🟡 High · 🟢 Nice-to-have · ✅ Done
 
 ---
 
+## 🟡 Known Bugs / Cleanups
+
+- [ ] **Clear Sensor Condensation button is a no-op** — the `on_press` lambda only logs (`ESP_LOGI`); it does not pulse the SHT45 heater (the `sht4x` platform has no on-demand heater action at esphome 2026.5.3). Either implement a real heater pulse, or relabel/remove the button. Docs (`calibration.md`, `hardware.md`, `CLAUDE.md`) now flag it as a known limitation.
+- [ ] **PID autotune on a heat-only loop** — the autotune action uses `negative_output: -1.0`, but there's no `cool_output`. Review whether `negative_output: 0` gives cleaner results, or document that manual tuning is preferred for this heat-only setup.
+
+---
+
 ## 🟢 Documentation
 
 - [ ] Wiring photo guide (reference photos for each SSR connection)
 - [ ] Video walkthrough of web UI and HA dashboard
 - [x] GitHub Actions CI — `.github/workflows/validate.yml` runs `esphome config` on PRs
 - [x] Changelog — `CHANGELOG.md`
+- [x] Windows + Linux/macOS setup instructions (`README.md`, `docs/setup.md`)
 
 ---
 

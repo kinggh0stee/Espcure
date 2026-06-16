@@ -80,6 +80,8 @@ For a richer UI with color coding:
 | CS | GPIO11 |
 
 > GPIO12–17 are used by the SPI flash on most ESP32-C6 modules — avoid them.
+>
+> **GPIO10 is shared:** the optional cold-plate DS18B20 (commented section in `espcure.yaml`) also uses GPIO10. Pick one — the TFT DC line *or* the DS18B20 — not both. If you want both, move the DS18B20 to GPIO20.
 
 ### ESPHome Config Skeleton
 
@@ -140,4 +142,4 @@ Color coding convention:
 | 23 | **Free** (formerly dehumidifier relay) |
 | **Free** | GPIO0–4, 6–7, 10–11, 20 |
 
-GPIO10–11 are available for the TFT DC/CS lines without reassigning anything.
+GPIO10–11 are available for the TFT DC/CS lines without reassigning anything — but note GPIO10 is the same pin the optional cold-plate DS18B20 would use, so the TFT and the DS18B20 can't both claim it (move the DS18B20 to GPIO20 if you need both).

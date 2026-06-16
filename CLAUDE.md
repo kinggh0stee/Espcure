@@ -112,6 +112,8 @@ esphome run espcure.yaml --device espcure.local
 
 **Always install with `pip install -r requirements.txt`** — pins `esphome==2026.5.3`, matching `validate.yml`. Installing a different version can produce parse differences that only surface in CI.
 
+On **Windows**, the same commands work from PowerShell inside a venv (`py -m venv venv; .\venv\Scripts\Activate.ps1`); if `esphome` isn't on PATH, call it as `py -m esphome config espcure.yaml`. Use `Copy-Item secrets.yaml.example secrets.yaml` instead of `cp`. See `docs/setup.md` for the full cross-platform flow.
+
 ### Docs site
 
 ```bash
@@ -184,7 +186,7 @@ No real credentials are stored in the repo. The dummy `api_encryption_key` used 
   | GPIO5 | Fan rail SSR-40 DD (on when Peltier cooling or heater heating) |
   | GPIO8 | WS2812 RGB LED (built-in DevKitC-1 LED) |
   | GPIO9 | BOOT / page button — OLED page cycle + BLE provisioning authorizer |
-  | GPIO10 | Free (commented optional cold-plate DS18B20 — DATA + 4.7 kΩ pull-up to 3.3 V) |
+  | GPIO10 | Free — claimed by *either* the optional cold-plate DS18B20 (DATA + 4.7 kΩ pull-up) *or* the ST7789 TFT DC line (`docs/display-plan.md`), not both |
   | GPIO18 | Peltier (cooling) SSR-40 DD — `ledc` 15 Hz; driven by the 30 s humidity loop |
   | GPIO19 | Heater SSR-40 DD — `ledc` 15 Hz; `heat_output` of the PID |
   | GPIO21 | I²C SDA (SHT45 + SSD1306) |
@@ -202,5 +204,5 @@ No real credentials are stored in the repo. The dummy `api_encryption_key` used 
 - **ESP32-C6 requires ESP-IDF**: The `framework: type: esp-idf` must not be changed to `arduino`. The C6 variant is not Arduino-compatible in ESPHome.
 - **BLE provisioning**: `esp32_improv` is enabled with `authorizer: page_button` (GPIO9 BOOT button). Hold the BOOT button while a phone scans for the device to authorize WiFi provisioning. `improv_serial` provides the same over USB serial.
 - **UTF-8 in text-sensor / display lambdas**: non-ASCII glyphs must be emitted as terminated hex byte escapes. Write `°C` as `\xc2\xb0""C`, **not** `\xc2\xb0C` — in the latter the `\x` escape greedily absorbs the following `C` hex digit, producing byte `0x0C` and invalid UTF-8. HA's protobuf parser rejects the malformed `TextSensorStateResponse` and drops the API connection in a reconnect loop (`CONNECTION_CLOSED errno=128`). The `""` terminates the escape. Applies to all `°`, `→` (`\xe2\x86\x92`), and `—` (`\xe2\x80\x94`) glyphs in `chamber_status`, `humidity_control_mode`, `dry10_program_status`, `cannatrol_program_status`, and the OLED page lambdas.
-- **SHT45 on-chip heater**: `heater_max_duty: 0.0` keeps the sensor's self-heater off in normal operation (avoids biasing the reading). The "Clear Sensor Condensation" button is the manual escape hatch for clearing condensation off the sensor face.
+- **SHT45 on-chip heater**: `heater_max_duty: 0.0` keeps the sensor's self-heater off (avoids biasing the reading). **Known limitation**: the "Clear Sensor Condensation" button's lambda currently only logs — it does **not** pulse the heater (the `sht4x` platform exposes no on-demand heater action at the pinned ESPHome version). Tracked in `TODO.md`; if you wire up a real pulse, update `docs/calibration.md` and `docs/hardware.md`.
 - **Temp targets differ by program**: the 10-Day Dry program holds temp target 15.6 °C (60 °F); the Cannatrol 4+4 program and the Dry/Cure preset buttons set 20 °C (68 °F). Dew-point setpoints drive the Peltier in all cases.

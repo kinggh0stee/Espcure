@@ -2,18 +2,44 @@
 
 ## Prerequisites
 
-- ESPHome installed: `pip install esphome`
+- Python 3.11+ and ESPHome installed (see below — use the pinned `requirements.txt`)
 - Home Assistant running (for HA API integration and time sync)
 - Hardware assembled per `docs/hardware.md`
 - USB connection to the ESP32-C6 (first flash only)
 - Internet access at compile time (Roboto font downloaded from Google Fonts for the OLED display)
 
+### Install ESPHome
+
+Use the pinned `requirements.txt` so your local build matches CI (`esphome==2026.5.3`). A virtual environment keeps it isolated.
+
+**Linux / macOS:**
+```bash
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
+
+**Windows (PowerShell):**
+```powershell
+py -m venv venv
+.\venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+```
+
+> If `esphome` isn't found after install on Windows, invoke it as `py -m esphome` instead.
+
 ---
 
 ## 1. Prepare secrets
 
+**Linux / macOS:**
 ```bash
 cp secrets.yaml.example secrets.yaml
+```
+
+**Windows (PowerShell):**
+```powershell
+Copy-Item secrets.yaml.example secrets.yaml
 ```
 
 Edit `secrets.yaml` with your values:
