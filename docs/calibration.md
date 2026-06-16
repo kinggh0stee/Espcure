@@ -4,6 +4,8 @@
 
 The SHT45 has excellent accuracy (±0.1 °C typical) and very low self-heating (~0.1–0.2 °C at 3.3 V). Still run this procedure after install — mounting position and airflow affect the reading.
 
+> **Using an SHT31?** The SHT31-D is supported via the `sht_platform: sht3xd` substitution. It is less accurate (±0.3 °C / ±2 % RH) and self-heats more (~0.3 °C). **Re-run this calibration whenever you swap between the SHT31 and SHT45** — the offset is sensor-specific and the two chips will not share the same correction.
+
 ### Procedure
 
 1. Let the chamber stabilize at room temperature with the door open for 30 minutes.
@@ -53,17 +55,15 @@ For most users, a 0–1.5 % offset is sufficient.
 
 ---
 
-## SHT45 On-Chip Heater
+## On-Chip Heater (Clear Sensor Condensation)
 
-The SHT45 has a built-in resistive heater for evaporating condensation off the sensing element. It is **off during normal operation** (`heater_max_duty: 0.0`) so it never biases readings.
+Both the SHT31 and SHT45 have a built-in resistive heater for evaporating condensation off the sensing element. It is **off during normal operation** so it never biases readings.
 
-If the humidity reading pegs near 100 % after a rapid temperature drop (condensation on the sensor face), press the **Clear Sensor Condensation** button in HA or the device web UI. The firmware:
+If the humidity reading pegs near 100 % after a rapid temperature drop (condensation on the sensor face), press the **Clear Sensor Condensation** button in HA or the device web UI. The firmware enables the heater, forces a measurement cycle (the heater fires during it), waits ~1–1.5 s, then disables the heater and takes a clean reading.
 
-1. Enables the heater (duty = 1.0) and forces one measurement cycle — the heater fires during that measurement (~1 s).
-2. Waits 1.5 s for the cycle to complete.
-3. Disables the heater and immediately takes a clean normal reading.
+The button works on whichever sensor is selected — the heater API differs (`set_heater_enabled(true/false)` on the SHT31, `set_heater_max_duty(1.0/0.0)` on the SHT45), so both versions live in the button's `on_press` block in `espcure.yaml`; the active one matches the `sht_platform` substitution.
 
-Total button-press-to-fresh-reading time is about 3 s. Avoid pressing the button repeatedly — the heater temporarily biases both temperature and RH upward, and the effect clears within one update cycle after it's disabled.
+Avoid pressing the button repeatedly — the heater temporarily biases both temperature and RH upward, and the effect clears within one update cycle after it's disabled.
 
 ---
 

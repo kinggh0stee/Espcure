@@ -6,7 +6,7 @@
 |---|---|---|---|
 | 1 | **Fridge** | Honeywell thermoelectric wine cooler | Remove original control board |
 | 2 | **MCU** | ESP32-C6 DevKit (e.g. Espressif ESP32-C6-DevKitC-1) | 3.3 V logic; requires ESP-IDF firmware |
-| 3 | **Chamber sensor** | SHT45 breakout (Adafruit #5665 or equiv.) | I²C, 3.3 V; ±0.1 °C / ±1 % RH |
+| 3 | **Chamber sensor** | SHT45 breakout (Adafruit #5665 or equiv.) **or** SHT31-D (both I²C 0x44) | I²C, 3.3 V. SHT45: ±0.1 °C / ±1 % RH. SHT31: ±0.3 °C / ±2 % RH. Select via the `sht_platform` substitution in `espcure.yaml` — see "Swapping the chamber sensor" below |
 | 4 | **SSR — Fan rail** | SSR-40 DD (DC-DC solid-state relay) | Controls all 3 fans together (2 TEC hot-side + heater fan); ON when Peltier or heater active |
 | 5 | **SSR — Peltier cooling** | SSR-40 DD | Controls both TECs in parallel; LEDC 15 Hz bang-bang (dew point / VPD driven) |
 | 6 | **SSR — Heater** | SSR-40 DD | Controls PTC element only (heater fan wired to fan rail); LEDC 15 Hz PID driven |
@@ -96,6 +96,22 @@ The SSR-40 DDs must be mounted on aluminum heatsinks when carrying more than ~5 
 Mount the SHT45 inside the chamber, away from the Peltier cold plate and out of the direct hot-side fan stream. Ideal position: center-rear of the interior air space, elevated off the floor. The SHT45 has negligible self-heating (~0.1–0.2 °C at 3.3 V) — far less than the SHT31. Still calibrate with an offset after install.
 
 The SHT45 on-chip heater is **off during normal operation** (`heater_max_duty: 0.0`). If condensation forms on the sensor face (humidity reads ~100 % after a rapid temperature drop), press **Clear Sensor Condensation** in HA or the device web UI — it briefly enables the heater for one measurement cycle to evaporate the condensation, then immediately disables it and takes a clean reading. See `docs/calibration.md` for details.
+
+## Swapping the chamber sensor (SHT31 ↔ SHT45)
+
+Both the SHT31-D and SHT45 use I²C address `0x44` and the same 4-wire connection, so the wiring never changes. They differ only in the ESPHome platform (`sht3xd` vs `sht4x`) and the on-chip heater API. The config selects between them with a single substitution at the top of `espcure.yaml`:
+
+```yaml
+substitutions:
+  sht_platform: sht3xd        # SHT31  (change to sht4x for the SHT45)
+```
+
+To swap, change **two** things, then reflash:
+
+1. The `sht_platform` substitution (`sht3xd` = SHT31, `sht4x` = SHT45).
+2. The **Clear Sensor Condensation** button lambda — the heater API differs (`set_heater_enabled(bool)` on the SHT31, `set_heater_max_duty(float)` on the SHT45). Both versions are kept in the button's `on_press` block; comment out one and uncomment the other.
+
+Run `esphome config espcure.yaml`, then `esphome run espcure.yaml`. Because the SHT31 has higher self-heating than the SHT45, **re-measure the calibration offset** after swapping (see `docs/calibration.md`).
 
 ## Dehumidification
 

@@ -10,10 +10,20 @@ All notable changes to EspCure are documented here.
 - **PID autotune `negative_output` on heat-only loop** — the autotune button previously used `negative_output: -1.0`, but the temperature PID has no `cool_output`. With no cooling actuator the `-1.0` level goes nowhere, making the relay-feedback oscillation asymmetric and the resulting gains unreliable. Changed to `negative_output: 0.0` so the test correctly oscillates between "heater full on" and "heater off (passive cool-down)". Updated `docs/pid-tuning.md` with heat-only timing expectations (60–120 min) and a recommendation to prefer manual tuning.
 
 ### Added
-- **Clear Sensor Condensation button now works** — the button previously only logged a message. It now pulses the SHT45 on-chip heater for one measurement cycle to evaporate condensation: `set_heater_max_duty(1.0)` → force update → 1.5 s wait → `set_heater_max_duty(0.0)` → force clean reading. Added `id: sht45` to the SHT45 platform block to enable on-demand component calls.
+- **Selectable chamber sensor (SHT31 or SHT45)** — added a `sht_platform` substitution at the top of `espcure.yaml` to switch between the SHT31 (`sht3xd`) and SHT45 (`sht4x`). Both share I²C 0x44 and the same wiring; only the platform and the on-chip heater API differ. The sensor block now omits `precision`/`heater_max_duty` (both platforms default to highest-quality measurement + heater-off). The "Clear Sensor Condensation" button carries both heater-API variants (`set_heater_enabled` for SHT31, `set_heater_max_duty` for SHT45) — the active one is toggled alongside the substitution. Default ships as `sht3xd` (SHT31). Docs: `docs/hardware.md` "Swapping the chamber sensor" + `docs/calibration.md` re-calibration note.
+- **Dew Point (°F)** sensor — `dew_point_f`, mirroring the existing `chamber_temp_f`, for the °F-centric Cannatrol workflow. Added to the web UI Humidity group and the HA dashboard status strip.
+- **Clear Sensor Condensation button now works** — the button previously only logged a message. It now pulses the sensor's on-chip heater for one measurement cycle to evaporate condensation, then takes a clean reading. Added `id: sht45` to the sensor platform block to enable on-demand component calls.
 - **Cross-platform setup instructions** — `README.md` and `docs/setup.md` now give both Linux/macOS and Windows (PowerShell) commands for creating a venv, installing the pinned ESPHome, copying `secrets.yaml`, and generating the API key. `CLAUDE.md` notes the Windows `py -m esphome` / `Copy-Item` equivalents.
 
 ### Changed
+- **Web UI reorganization** (`web_server` v3 sorting groups):
+  - **6 groups instead of 7** — merged the thin VPD group into "Humidity & Dehumidification" (VPD and Dew Point are two modes of one loop, so all four VPD entities now sit beside their Dew Point counterparts).
+  - **Set-once knobs hidden via `entity_category: config`** — PID Kp/Ki/Kd, PID Autotune, the dew-point/VPD hysteresis, frost floor + safety ceiling, the program day counters, and Clear Sensor Condensation now live in the config section instead of cluttering the live dashboard.
+  - **Climate renamed "Chamber Temperature" → "Temperature Control"** to end the name collision with the `chamber_temp` sensor (also renames the HA entity to `climate.espcure_temperature_control`).
+  - **"Peltier Output" → "Peltier (Dehumidify) Duty"**, moved to Diagnostics with `entity_category: diagnostic` (renames HA entity to `sensor.espcure_peltier_dehumidify_duty`).
+  - **Reordered** — Apply Dry/Cure presets promoted to the top of Cure Programs; Frost Floor Active promoted to the top of Diagnostics.
+  - **`Chamber Fans`** marked `diagnostic` (it is auto-driven by the 2 s loop; manual toggling fights the controller).
+  - `docs/ha-dashboard.yaml` updated for the two renamed entity_ids and the new Dew Point °F readout.
 - **Docs sweep / accuracy pass** across every document:
   - `docs/setup.md` now installs ESPHome via the pinned `requirements.txt` (was bare `pip install esphome`), matching CI.
   - `docs/cure-programs.md` corrected the VPD Hysteresis default to **0.1 kPa** (config value; doc previously said 0.2) and added the 0.8 kPa VPD Setpoint default.
