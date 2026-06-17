@@ -21,7 +21,7 @@ Capabilities:
 - Chamber Status text sensor (Cooling / Heating / Idle / Frost Guard)
 - Software frost floor (forces Peltier off if chamber air drops below configurable floor, default 4 °C; heater keeps running)
 - **SSD1306 OLED display**: 3-page cycling (temp/RH/DP/VPD, control settings, program status); BOOT button (GPIO9) cycles pages manually
-- **WS2812 RGB LED** (GPIO8, built-in): cooling=blue, heating=red(dim), idle=green(very dim), frost=white blink
+- **WS2812 RGB LED** (GPIO8, built-in): cooling=blue, heating=red(dim), idle=purple(half power), frost=white blink. The light is `internal: true`; the **Status LED Enable** switch is the single on/off control. Painted by the `paint_status_led` script.
 - Home Assistant integration via encrypted native API (device_class + state_class on all sensors)
 - Diagnostic sensors: Peltier (Dehumidify) Duty (%), Dew Point Error, PID Heat Output, PID Integral, uptime, WiFi signal
 - Device-hosted web UI at `http://espcure.local` — `web_server` v3, dark mode toggle, entities in 6 sorting groups (Climate & Temperature, Humidity & Dew Point, Cure Programs, Status & Indicators, Setup & Tuning, Diagnostics); no HA required. **Web-UI declutter:** `entity_category: config`/`diagnostic` does NOT hide entities from the device web page (it only tucks them away in HA), so the page is decluttered by (a) grouping set-once knobs into the bottom "Setup & Tuning" + "Diagnostics" groups and (b) `internal: true` on never-used entities (the whole VPD suite, the `page_button` BOOT sensor, the `humidity_control_mode` text) — `internal: true` removes from BOTH the web page and HA
@@ -73,7 +73,7 @@ All ESPHome work lives in **`espcure.yaml`**. Key sections:
 | `output.ledc` (heater) | 15 Hz; PTC element on GPIO19; `heat_output` of the PID |
 | `interval` (30 s) | Dew-point/VPD bang-bang loop — **drives the Peltier**. Priority: frost guard → high-temp ceiling → VPD → Dew Point → off |
 | `interval` (60 s) | Frost-guard loop — forces Peltier off below the floor; heater keeps running |
-| `interval` (2 s) | Status LED + fan control — fan ON when `peltier_cooling` or heater heating. LED is **edge-triggered** (writes only on a state change, via the `led_state` global) and gated by `switch.status_led_enable`. |
+| `interval` (2 s) | Fan control + LED refresh — fan ON when `peltier_cooling` or heater heating; then calls the `paint_status_led` script. The LED painter is **edge-triggered** via the `led_state` global and gated by `switch.status_led_enable`. |
 | `switch.fan_relay` | GPIO5 — fan rail SSR; ON when Peltier cooling or heater heating. Commanded ON in the same lambda as the Peltier (hot-side airflow). |
 | `switch.status_led_enable` | Gates the 2 s status-LED loop (default ON). OFF turns the WS2812 off and stops the loop driving it; fan control is unaffected. |
 | `time.on_time` (cron) | Midnight cron — 10-day dry step + Cannatrol 4+4 advance |
@@ -90,7 +90,8 @@ All ESPHome work lives in **`espcure.yaml`**. Key sections:
 | `button` (Autotune / Restart / Clear Sensor Condensation) | PID autotune, controller restart, sensor condensation-clear. Heater statements come from `sht_heater_on`/`sht_heater_off` substitutions — a real heater pulse on SHT31, a no-op fresh-read on SHT45 (no on-demand heater API). |
 | `text_sensor.chamber_status` | Human-readable operating state (Cooling / Heating / Idle / Frost Guard) |
 | `web_server.sorting_groups` | 6 UI groups (Climate & Temperature, Humidity & Dew Point, Cure Programs, Status & Indicators, Setup & Tuning, Diagnostics) — every visible entity sets `sorting_group_id` + `sorting_weight`. Essentials on top; all `entity_category: config` knobs cluster in "Setup & Tuning", diagnostics last. NOTE: `entity_category` does NOT hide entities from the web page (HA-only); web declutter = grouping + `internal: true`. |
-| `light.status_led` | WS2812 RGB LED (GPIO8) — color reflects cooling/heating state; gated by `switch.status_led_enable` |
+| `light.status_led` | WS2812 RGB LED (GPIO8), `internal: true` — driven only by the `paint_status_led` script (cooling=blue, heating=red, idle=purple@0.5, frost=white blink). On/off via `switch.status_led_enable` (the single user control). |
+| `script.paint_status_led` | Shared LED painter. Called by the 2 s interval and instantly by the `status_led_enable` switch's `on_turn_on/off`. Edge-triggered via `led_state` so the Frost Blink pulse isn't restarted. |
 | `display.oled` (pages) | SSD1306 OLED, 3-page cycling; `page_button` GPIO9 cycles |
 | `esp32_improv` | BLE WiFi provisioning; BOOT button (GPIO9) is the authorizer |
 | `improv_serial` | Serial WiFi provisioning (USB fallback) |
