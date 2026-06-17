@@ -10,12 +10,25 @@
 # ─── Build-time options ───────────────────────────────────────────────────────
 # Chamber sensor select. Both the SHT31 and SHT45 use I²C address 0x44 and the
 # same wiring — only the ESPHome platform and the on-chip heater API differ.
-# To swap sensors you must change TWO things, then reflash:
-#   1. `sht_platform` below  (sht3xd = SHT31, sht4x = SHT45)
-#   2. the "Clear Sensor Condensation" button lambda (heater API differs —
-#      see the commented alternative in that button's on_press block)
+#
+# To swap sensors, set the three substitutions below to match, then reflash.
+# CI compiles BOTH variants on every PR, so a mismatch fails the build.
+#
+#   SHT31 (sht3xd) — has a real runtime heater toggle:
+#     sht_platform:   sht3xd
+#     sht_heater_on:  "id(sht45).set_heater_enabled(true);"
+#     sht_heater_off: "id(sht45).set_heater_enabled(false);"
+#
+#   SHT45 (sht4x) — NO on-demand heater API exists (heater is config-time only),
+#   so the Clear Sensor Condensation button just takes a fresh reading (no pulse):
+#     sht_platform:   sht4x
+#     sht_heater_on:  ";"
+#     sht_heater_off: ";"
 substitutions:
   sht_platform: sht3xd        # SHT31 (temporary). Change to sht4x when the SHT45 arrives.
+  # Heater statements for the Clear Sensor Condensation button (see block above).
+  sht_heater_on:  "id(sht45).set_heater_enabled(true);"
+  sht_heater_off: "id(sht45).set_heater_enabled(false);"
 
 esphome:
   name: espcure
@@ -870,10 +883,11 @@ button:
       sorting_weight: 11
 
   # Pulse the on-chip heater briefly to clear condensation from the sensor face,
-  # then take a clean reading. The heater API differs by sensor platform — the
-  # ACTIVE block below is for the SHT31 (sht3xd). When you switch to the SHT45
-  # (sht4x) via the `sht_platform` substitution, comment out the SHT31 block and
-  # uncomment the SHT45 block.
+  # then take a clean reading. The heater statements come from the `sht_heater_on`
+  # / `sht_heater_off` substitutions (top of file) so the same button compiles for
+  # either sensor. On the SHT31 they toggle the runtime heater; on the SHT45 they
+  # are no-ops (the sht4x platform has no on-demand heater API), so the button just
+  # refreshes the reading. CI compiles both variants to keep them in sync.
   - platform: template
     name: "Clear Sensor Condensation"
     icon: "mdi:heat-wave"
@@ -882,26 +896,15 @@ button:
       sorting_group_id: grp_hardware
       sorting_weight: 6
     on_press:
-      # ── SHT31 (sht3xd): set_heater_enabled(bool), ~1 s pulse ──────────────────
       - lambda: |-
-          ESP_LOGI("espcure", "SHT31 condensation-clear: enabling heater for one cycle");
-          id(sht45).set_heater_enabled(true);
+          ESP_LOGI("espcure", "Clear Sensor Condensation: applying sensor heater (if supported)");
+          ${sht_heater_on}
       - component.update: sht45
       - delay: 1000ms
       - lambda: |-
-          id(sht45).set_heater_enabled(false);
-          ESP_LOGI("espcure", "SHT31 condensation-clear: heater off, taking clean reading");
+          ${sht_heater_off}
+          ESP_LOGI("espcure", "Clear Sensor Condensation: taking a fresh reading");
       - component.update: sht45
-      # ── SHT45 (sht4x): set_heater_max_duty(float), ~1.5 s pulse ───────────────
-      # - lambda: |-
-      #     ESP_LOGI("espcure", "SHT45 condensation-clear: enabling heater for one cycle");
-      #     id(sht45).set_heater_max_duty(1.0f);
-      # - component.update: sht45
-      # - delay: 1500ms
-      # - lambda: |-
-      #     id(sht45).set_heater_max_duty(0.0f);
-      #     ESP_LOGI("espcure", "SHT45 condensation-clear: heater off, taking clean reading");
-      # - component.update: sht45
 
   # ── Cannatrol one-tap presets ────────────────────────────────────────────────
   # Apply full profile: temp + dew point setpoints + enable dew-point mode.
