@@ -73,8 +73,9 @@ All ESPHome work lives in **`espcure.yaml`**. Key sections:
 | `output.ledc` (heater) | 15 Hz; PTC element on GPIO19; `heat_output` of the PID |
 | `interval` (30 s) | Dew-point/VPD bang-bang loop — **drives the Peltier**. Priority: frost guard → high-temp ceiling → VPD → Dew Point → off |
 | `interval` (60 s) | Frost-guard loop — forces Peltier off below the floor; heater keeps running |
-| `interval` (2 s) | Status LED + fan control — fan ON when `peltier_cooling` or heater heating |
+| `interval` (2 s) | Status LED + fan control — fan ON when `peltier_cooling` or heater heating. LED is **edge-triggered** (writes only on a state change, via the `led_state` global) and gated by `switch.status_led_enable`. |
 | `switch.fan_relay` | GPIO5 — fan rail SSR; ON when Peltier cooling or heater heating. Commanded ON in the same lambda as the Peltier (hot-side airflow). |
+| `switch.status_led_enable` | Gates the 2 s status-LED loop (default ON). OFF turns the WS2812 off and stops the loop driving it; fan control is unaffected. |
 | `time.on_time` (cron) | Midnight cron — 10-day dry step + Cannatrol 4+4 advance |
 | `number.*_setpoint` | User-facing setpoints exposed to HA and web UI |
 | `number.min_chamber_temp` / `number.max_chamber_temp` | Frost floor (default 4 °C) and high-temp safety ceiling (default 27 °C) |
@@ -89,7 +90,7 @@ All ESPHome work lives in **`espcure.yaml`**. Key sections:
 | `button` (Autotune / Restart / Clear Sensor Condensation) | PID autotune, controller restart, sensor condensation-clear. Heater statements come from `sht_heater_on`/`sht_heater_off` substitutions — a real heater pulse on SHT31, a no-op fresh-read on SHT45 (no on-demand heater API). |
 | `text_sensor.chamber_status` | Human-readable operating state (Cooling / Heating / Idle / Frost Guard) |
 | `web_server.sorting_groups` | 6 UI groups (Climate & Temperature, Humidity & Dew Point, Cure Programs, Status & Indicators, Setup & Tuning, Diagnostics) — every visible entity sets `sorting_group_id` + `sorting_weight`. Essentials on top; all `entity_category: config` knobs cluster in "Setup & Tuning", diagnostics last. NOTE: `entity_category` does NOT hide entities from the web page (HA-only); web declutter = grouping + `internal: true`. |
-| `light.status_led` | WS2812 RGB LED (GPIO8) — color reflects cooling/heating state |
+| `light.status_led` | WS2812 RGB LED (GPIO8) — color reflects cooling/heating state; gated by `switch.status_led_enable` |
 | `display.oled` (pages) | SSD1306 OLED, 3-page cycling; `page_button` GPIO9 cycles |
 | `esp32_improv` | BLE WiFi provisioning; BOOT button (GPIO9) is the authorizer |
 | `improv_serial` | Serial WiFi provisioning (USB fallback) |
