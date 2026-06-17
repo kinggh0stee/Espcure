@@ -10,12 +10,25 @@
 # ─── Build-time options ───────────────────────────────────────────────────────
 # Chamber sensor select. Both the SHT31 and SHT45 use I²C address 0x44 and the
 # same wiring — only the ESPHome platform and the on-chip heater API differ.
-# To swap sensors you must change TWO things, then reflash:
-#   1. `sht_platform` below  (sht3xd = SHT31, sht4x = SHT45)
-#   2. the "Clear Sensor Condensation" button lambda (heater API differs —
-#      see the commented alternative in that button's on_press block)
+#
+# To swap sensors, set the three substitutions below to match, then reflash.
+# CI compiles BOTH variants on every PR, so a mismatch fails the build.
+#
+#   SHT31 (sht3xd) — has a real runtime heater toggle:
+#     sht_platform:   sht3xd
+#     sht_heater_on:  "id(sht45).set_heater_enabled(true);"
+#     sht_heater_off: "id(sht45).set_heater_enabled(false);"
+#
+#   SHT45 (sht4x) — NO on-demand heater API exists (heater is config-time only),
+#   so the Clear Sensor Condensation button just takes a fresh reading (no pulse):
+#     sht_platform:   sht4x
+#     sht_heater_on:  ";"
+#     sht_heater_off: ";"
 substitutions:
   sht_platform: sht3xd        # SHT31 (temporary). Change to sht4x when the SHT45 arrives.
+  # Heater statements for the Clear Sensor Condensation button (see block above).
+  sht_heater_on:  "id(sht45).set_heater_enabled(true);"
+  sht_heater_off: "id(sht45).set_heater_enabled(false);"
 
 esphome:
   name: espcure
@@ -80,25 +93,30 @@ web_server:
   port: 80
   version: 3
   local: true
+  # Group order = top-to-bottom on the device web page. Essentials first; the
+  # set-once knobs cluster in "Setup & Tuning" and debug data in "Diagnostics"
+  # at the bottom (both collapsible). NOTE: entity_category does NOT hide
+  # entities from this page (it only affects Home Assistant); grouping + order
+  # is the lever here. Truly unused entities use `internal: true` instead.
   sorting_groups:
     - id: grp_climate
       name: "Climate & Temperature"
       sorting_weight: 10
     - id: grp_humidity
-      name: "Humidity & Dehumidification"
+      name: "Humidity & Dew Point"
       sorting_weight: 20
     - id: grp_programs
       name: "Cure Programs"
+      sorting_weight: 30
+    - id: grp_status
+      name: "Status & Indicators"
       sorting_weight: 40
-    - id: grp_pid
-      name: "PID Tuning"
-      sorting_weight: 50
-    - id: grp_hardware
-      name: "Hardware & Status"
-      sorting_weight: 60
+    - id: grp_setup
+      name: "Setup & Tuning"
+      sorting_weight: 80
     - id: grp_diag
       name: "Diagnostics"
-      sorting_weight: 70
+      sorting_weight: 90
 
 # ─── I²C (SHT31/SHT45 chamber sensor) ─────────────────────────────────────────
 # SDA → GPIO21   SCL → GPIO22
@@ -199,11 +217,12 @@ sensor:
       sorting_group_id: grp_humidity
       sorting_weight: 2
 
-  # Vapor Pressure Deficit — plant stress indicator (VPD mode lives in the
-  # Humidity group alongside Dew Point — they are two modes of one loop)
+  # Vapor Pressure Deficit — still computed (the OLED shows it), but VPD mode is
+  # hidden from the UI, so this is internal: true (not on the web page or in HA).
   - platform: template
     id: vpd
     name: "Vapor Pressure Deficit"
+    internal: true
     unit_of_measurement: "kPa"
     state_class: measurement
     icon: "mdi:waves"
@@ -214,9 +233,6 @@ sensor:
       float svp = 0.6108f * exp(17.27f * t / (t + 237.3f));
       return svp * (1.0f - rh / 100.0f);
     update_interval: 30s
-    web_server:
-      sorting_group_id: grp_humidity
-      sorting_weight: 8
 
   # Dew-point error vs setpoint (positive = too humid; NaN when in VPD mode)
   - platform: template
@@ -254,22 +270,19 @@ sensor:
       sorting_group_id: grp_diag
       sorting_weight: 2
 
-  # VPD error vs setpoint (NaN unless VPD mode is active)
+  # VPD error vs setpoint — internal: true (VPD mode is hidden from the UI)
   - platform: template
     id: vpd_error
     name: "VPD Error"
+    internal: true
     unit_of_measurement: "kPa"
     state_class: measurement
     icon: "mdi:waves-arrow-up"
-    entity_category: diagnostic
     lambda: |-
       if (!id(use_vpd_control).state) return NAN;
       if (isnan(id(vpd).state)) return NAN;
       return id(vpd).state - id(vpd_setpoint).state;
     update_interval: 30s
-    web_server:
-      sorting_group_id: grp_diag
-      sorting_weight: 6
 
   # ── PID diagnostics (heat-only — Peltier is not driven by the PID) ───────────
   - platform: pid
@@ -348,8 +361,8 @@ switch:
     icon: "mdi:fan"
     entity_category: diagnostic
     web_server:
-      sorting_group_id: grp_hardware
-      sorting_weight: 1
+      sorting_group_id: grp_diag
+      sorting_weight: 10
 
   # Status LED enable — gates the 2 s status-LED loop. When ON (default), the
   # WS2812 automatically reflects the cooling/heating/idle/frost state. When
@@ -362,7 +375,7 @@ switch:
     optimistic: true
     icon: "mdi:led-on"
     web_server:
-      sorting_group_id: grp_hardware
+      sorting_group_id: grp_status
       sorting_weight: 4
 
   # 10-day dew-point dry program (proven recipe — replaces the 24 h hang):
@@ -427,22 +440,21 @@ switch:
     icon: "mdi:thermometer-water"
     web_server:
       sorting_group_id: grp_humidity
-      sorting_weight: 6
+      sorting_weight: 4
     on_turn_on:
       - switch.turn_off: use_vpd_control
 
-  # VPD control mode — bang-bang on Vapor Pressure Deficit (kPa).
-  # Low VPD = too humid → Peltier cools to condense moisture. Mutually
-  # exclusive with dew-point mode. No humidifier in this build.
+  # VPD control mode — internal: true. VPD is hidden from the UI (the build runs
+  # Dew Point mode), so this switch can't be enabled; the VPD branch in the 30 s
+  # loop is dead-but-harmless. Kept (not deleted) so re-enabling VPD is a
+  # one-line revert. Still toggled off by use_dew_point_control's on_turn_on.
   - platform: template
     id: use_vpd_control
     name: "VPD Control Mode"
+    internal: true
     restore_mode: RESTORE_DEFAULT_OFF
     optimistic: true
     icon: "mdi:waves"
-    web_server:
-      sorting_group_id: grp_humidity
-      sorting_weight: 11
     on_turn_on:
       - switch.turn_off: use_dew_point_control
 
@@ -464,7 +476,7 @@ number:
     icon: "mdi:target"
     web_server:
       sorting_group_id: grp_humidity
-      sorting_weight: 4
+      sorting_weight: 3
 
   - platform: template
     id: dew_point_hysteresis
@@ -479,8 +491,8 @@ number:
     icon: "mdi:tune"
     entity_category: config
     web_server:
-      sorting_group_id: grp_humidity
-      sorting_weight: 5
+      sorting_group_id: grp_setup
+      sorting_weight: 3
 
   # ── Frost floor ──────────────────────────────────────────────────────────────
   # PID suspends if chamber air drops below this — software-only, no cold-plate sensor
@@ -497,8 +509,8 @@ number:
     icon: "mdi:snowflake-alert"
     entity_category: config
     web_server:
-      sorting_group_id: grp_climate
-      sorting_weight: 4
+      sorting_group_id: grp_setup
+      sorting_weight: 1
 
   # ── High-temperature safety ceiling ──────────────────────────────────────────
   # Heat-only PID can't cool, so this forces the Peltier ON above this limit
@@ -517,8 +529,8 @@ number:
     icon: "mdi:fire-alert"
     entity_category: config
     web_server:
-      sorting_group_id: grp_climate
-      sorting_weight: 5
+      sorting_group_id: grp_setup
+      sorting_weight: 2
 
   # ── Cure program counters ────────────────────────────────────────────────────
   - platform: template
@@ -533,8 +545,8 @@ number:
     icon: "mdi:calendar-today"
     entity_category: config
     web_server:
-      sorting_group_id: grp_programs
-      sorting_weight: 12
+      sorting_group_id: grp_setup
+      sorting_weight: 9
 
   - platform: template
     id: cannatrol_day
@@ -548,8 +560,8 @@ number:
     icon: "mdi:calendar-today"
     entity_category: config
     web_server:
-      sorting_group_id: grp_programs
-      sorting_weight: 13
+      sorting_group_id: grp_setup
+      sorting_weight: 10
 
   # ── Live PID tuning ──────────────────────────────────────────────────────────
   # Changing any coefficient immediately applies via set_control_parameters.
@@ -566,8 +578,8 @@ number:
     icon: "mdi:alpha-p-circle"
     entity_category: config
     web_server:
-      sorting_group_id: grp_pid
-      sorting_weight: 1
+      sorting_group_id: grp_setup
+      sorting_weight: 4
     on_value:
       then:
         - climate.pid.set_control_parameters:
@@ -588,8 +600,8 @@ number:
     icon: "mdi:alpha-i-circle"
     entity_category: config
     web_server:
-      sorting_group_id: grp_pid
-      sorting_weight: 2
+      sorting_group_id: grp_setup
+      sorting_weight: 5
     on_value:
       then:
         - climate.pid.set_control_parameters:
@@ -610,8 +622,8 @@ number:
     icon: "mdi:alpha-d-circle"
     entity_category: config
     web_server:
-      sorting_group_id: grp_pid
-      sorting_weight: 3
+      sorting_group_id: grp_setup
+      sorting_weight: 6
     on_value:
       then:
         - climate.pid.set_control_parameters:
@@ -620,10 +632,11 @@ number:
             ki: !lambda return id(pid_ki).state;
             kd: !lambda return x;
 
-  # ── VPD mode setpoints (live in the Humidity group with Dew Point) ───────────
+  # ── VPD mode setpoints — internal: true (VPD mode is hidden from the UI) ──────
   - platform: template
     id: vpd_setpoint
     name: "VPD Setpoint"
+    internal: true
     min_value: 0.1
     max_value: 2.0
     step: 0.05
@@ -632,13 +645,11 @@ number:
     optimistic: true
     unit_of_measurement: "kPa"
     icon: "mdi:target"
-    web_server:
-      sorting_group_id: grp_humidity
-      sorting_weight: 9
 
   - platform: template
     id: vpd_hysteresis
     name: "VPD Hysteresis"
+    internal: true
     min_value: 0.02
     max_value: 0.3
     step: 0.02
@@ -647,10 +658,6 @@ number:
     optimistic: true
     unit_of_measurement: "kPa"
     icon: "mdi:tune"
-    entity_category: config
-    web_server:
-      sorting_group_id: grp_humidity
-      sorting_weight: 10
 
 # ─── Climate (Temperature PID) ────────────────────────────────────────────────
 
@@ -666,7 +673,7 @@ climate:
     heat_output: heater_output
     web_server:
       sorting_group_id: grp_climate
-      sorting_weight: 3
+      sorting_weight: 2
     control_parameters:
       # Starting values — run PID Autotune after install to refine for your fridge
       # Update pid_kp/ki/kd number entities after tuning (docs/pid-tuning.md)
@@ -881,8 +888,8 @@ button:
     icon: "mdi:auto-fix"
     entity_category: config
     web_server:
-      sorting_group_id: grp_pid
-      sorting_weight: 4
+      sorting_group_id: grp_setup
+      sorting_weight: 7
     on_press:
       - climate.pid.autotune:
           id: temp_pid
@@ -893,43 +900,34 @@ button:
   - platform: restart
     name: "Restart Controller"
     icon: "mdi:restart"
+    entity_category: diagnostic
     web_server:
       sorting_group_id: grp_diag
       sorting_weight: 11
 
   # Pulse the on-chip heater briefly to clear condensation from the sensor face,
-  # then take a clean reading. The heater API differs by sensor platform — the
-  # ACTIVE block below is for the SHT31 (sht3xd). When you switch to the SHT45
-  # (sht4x) via the `sht_platform` substitution, comment out the SHT31 block and
-  # uncomment the SHT45 block.
+  # then take a clean reading. The heater statements come from the `sht_heater_on`
+  # / `sht_heater_off` substitutions (top of file) so the same button compiles for
+  # either sensor. On the SHT31 they toggle the runtime heater; on the SHT45 they
+  # are no-ops (the sht4x platform has no on-demand heater API), so the button just
+  # refreshes the reading. CI compiles both variants to keep them in sync.
   - platform: template
     name: "Clear Sensor Condensation"
     icon: "mdi:heat-wave"
     entity_category: config
     web_server:
-      sorting_group_id: grp_hardware
-      sorting_weight: 6
+      sorting_group_id: grp_setup
+      sorting_weight: 8
     on_press:
-      # ── SHT31 (sht3xd): set_heater_enabled(bool), ~1 s pulse ──────────────────
       - lambda: |-
-          ESP_LOGI("espcure", "SHT31 condensation-clear: enabling heater for one cycle");
-          id(sht45).set_heater_enabled(true);
+          ESP_LOGI("espcure", "Clear Sensor Condensation: applying sensor heater (if supported)");
+          ${sht_heater_on}
       - component.update: sht45
       - delay: 1000ms
       - lambda: |-
-          id(sht45).set_heater_enabled(false);
-          ESP_LOGI("espcure", "SHT31 condensation-clear: heater off, taking clean reading");
+          ${sht_heater_off}
+          ESP_LOGI("espcure", "Clear Sensor Condensation: taking a fresh reading");
       - component.update: sht45
-      # ── SHT45 (sht4x): set_heater_max_duty(float), ~1.5 s pulse ───────────────
-      # - lambda: |-
-      #     ESP_LOGI("espcure", "SHT45 condensation-clear: enabling heater for one cycle");
-      #     id(sht45).set_heater_max_duty(1.0f);
-      # - component.update: sht45
-      # - delay: 1500ms
-      # - lambda: |-
-      #     id(sht45).set_heater_max_duty(0.0f);
-      #     ESP_LOGI("espcure", "SHT45 condensation-clear: heater off, taking clean reading");
-      # - component.update: sht45
 
   # ── Cannatrol one-tap presets ────────────────────────────────────────────────
   # Apply full profile: temp + dew point setpoints + enable dew-point mode.
@@ -972,32 +970,32 @@ binary_sensor:
   - platform: status
     name: "Controller Online"
     icon: "mdi:wifi-check"
+    entity_category: diagnostic
     web_server:
       sorting_group_id: grp_diag
       sorting_weight: 9
 
-  # Live safety state — promoted to the top of Diagnostics
+  # Live safety state — promoted near the top of the page (Status & Indicators)
   - platform: template
     name: "Frost Floor Active"
     device_class: problem
     lambda: return id(frost_active);
     web_server:
-      sorting_group_id: grp_diag
+      sorting_group_id: grp_status
       sorting_weight: 1
 
   # BOOT button (GPIO9, built into ESP32-C6 DevKitC-1) — cycles display pages.
-  # INPUT_PULLUP + inverted: no extra hardware needed.
+  # INPUT_PULLUP + inverted: no extra hardware needed. internal: true keeps it
+  # off the web page / HA; the on_click automation and the esp32_improv
+  # authorizer still work (both reference the id, not the API exposure).
   - platform: gpio
     id: page_button
     name: "Display Page Button"
+    internal: true
     pin:
       number: GPIO9
       mode: INPUT_PULLUP
       inverted: true
-    entity_category: diagnostic
-    web_server:
-      sorting_group_id: grp_diag
-      sorting_weight: 10
     on_click:
       min_length: 50ms
       max_length: 350ms
@@ -1028,13 +1026,16 @@ text_sensor:
       return std::string("Idle");
     update_interval: 30s
     web_server:
-      sorting_group_id: grp_hardware
-      sorting_weight: 3
+      sorting_group_id: grp_status
+      sorting_weight: 2
 
-  # Active humidity control mode with live setpoint readout
+  # Active humidity control mode with live setpoint readout — internal: true.
+  # Still read by the OLED page-2 lambda; hidden from the web page / HA since the
+  # mode toggles are no longer user-facing (Dew Point is the only active mode).
   - platform: template
     id: humidity_control_mode
     name: "Humidity Control Mode"
+    internal: true
     icon: "mdi:water-check"
     lambda: |-
       char buf[48];
@@ -1187,8 +1188,8 @@ light:
     default_transition_length: 300ms
     restore_mode: ALWAYS_OFF
     web_server:
-      sorting_group_id: grp_hardware
-      sorting_weight: 2
+      sorting_group_id: grp_status
+      sorting_weight: 3
     effects:
       - pulse:
           name: "Frost Blink"

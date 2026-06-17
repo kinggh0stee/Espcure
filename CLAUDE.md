@@ -12,8 +12,8 @@ Capabilities:
 - **Selectable chamber sensor**: SHT31 (`sht3xd`) or SHT45 (`sht4x`), both at I²C 0x44, chosen via the `sht_platform` substitution at the top of `espcure.yaml`. No wiring change.
 - **Heat-only PID** temperature control with live tunable Kp/Ki/Kd (default target 15.6 °C). Heater rarely runs.
 - **Peltier cold-plate dehumidification** — the TEC is bang-bang driven (15 Hz full-on/off) by the active humidity loop; there is no external dehumidifier relay
-- **Two humidity control modes**: Dew Point mode (default, bang-bang on °C) and VPD mode (bang-bang on kPa); mutually exclusive
-- Dew point + VPD derived sensors; dew-point error diagnostic sensor
+- **Humidity control by dew point** (bang-bang on °C). A VPD mode exists in the code but is `internal: true` (hidden from the web UI and HA, not user-selectable) — see the web-UI declutter note below
+- Dew point derived sensor (+ an internal VPD sensor for the OLED); dew-point error diagnostic sensor
 - **10-day dry program** (dew point): day 1 ramps 15.6→12.2 °C DP, days 2–5 hold 12.2 °C, days 6–9 hold 11.1 °C, day 10 auto-off
 - **Cannatrol 4+4 program** (dew point): 4 days dry at 12.2 °C DP → 4 days cure at 11.1 °C DP
 - **One-tap presets**: Dry Profile, Cure Profile buttons
@@ -23,10 +23,10 @@ Capabilities:
 - **SSD1306 OLED display**: 3-page cycling (temp/RH/DP/VPD, control settings, program status); BOOT button (GPIO9) cycles pages manually
 - **WS2812 RGB LED** (GPIO8, built-in): cooling=blue, heating=red(dim), idle=green(very dim), frost=white blink
 - Home Assistant integration via encrypted native API (device_class + state_class on all sensors)
-- Diagnostic sensors: Peltier (Dehumidify) Duty (%), Dew Point Error, VPD Error, PID Heat Output, PID Integral, uptime, WiFi signal
-- Device-hosted web UI at `http://espcure.local` — `web_server` v3, dark mode toggle, entities in 6 sorting groups (Climate, Humidity & Dehumidification, Cure Programs, PID Tuning, Hardware, Diagnostics); set-once tuning/config knobs use `entity_category: config` to keep the live view clean; no HA required
+- Diagnostic sensors: Peltier (Dehumidify) Duty (%), Dew Point Error, PID Heat Output, PID Integral, uptime, WiFi signal
+- Device-hosted web UI at `http://espcure.local` — `web_server` v3, dark mode toggle, entities in 6 sorting groups (Climate & Temperature, Humidity & Dew Point, Cure Programs, Status & Indicators, Setup & Tuning, Diagnostics); no HA required. **Web-UI declutter:** `entity_category: config`/`diagnostic` does NOT hide entities from the device web page (it only tucks them away in HA), so the page is decluttered by (a) grouping set-once knobs into the bottom "Setup & Tuning" + "Diagnostics" groups and (b) `internal: true` on never-used entities (the whole VPD suite, the `page_button` BOOT sensor, the `humidity_control_mode` text) — `internal: true` removes from BOTH the web page and HA
 - OTA updates, fallback AP
-- GitHub Actions CI validates `esphome config` on every PR
+- GitHub Actions CI validates `esphome config` and **compiles both sensor variants** (SHT31 + SHT45) on every PR
 
 ## Repository layout
 
@@ -54,7 +54,7 @@ docs/
     home.html           Custom home-page template
 .github/
   workflows/
-    validate.yml        ESPHome config validation CI (PRs + main pushes)
+    validate.yml        ESPHome CI: `esphome config` + matrix compile of both sensor variants (PRs + main pushes)
     docs.yml            Auto-deploy MkDocs to GitHub Pages on push to main
 .claude/
   agents/               Sub-agent definitions (see below)
@@ -67,7 +67,7 @@ All ESPHome work lives in **`espcure.yaml`**. Key sections:
 
 | Section | Purpose |
 |---|---|
-| `substitutions.sht_platform` | Chamber sensor select: `sht3xd` (SHT31) or `sht4x` (SHT45). One-line swap; also requires toggling the Clear Sensor Condensation button lambda (heater API differs). |
+| `substitutions.sht_platform` | Chamber sensor select: `sht3xd` (SHT31) or `sht4x` (SHT45). Swap also sets the `sht_heater_on`/`sht_heater_off` substitutions (heater API differs) — no lambda editing. CI compiles both variants. |
 | `climate.pid` | **Heat-only** temperature PID (heater chases temp), named "Temperature Control" — defaults Kp=0.35, Ki=0.005, Kd=1.2; deadband ±0.5 °C; default target 15.6 °C. On boot it is set to `mode: HEAT`. |
 | `output.ledc` (peltier) | 15 Hz; both TECs in parallel on GPIO18. **Not a PID output** — driven directly by the 30 s humidity loop via `set_level(1.0/0.0)`. |
 | `output.ledc` (heater) | 15 Hz; PTC element on GPIO19; `heat_output` of the PID |
@@ -85,11 +85,11 @@ All ESPHome work lives in **`espcure.yaml`**. Key sections:
 | `switch.dry10_program_active` | 10-day dew-point dry program |
 | `switch.cannatrol_program_active` | Cannatrol 4+4 dew-point program |
 | `switch.use_dew_point_control` | Dew Point mode toggle (default ON; mutual-exclusive with VPD mode) |
-| `switch.use_vpd_control` | VPD mode toggle (mutual-exclusive with dew-point mode) |
+| `switch.use_vpd_control` | VPD mode toggle — now `internal: true` (hidden from web UI + HA, not selectable). VPD branch in the 30 s loop is dead-but-harmless. Kept for one-line revert. |
 | `button.apply_*_profile` | One-tap profile presets (Dry, Cure) — set dew-point setpoint + temp target 20 °C + enable dew-point mode |
-| `button` (Autotune / Restart / Clear Sensor Condensation) | PID autotune, controller restart, sensor condensation-clear heater pulse (API matches `sht_platform`) |
+| `button` (Autotune / Restart / Clear Sensor Condensation) | PID autotune, controller restart, sensor condensation-clear. Heater statements come from `sht_heater_on`/`sht_heater_off` substitutions — a real heater pulse on SHT31, a no-op fresh-read on SHT45 (no on-demand heater API). |
 | `text_sensor.chamber_status` | Human-readable operating state (Cooling / Heating / Idle / Frost Guard) |
-| `web_server.sorting_groups` | 6 UI groups for the device web UI + HA — every entity sets a `sorting_group_id` + `sorting_weight`. VPD lives in the Humidity group (one loop, two modes). Set-once knobs use `entity_category: config`. |
+| `web_server.sorting_groups` | 6 UI groups (Climate & Temperature, Humidity & Dew Point, Cure Programs, Status & Indicators, Setup & Tuning, Diagnostics) — every visible entity sets `sorting_group_id` + `sorting_weight`. Essentials on top; all `entity_category: config` knobs cluster in "Setup & Tuning", diagnostics last. NOTE: `entity_category` does NOT hide entities from the web page (HA-only); web declutter = grouping + `internal: true`. |
 | `light.status_led` | WS2812 RGB LED (GPIO8) — color reflects cooling/heating state; gated by `switch.status_led_enable` |
 | `display.oled` (pages) | SSD1306 OLED, 3-page cycling; `page_button` GPIO9 cycles |
 | `esp32_improv` | BLE WiFi provisioning; BOOT button (GPIO9) is the authorizer |
@@ -133,7 +133,7 @@ The docs site is automatically deployed by `.github/workflows/docs.yml` on every
 
 | Workflow | File | Trigger | What it does |
 |---|---|---|---|
-| ESPHome Validate | `.github/workflows/validate.yml` | PR or push to `main` touching `espcure.yaml` or `secrets.yaml.example` | Writes a placeholder `secrets.yaml` with dummy values, then runs `esphome config espcure.yaml` |
+| ESPHome Validate | `.github/workflows/validate.yml` | PR or push to `main` touching `espcure.yaml`, `secrets.yaml.example`, or `requirements.txt` | Writes a placeholder `secrets.yaml`, runs `esphome config espcure.yaml`, then a **matrix compile job** builds firmware for both `sht_platform` values (SHT31 + SHT45) — the SHT45 run overrides the heater substitutions to `";"`. PlatformIO/ESP-IDF toolchain is cached. |
 | Deploy Docs | `.github/workflows/docs.yml` | Push to `main` (any file) or manual `workflow_dispatch` | Installs `requirements-docs.txt`, runs `mkdocs gh-deploy --force` to GitHub Pages |
 
 No real credentials are stored in the repo. The dummy `api_encryption_key` used in CI is a valid base64-encoded 32-byte value so the ESPHome parser accepts it.
@@ -203,10 +203,10 @@ No real credentials are stored in the repo. The dummy `api_encryption_key` used 
 - **Cannatrol 4+4 program**: `cannatrol_phase` global (0=dry, 1=cure) tracks which phase is active. Phase transitions happen at midnight on day 5. The `cannatrol_program_status` text sensor exposes progress to both HA and the web UI.
 - **Sensor calibration**: SHT45 self-heating is ~0.1–0.2 °C (much less than SHT31). Still calibrate with `offset` in `filters` after install.
 - **Dew-point philosophy**: control dew point, not raw RH. With `use_dew_point_control` ON, the Peltier is driven by `dew_point_setpoint` (°C). Cannatrol cure default is 11.1 °C dew point. The `dew_point` sensor is calculated from SHT45 T + RH via Magnus formula — do not replace it with a direct sensor.
-- **Two humidity control modes**: Dew Point mode (default ON) and VPD mode. Only one active at a time — `use_vpd_control` and `use_dew_point_control` are mutually exclusive (each `on_turn_on` turns off the other). Both drive only the Peltier — there is no humidifier and no dehumidifier relay in this build. RH-only control was removed (RH without temperature is meaningless).
+- **Humidity control modes**: Dew Point mode is the only user-selectable mode. A VPD mode still exists in the code (`use_vpd_control`, `vpd_setpoint`, `vpd_hysteresis`, the `vpd`/`vpd_error` sensors) but all of it is now `internal: true` — hidden from the web UI and HA, so VPD can't be enabled and the VPD branch in the 30 s loop is dead-but-harmless. The mutual-exclusion (`use_dew_point_control` on_turn_on turns off `use_vpd_control`) is still wired. To bring VPD back, remove the `internal: true` flags (and restore the `web_server` sorting keys + the HA dashboard cards). Both modes drive only the Peltier — no humidifier/dehumidifier relay. RH-only control was removed (RH without temperature is meaningless).
 - **ESP32-C6 requires ESP-IDF**: The `framework: type: esp-idf` must not be changed to `arduino`. The C6 variant is not Arduino-compatible in ESPHome.
 - **BLE provisioning**: `esp32_improv` is enabled with `authorizer: page_button` (GPIO9 BOOT button). Hold the BOOT button while a phone scans for the device to authorize WiFi provisioning. `improv_serial` provides the same over USB serial.
 - **UTF-8 in text-sensor / display lambdas**: non-ASCII glyphs must be emitted as terminated hex byte escapes. Write `°C` as `\xc2\xb0""C`, **not** `\xc2\xb0C` — in the latter the `\x` escape greedily absorbs the following `C` hex digit, producing byte `0x0C` and invalid UTF-8. HA's protobuf parser rejects the malformed `TextSensorStateResponse` and drops the API connection in a reconnect loop (`CONNECTION_CLOSED errno=128`). The `""` terminates the escape. Applies to all `°`, `→` (`\xe2\x86\x92`), and `—` (`\xe2\x80\x94`) glyphs in `chamber_status`, `humidity_control_mode`, `dry10_program_status`, `cannatrol_program_status`, and the OLED page lambdas.
-- **Chamber sensor swap (SHT31 ↔ SHT45)**: selected by `substitutions.sht_platform` (`sht3xd` or `sht4x`). Both are I²C 0x44, same wiring. The sensor block omits `precision`/`repeatability` and the heater key — both platforms default to highest-quality measurement and heater-off, so a bare block is valid for either. The component `id` stays `sht45` regardless (avoids touching every `id(chamber_temp)`/`id(chamber_rh)` ref). **Swapping requires two edits**: the substitution AND the Clear Sensor Condensation button lambda (heater API differs — see below).
-- **On-chip heater / Clear Sensor Condensation**: `set_heater_enabled(bool)` on the **SHT31** (sht3xd), `set_heater_max_duty(float)` on the **SHT45** (sht4x). Both versions live in the button's `on_press` block — one active, one commented; the active one must match `sht_platform`. ⚠️ **`esphome config` does NOT compile lambdas** — a wrong heater method name passes config validation and only fails at `esphome compile`/flash. Verify the method exists for the active platform when editing this button.
+- **Chamber sensor swap (SHT31 ↔ SHT45)**: selected by `substitutions.sht_platform` (`sht3xd` or `sht4x`). Both are I²C 0x44, same wiring. The sensor block omits `precision`/`repeatability` and the heater key — both platforms default to highest-quality measurement and heater-off, so a bare block is valid for either. The component `id` stays `sht45` regardless (avoids touching every `id(chamber_temp)`/`id(chamber_rh)` ref). **Swapping = three substitutions** (all at the top of `espcure.yaml`, documented inline): `sht_platform` plus the matching `sht_heater_on`/`sht_heater_off` pair. No lambda editing. CI compiles both variants so a mismatch fails the PR.
+- **On-chip heater / Clear Sensor Condensation**: the button's heater statements come from the `sht_heater_on`/`sht_heater_off` substitutions, so one button compiles for either sensor. The **SHT31** (sht3xd) has a real runtime toggle — `set_heater_enabled(bool)` (the driver writes the heater enable/disable I²C command). The **SHT45** (sht4x) has **no on-demand heater API** — its `heater_power`/`heater_time`/`heater_max_duty` are config-time only (applied once at setup; there is no `set_heater_max_duty()` runtime method). So on SHT45 the substitutions are no-ops (`";"`) and the button just refreshes the reading. ⚠️ **`esphome config` does NOT compile lambdas** — a wrong heater method only fails at compile; that's why CI now **compiles both variants** (`.github/workflows/validate.yml` matrix) to catch it.
 - **Temp targets differ by program**: the 10-Day Dry program holds temp target 15.6 °C; the Cannatrol 4+4 program and the Dry/Cure preset buttons set 20 °C. Dew-point setpoints drive the Peltier in all cases.

@@ -24,8 +24,6 @@ views:
         name: Frost
       - entity: binary_sensor.espcure_controller_online
         name: Online
-      - entity: sensor.espcure_humidity_control_mode
-        name: Mode
     cards:
 
       # ── Offline warning (only visible when device is offline) ─────────────
@@ -46,9 +44,6 @@ views:
           - entity: sensor.espcure_chamber_status
             name: Chamber Status
             icon: mdi:information-outline
-          - entity: sensor.espcure_humidity_control_mode
-            name: Humidity Control Mode
-            icon: mdi:water-check
           - entity: binary_sensor.espcure_controller_online
             name: Controller Online
         show_header_toggle: false
@@ -98,18 +93,6 @@ views:
       # ── Secondary metrics ─────────────────────────────────────────────────
       - type: horizontal-stack
         cards:
-          - type: gauge
-            entity: sensor.espcure_vapor_pressure_deficit
-            name: VPD
-            min: 0
-            max: 2.0
-            needle: true
-            severity:
-              green: 0.4
-              yellow: 0.8
-              red: 1.2
-            unit: "kPa"
-
           - type: entity
             entity: sensor.espcure_dew_point
             name: Dew Point
@@ -157,13 +140,11 @@ views:
 
       # ── Humidity history ──────────────────────────────────────────────────
       - type: history-graph
-        title: Humidity & VPD — Last 24 Hours
+        title: Humidity — Last 24 Hours
         hours_to_show: 24
         entities:
           - entity: sensor.espcure_chamber_humidity
             name: RH %
-          - entity: sensor.espcure_vapor_pressure_deficit
-            name: VPD kPa
 
       # ── Temperature history (7-day) ───────────────────────────────────────
       - type: history-graph
@@ -250,18 +231,6 @@ views:
             name: Dew Point Hysteresis (°C)
           - entity: sensor.espcure_dew_point_error
             name: Dew Point Error
-
-      # ── VPD Control Mode ───────────────────────────────────────────────────
-      - type: entities
-        title: VPD Control Mode
-        icon: mdi:waves
-        entities:
-          - entity: switch.espcure_vpd_control_mode
-            name: Enable VPD Control
-          - entity: number.espcure_vpd_setpoint
-            name: VPD Setpoint (kPa)
-          - entity: number.espcure_vpd_hysteresis
-            name: VPD Hysteresis (kPa)
 
       # ── 7-day history ─────────────────────────────────────────────────────
       - type: history-graph
@@ -425,8 +394,6 @@ views:
         entities:
           - entity: sensor.espcure_dew_point_error
             name: Dew Point Error (vs setpoint)
-          - entity: sensor.espcure_vpd_error
-            name: VPD Error (vs setpoint)
           - type: divider
           - entity: sensor.espcure_chamber_temperature
             name: Chamber Temp (°C)
