@@ -12,7 +12,9 @@ on:
       - main
     paths:
       - 'espcure.yaml'
+      - 'secrets.yaml.example'
       - 'requirements.txt'
+      - '.github/workflows/validate.yml'
 
 jobs:
   validate:
