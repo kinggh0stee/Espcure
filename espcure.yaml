@@ -900,16 +900,20 @@ interval:
           }
 
   # Fan + Status LED refresh (2 s)
-  # Fan: on when the Peltier is cooling OR the heater is heating; off otherwise.
+  # Fan: runs continuously while a cure program is active (air circulation for
+  #   even drying); otherwise on when the Peltier is cooling OR the heater is
+  #   heating; off when idle with no program.
   # LED (when enabled via Status LED Enable):
   #   Blue = cooling (Peltier) · Red = heating · Purple = idle · White blink = frost
   - interval: 2s
     then:
       - lambda: |-
-          // Fan runs unconditionally every cycle — on when cooling or heating.
+          // Fan runs unconditionally every cycle. Continuous circulation while a
+          // cure program is active; otherwise on only when cooling or heating.
+          bool program = id(dry10_program_active).state || id(cannatrol_program_active).state;
           bool cooling = id(peltier_cooling);
           bool heating = id(temp_pid).action == esphome::climate::CLIMATE_ACTION_HEATING;
-          if (cooling || heating) {
+          if (program || cooling || heating) {
             id(fan_relay).turn_on();
           } else {
             id(fan_relay).turn_off();
