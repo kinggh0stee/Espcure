@@ -9,7 +9,7 @@ Priority: 🔴 Critical · 🟡 High · 🟢 Nice-to-have · ✅ Done
 - [x] ESP32-C6 + SHT45 ESPHome config (ESP-IDF framework)
 - [x] Heat-only PID temperature control — PTC heater chases temp (default 15.6 °C)
 - [x] Peltier-chases-dew-point topology — TEC bang-bang drives cold-plate condensation
-- [x] Two humidity modes: Dew Point (default) + VPD
+- [x] Dew Point humidity control mode (VPD hidden/internal)
 - [x] Dew point + VPD derived sensors
 - [x] 10-Day Dry dew-point program (ramp 15.6→12.2 °C, then 12.2, then 11.1)
 - [x] Cannatrol 4+4 built-in program (auto dry→cure phase at midnight)
@@ -25,12 +25,25 @@ Priority: 🔴 Critical · 🟡 High · 🟢 Nice-to-have · ✅ Done
 - [x] Full documentation (hardware, setup, calibration, PID tuning, cure programs)
 - [x] Sub-agents + CLAUDE.md
 - [x] SSD1306 OLED display — 3-page cycling, BOOT button page advance
-- [x] WS2812 RGB LED (GPIO8) — PID action color, Frost Blink effect
+- [x] WS2812 RGB LED (GPIO8) — cure-progress indicator, Frost Blink effect, Status LED Enable switch
 - [x] Rich HA dashboard — VPD gauge, badges, conditional program cards, progress bars, 7-day history
 - [x] VPD target mode — third control mode (`VPD Control Mode` switch), VPD setpoint/hysteresis entities
 - [x] Optional cold-plate DS18B20 section (commented YAML, GPIO10)
 - [x] GitHub Actions CI — `esphome config` validation on PRs (`.github/workflows/validate.yml`)
 - [x] Changelog (`CHANGELOG.md`)
+
+### v1.1.0 Shipped
+
+- [x] Cure-progress status LED — purple idle, blue→green by day, solid green cured, white blink frost guard
+- [x] Status LED Enable switch (single on/off control)
+- [x] Selectable chamber sensor (SHT31/SHT45 via `sht_platform` substitution)
+- [x] CI matrix compile (both sensor variants validated on PRs)
+- [x] Clear Sensor Condensation button (real heater call on SHT31, no-op refresh on SHT45)
+- [x] Firmware version reporting (device info + boot logs)
+- [x] Web UI declutter (6 sorting groups; VPD + Humidity Control Mode hidden)
+- [x] Dew Point as only user-selectable humidity mode (VPD internal/hidden)
+- [x] Celsius-only (Fahrenheit removed)
+- [x] SHT sensor wiring diagram in docs
 
 ---
 
@@ -55,8 +68,8 @@ Priority: 🔴 Critical · 🟡 High · 🟢 Nice-to-have · ✅ Done
 - [x] **Physical button** — BOOT button (GPIO9) wired as display page-cycle button
   - Cycles OLED display pages; no extra wiring needed
 
-- [x] **Status LED** — built-in WS2812 on GPIO8 (DevKitC-1), 2 s interval
-  - Cooling = blue, Heating = red (dim), Idle = green (very dim), Frost = white Frost Blink effect
+- [x] **Status LED** — built-in WS2812 on GPIO8 (DevKitC-1), cure-progress indicator at 50% brightness
+  - Idle = purple, Active program = blue→green by day, Cured = solid green, Frost = white blink (safety override)
 
 ---
 

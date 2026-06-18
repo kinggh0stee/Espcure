@@ -10,9 +10,7 @@ Two decoupled control loops: the **Peltier chases dew point / VPD** (cooling the
 
 - **Heat-only temperature PID** — PTC heater chases setpoint (default 15.6 °C); live-tunable Kp/Ki/Kd without reflashing
 - **Peltier cold-plate dehumidification** — condenses moisture from air; no external dehumidifier relay
-- **Two humidity control modes** (mutually exclusive):
-  - **Dew Point mode** (default) — Cannatrol-style bang-bang on dew point °C
-  - **VPD mode** — bang-bang on Vapor Pressure Deficit (kPa)
+- **Dew Point humidity control** (default) — Cannatrol-style bang-bang on dew point °C; VPD mode exists in code but is hidden (`internal: true`)
 - **Cannatrol 4+4 program** — 4 days dry at 12.2 °C DP → 4 days cure at 11.1 °C DP
 - **10-Day Dry program** — proven dew-point recipe at 15.6 °C: 2-day ramp 15.6→13.9→12.2 °C DP, hold 12.2 °C (days 3–6), hold 11.1 °C (days 7–10), auto-off after day 10
 - **One-tap presets** — Apply Dry Profile, Apply Cure Profile buttons
@@ -20,8 +18,8 @@ Two decoupled control loops: the **Peltier chases dew point / VPD** (cooling the
 - **Temperature safety ceiling** — forces Peltier cooling ON if chamber exceeds 27 °C regardless of humidity demand
 - **Software frost floor** — Peltier auto-disables below 4 °C, heater aids recovery; no cold-plate sensor needed
 - **SSD1306 OLED display** — 3-page cycling (temp/RH/DP/VPD, control settings, program status); BOOT button (GPIO9) cycles pages
-- **WS2812 RGB LED** (GPIO8, built-in) — cooling=blue, heating=red, idle=green(dim), frost=white blink
-- **Device-hosted web UI** at `http://espcure.local` — full React dashboard with entities organized into groups (Climate, Humidity, VPD, Programs, PID, Hardware, Diagnostics); no HA required
+- **WS2812 RGB LED** (GPIO8, built-in) — cure-progress indicator at 50% brightness: purple when idle (no program), fades blue→green during active program (by day), solid green when cured, white blink during frost guard (safety); toggled by **Status LED Enable** switch
+- **Device-hosted web UI** at `http://espcure.local` — full React dashboard with entities organized into groups (Climate & Temperature, Humidity & Dew Point, Cure Programs, Status & Indicators, Setup & Tuning, Diagnostics); no HA required
 - **Home Assistant integration** via encrypted native API; all entities with device_class + state_class
 - **GitHub Actions CI** — `esphome config` validation on every PR
 - OTA updates, fallback WiFi AP
@@ -29,7 +27,7 @@ Two decoupled control loops: the **Peltier chases dew point / VPD** (cooling the
 ## Hardware Required
 
 - ESP32-C6 DevKitC-1
-- SHT45 breakout (I²C 0x44 — chamber temp + RH)
+- SHT31 or SHT45 breakout (I²C 0x44 — chamber temp + RH; selectable via `sht_platform` substitution in `espcure.yaml`)
 - 3× SSR-40 DD (fan rail GPIO5 / Peltier TEC GPIO18 / PTC heater GPIO19), `ledc` 15 Hz on the TEC + heater
 - 12 V 50 W PTC ceramic heater with integrated fan
 - 12 V → 5 V buck converter (LM2596 / MP1584EN) for the ESP32
