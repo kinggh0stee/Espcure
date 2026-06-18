@@ -89,15 +89,15 @@ Connect the ESP32-C6 DevKit via USB-C. If the device doesn't enter flash mode au
 esphome run espcure.yaml
 ```
 
-When complete, the ESP32 reboots and connects to your WiFi. The built-in RGB LED (GPIO8) will show:
+When complete, the ESP32 reboots and connects to your WiFi. The built-in RGB LED (GPIO8) is a cure-progress indicator (50% brightness):
 
-| LED color | Meaning |
+| LED state | Meaning |
 |---|---|
-| Blue | Cooling (Peltier active) |
-| Red (dim) | Heating (PTC heater active) |
-| Green (very dim) | Idle — PID active but no output |
-| White blinking | **Frost guard active** — PID suspended |
-| Off | Climate off / booting |
+| Purple | Idle — no cure program running |
+| Blue → green gradient | Cure program active — fades from blue to green as days progress |
+| Solid green | Cured — active program completed or `cure_complete` flag set |
+| White blinking | **Frost guard active** — safety override (chamber temp too low) |
+| Off | Status LED Enable switch turned off, or device booting |
 
 ---
 
@@ -109,12 +109,12 @@ The device-hosted dashboard gives full control without Home Assistant:
 
 | Section | What you get |
 |---|---|
-| **Sensors** | Chamber temp (°C), RH, dew point, VPD, error diagnostics |
+| **Sensors** | Chamber temp (°C), RH, dew point, error diagnostics |
 | **Climate** | PID thermostat card — adjust target temp, see action state |
-| **Controls** | Cure programs, fan, dew-point/VPD mode toggle |
+| **Controls** | Cure programs, fan, dew-point mode toggle, Status LED Enable |
 | **Presets** | Apply Dry / Cure profile in one tap |
 | **PID Tuning** | Kp/Ki/Kd sliders — changes apply instantly, no reflash |
-| **Status** | Chamber Status, Humidity Control Mode, program progress |
+| **Status** | Chamber Status, program progress |
 | **Dark mode** | Toggle in the top-right corner (follows system preference by default) |
 
 The web UI runs entirely from the ESP32 flash — no internet required after first compile.
@@ -160,7 +160,7 @@ A complete 5-tab Lovelace dashboard is at `docs/ha-dashboard.yaml`.
 - [ ] Chamber temperature reads a plausible value
 - [ ] Chamber humidity reads a plausible value
 - [ ] Fan relay turns ON automatically at boot
-- [ ] Status LED shows green (dim) when PID is idle
+- [ ] Status LED shows purple when idle (no program running)
 - [ ] OLED displays temperature and RH on Page 1 (if connected)
 - [ ] Climate entity shows target 15.6 °C
 - [ ] Dew-point humidity mode is active by default
