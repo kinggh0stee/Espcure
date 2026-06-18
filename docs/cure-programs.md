@@ -6,7 +6,7 @@ EspCure uses a **decoupled control topology**:
 
 - **Temperature (heater only)**: PID loop targets 15.6 °C by default, rarely activates (chamber floats 17–19 °C). A safety ceiling at 27 °C forces the Peltier ON above that point regardless of humidity demand.
 - **Humidity (Peltier cold plate)**: Bang-bang loop on dew point, runs every 30 s at full 15 Hz, condensing moisture from the air onto the Peltier cold plate. This is the sole dehumidification mechanism.
-- **Fan (GPIO5)**: ON when Peltier is cooling OR heater is heating; OFF otherwise.
+- **Fan (GPIO5)**: runs **continuously while a cure program is active** (constant air circulation for even drying); otherwise ON when the Peltier is cooling OR the heater is heating, and OFF when idle with no program.
 
 ## Humidity Control Mode
 

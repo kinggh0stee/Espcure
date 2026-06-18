@@ -6,6 +6,9 @@ All notable changes to EspCure are documented here.
 
 ## [Unreleased]
 
+### Changed
+- **Fans now run continuously while a cure program is active.** Previously the fan rail (GPIO5) was ON only when the Peltier was cooling or the heater was heating. Now, whenever a cure program (`10-Day Dry` or `Cannatrol 4+4`) is running, the fans run continuously for constant air circulation and even drying; with no program active the original behaviour (ON when cooling or heating) is unchanged. The Peltier hot-side airflow guarantee is preserved — the fan is still commanded ON in the same lambda as the Peltier.
+
 ## v1.1.0 — 2026-06-17
 
 ### Fixed

@@ -73,8 +73,8 @@ All ESPHome work lives in **`espcure.yaml`**. Key sections:
 | `output.ledc` (heater) | 15 Hz; PTC element on GPIO19; `heat_output` of the PID |
 | `interval` (30 s) | Dew-point/VPD bang-bang loop — **drives the Peltier**. Priority: frost guard → high-temp ceiling → VPD → Dew Point → off |
 | `interval` (60 s) | Frost-guard loop — forces Peltier off below the floor; heater keeps running |
-| `interval` (2 s) | Fan control + LED refresh — fan ON when `peltier_cooling` or heater heating; then calls the `paint_status_led` script. The LED painter is **edge-triggered** via the `led_state` global and gated by `switch.status_led_enable`. |
-| `switch.fan_relay` | GPIO5 — fan rail SSR; ON when Peltier cooling or heater heating. Commanded ON in the same lambda as the Peltier (hot-side airflow). |
+| `interval` (2 s) | Fan control + LED refresh — fan ON when a cure program is active (`dry10_program_active`/`cannatrol_program_active`) **or** `peltier_cooling` **or** heater heating (continuous circulation during programs); then calls the `paint_status_led` script. The LED painter is **edge-triggered** via the `led_state` global and gated by `switch.status_led_enable`. |
+| `switch.fan_relay` | GPIO5 — fan rail SSR; runs continuously while a cure program is active, else ON when Peltier cooling or heater heating. Always commanded ON in the same lambda as the Peltier (hot-side airflow). |
 | `switch.status_led_enable` | Gates the 2 s status-LED loop (default ON). OFF turns the WS2812 off and stops the loop driving it; fan control is unaffected. |
 | `time.on_time` (cron) | Midnight cron — 10-day dry step + Cannatrol 4+4 advance |
 | `number.*_setpoint` | User-facing setpoints exposed to HA and web UI |
