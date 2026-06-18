@@ -257,7 +257,6 @@ sensor:
     entity_category: diagnostic
     lambda: |-
       if (!id(use_dew_point_control).state) return NAN;
-      if (id(use_vpd_control).state) return NAN;
       if (isnan(id(dew_point).state)) return NAN;
       return id(dew_point).state - id(dew_point_setpoint).state;
     update_interval: 30s
@@ -1121,13 +1120,17 @@ text_sensor:
       if (!id(cannatrol_program_active).state) return std::string("Inactive");
       char buf[56];
       int day = (int)id(cannatrol_day).state;
-      if (id(cannatrol_phase) == 0) {
-        // days 0-3 display as Day 1/4 – Day 4/4; day=4 is transitional (still dry)
+      // Derive the phase from the day counter directly (cure begins at day 5)
+      // so the label is self-consistent even if cannatrol_phase ever desyncs.
+      if (day < 5) {
+        // days 0-4 display as Day 1/4 – Day 4/4; day=4 is transitional (still dry)
         int d = (day + 1 <= 4) ? day + 1 : 4;
         snprintf(buf, sizeof(buf), "Dry Phase \xe2\x80\x94 Day %d/4 (12.2\xc2\xb0""C DP)", d);
       } else {
-        // cure days start at cannatrol_day=5; day-4 gives 1-4
-        snprintf(buf, sizeof(buf), "Cure Phase \xe2\x80\x94 Day %d/4 (11.1\xc2\xb0""C DP)", day - 4);
+        // cure days start at cannatrol_day=5; day-4 gives 1-4 (clamped)
+        int c = day - 4;
+        if (c > 4) c = 4;
+        snprintf(buf, sizeof(buf), "Cure Phase \xe2\x80\x94 Day %d/4 (11.1\xc2\xb0""C DP)", c);
       }
       return std::string(buf);
     update_interval: 30s
