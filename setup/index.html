@@ -1074,34 +1074,34 @@
 <p>Connect the ESP32-C6 DevKit via USB-C. If the device doesn't enter flash mode automatically, hold the <strong>BOOT</strong> button (GPIO9) while pressing <strong>RST</strong>, then release RST.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>esphome<span class="w"> </span>run<span class="w"> </span>espcure.yaml
 </code></pre></div>
-<p>When complete, the ESP32 reboots and connects to your WiFi. The built-in RGB LED (GPIO8) will show:</p>
+<p>When complete, the ESP32 reboots and connects to your WiFi. The built-in RGB LED (GPIO8) is a cure-progress indicator (50% brightness):</p>
 <table>
 <thead>
 <tr>
-<th>LED color</th>
+<th>LED state</th>
 <th>Meaning</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>Blue</td>
-<td>Cooling (Peltier active)</td>
+<td>Purple</td>
+<td>Idle — no cure program running</td>
 </tr>
 <tr>
-<td>Red (dim)</td>
-<td>Heating (PTC heater active)</td>
+<td>Blue → green gradient</td>
+<td>Cure program active — fades from blue to green as days progress</td>
 </tr>
 <tr>
-<td>Green (very dim)</td>
-<td>Idle — PID active but no output</td>
+<td>Solid green</td>
+<td>Cured — active program completed or <code>cure_complete</code> flag set</td>
 </tr>
 <tr>
 <td>White blinking</td>
-<td><strong>Frost guard active</strong> — PID suspended</td>
+<td><strong>Frost guard active</strong> — safety override (chamber temp too low)</td>
 </tr>
 <tr>
 <td>Off</td>
-<td>Climate off / booting</td>
+<td>Status LED Enable switch turned off, or device booting</td>
 </tr>
 </tbody>
 </table>
@@ -1119,7 +1119,7 @@
 <tbody>
 <tr>
 <td><strong>Sensors</strong></td>
-<td>Chamber temp (°C), RH, dew point, VPD, error diagnostics</td>
+<td>Chamber temp (°C), RH, dew point, error diagnostics</td>
 </tr>
 <tr>
 <td><strong>Climate</strong></td>
@@ -1127,7 +1127,7 @@
 </tr>
 <tr>
 <td><strong>Controls</strong></td>
-<td>Cure programs, fan, dew-point/VPD mode toggle</td>
+<td>Cure programs, fan, dew-point mode toggle, Status LED Enable</td>
 </tr>
 <tr>
 <td><strong>Presets</strong></td>
@@ -1139,7 +1139,7 @@
 </tr>
 <tr>
 <td><strong>Status</strong></td>
-<td>Chamber Status, Humidity Control Mode, program progress</td>
+<td>Chamber Status, program progress</td>
 </tr>
 <tr>
 <td><strong>Dark mode</strong></td>
@@ -1198,7 +1198,7 @@
 <li>[ ] Chamber temperature reads a plausible value</li>
 <li>[ ] Chamber humidity reads a plausible value</li>
 <li>[ ] Fan relay turns ON automatically at boot</li>
-<li>[ ] Status LED shows green (dim) when PID is idle</li>
+<li>[ ] Status LED shows purple when idle (no program running)</li>
 <li>[ ] OLED displays temperature and RH on Page 1 (if connected)</li>
 <li>[ ] Climate entity shows target 15.6 °C</li>
 <li>[ ] Dew-point humidity mode is active by default</li>
