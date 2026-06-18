@@ -1099,7 +1099,7 @@
 <ul>
 <li><strong>Temperature (heater only)</strong>: PID loop targets 15.6 °C by default, rarely activates (chamber floats 17–19 °C). A safety ceiling at 27 °C forces the Peltier ON above that point regardless of humidity demand.</li>
 <li><strong>Humidity (Peltier cold plate)</strong>: Bang-bang loop on dew point, runs every 30 s at full 15 Hz, condensing moisture from the air onto the Peltier cold plate. This is the sole dehumidification mechanism.</li>
-<li><strong>Fan (GPIO5)</strong>: ON when Peltier is cooling OR heater is heating; OFF otherwise.</li>
+<li><strong>Fan (GPIO5)</strong>: runs <strong>continuously while a cure program is active</strong> (constant air circulation for even drying); otherwise ON when the Peltier is cooling OR the heater is heating, and OFF when idle with no program.</li>
 </ul>
 <h2 id="humidity-control-mode">Humidity Control Mode<a class="headerlink" href="#humidity-control-mode" title="Permanent link">&para;</a></h2>
 <p>The Peltier is driven by <strong>Dew Point</strong> control — the only user-selectable humidity mode:</p>
