@@ -5,19 +5,18 @@
 EspCure uses a **decoupled control topology**:
 
 - **Temperature (heater only)**: PID loop targets 15.6 °C by default, rarely activates (chamber floats 17–19 °C). A safety ceiling at 27 °C forces the Peltier ON above that point regardless of humidity demand.
-- **Humidity (Peltier cold plate)**: Bang-bang loop on dew point or VPD, runs every 30 s at full 15 Hz, condensing moisture from the air onto the Peltier cold plate. This is the sole dehumidification mechanism.
+- **Humidity (Peltier cold plate)**: Bang-bang loop on dew point, runs every 30 s at full 15 Hz, condensing moisture from the air onto the Peltier cold plate. This is the sole dehumidification mechanism.
 - **Fan (GPIO5)**: ON when Peltier is cooling OR heater is heating; OFF otherwise.
 
-## Humidity Control Modes
+## Humidity Control Mode
 
-Two mutually exclusive modes control the Peltier:
+The Peltier is driven by **Dew Point** control — the only user-selectable humidity mode:
 
 | Mode | Controls | Setpoint entity | How it works |
 |---|---|---|---|
-| **Dew Point Mode** (default) | Dew point °C | `Dew Point Setpoint` | Peltier chases dew point; cold plate condenses when below air DP |
-| **VPD Mode** | Vapor Pressure Deficit kPa | `VPD Setpoint` | Peltier chases VPD; dehumidifies when above VPD threshold |
+| **Dew Point Mode** (default, always on) | Dew point °C | `Dew Point Setpoint` | Peltier chases dew point; cold plate condenses when below air DP |
 
-Both modes are available at all times — select one via the **Dew Point Control Mode** or **VPD Control Mode** switch (turning one ON automatically disables the other).
+> A VPD control mode still exists in the firmware (`use_vpd_control`, `vpd_setpoint`, `vpd_hysteresis`, plus the VPD sensors) but is `internal: true` — hidden from the web UI and Home Assistant, so it can't be selected. Dew Point is the single humidity mode. To re-enable VPD, remove the `internal: true` flags in `espcure.yaml` (see the note in `CLAUDE.md`).
 
 ---
 
@@ -94,15 +93,11 @@ These set all relevant setpoints instantly without modifying the cure program sw
 
 ## Manual Humidity Control
 
-When no program is running, set setpoints manually via Dew Point or VPD mode:
+When no program is running, set the dew-point target manually:
 
-**Dew Point Mode:**
+**Dew Point Mode** (the only selectable mode):
 - **Dew Point Setpoint** — target dew point °C
 - **Dew Point Hysteresis** — dead band ÷ 2; default 0.5 °C
-
-**VPD Mode:**
-- **VPD Setpoint** — target vapor pressure deficit in kPa (default 0.8 kPa)
-- **VPD Hysteresis** — dead band ÷ 2; default 0.1 kPa
 
 The **Dew Point Error** diagnostic sensor shows the current deviation from dew-point setpoint (positive = too humid).
 
@@ -115,7 +110,6 @@ The **Dew Point Error** diagnostic sensor shows the current deviation from dew-p
 | **Cannatrol 4+4** | ~8 days | 20 °C | 12.2→11.1 °C | Fast cure; commercial-style; near-ambient |
 | **10-Day Dry** | 10 days | 15.6 °C | 15.6→13.9→12.2→11.1 °C | Proven recipe; gentle ramp; slower drying |
 | **Manual Dew Point** | Ongoing | User-set | User-set | Storage or custom protocol |
-| **Manual VPD** | Ongoing | User-set | User-set | Advanced growers; VPD-aware control |
 
 **Why two programs?** Cannatrol 4+4 starts hard (12.2 °C DP day 1) and is faster. The 10-Day Dry ramps gently from 15.6 °C DP to avoid shocking the material.
 
