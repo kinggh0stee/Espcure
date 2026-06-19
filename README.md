@@ -1,6 +1,6 @@
 # EspCure
 
-Open-source DIY cannabis curing chamber controller built on ESPHome + ESP32-C6. Inspired by the [Cannatrol](https://cannatrol.com/) and the thermoelectric wine-cooler modification documented at [rollitup.org](https://www.rollitup.org/t/thermoelectric-wine-cooler-drying-and-curing-diy.1088980/). Base hardware is a Honeywell thermoelectric fridge with its original control board replaced by an ESP32-C6.
+Open-source DIY cannabis curing chamber controller built on ESPHome + ESP32-C6. Inspired by the [Cannatrols](https://cannatrols.com/) and the thermoelectric wine-cooler modification documented at [rollitup.org](https://www.rollitup.org/t/thermoelectric-wine-cooler-drying-and-curing-diy.1088980/). Base hardware is a Honeywell thermoelectric fridge with its original control board replaced by an ESP32-C6.
 
 ## How it works
 
