@@ -6,6 +6,9 @@ All notable changes to EspCure are documented here.
 
 ## [Unreleased]
 
+### Added
+- **Firmware Version diagnostic sensor** — a new `Firmware Version` text sensor (Diagnostics group, top) shows the running firmware version (e.g. `1.2.0`) on the device web UI and in Home Assistant, so you can confirm what's flashed without reading boot logs. The version now comes from a single `fw_version` substitution that feeds both `esphome.project.version` and this sensor — bump it in one place per release.
+
 ## v1.2.0 — 2026-06-20
 
 ### Added

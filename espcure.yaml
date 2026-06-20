@@ -44,6 +44,11 @@ substitutions:
   # Leave "false" for a single unit or when you hand-pick `device_name` per unit.
   mac_suffix: "false"
 
+  # Firmware version — single source of truth. Bump this on every release; it
+  # feeds both esphome.project.version (boot log + HA device info) and the
+  # "Firmware Version" diagnostic text sensor shown on the web UI.
+  fw_version: "1.2.0"
+
   sht_platform: sht3xd        # SHT31 (temporary). Change to sht4x when the SHT45 arrives.
   # Heater statements for the Clear Sensor Condensation button (see block above).
   sht_heater_on:  "id(sht45).set_heater_enabled(true);"
@@ -60,7 +65,7 @@ esphome:
   # Bump `version` on every release and tag it (e.g. v1.1.0).
   project:
     name: "kinggh0stee.espcure"
-    version: "1.2.0"
+    version: "${fw_version}"
   on_boot:
     # Heat-only PID — put the climate in HEAT mode so the heater chases temperature
     # from boot. The Peltier is driven separately by the dew-point/VPD loop.
@@ -1071,6 +1076,17 @@ binary_sensor:
 # ─── Text sensors ─────────────────────────────────────────────────────────────
 
 text_sensor:
+  # Firmware version (from the fw_version substitution / esphome.project.version)
+  - platform: template
+    name: "Firmware Version"
+    icon: "mdi:tag-outline"
+    entity_category: diagnostic
+    lambda: 'return std::string("${fw_version}");'
+    update_interval: 60s
+    web_server:
+      sorting_group_id: grp_diag
+      sorting_weight: 1
+
   - platform: wifi_info
     ip_address:
       name: "IP Address"
