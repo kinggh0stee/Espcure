@@ -60,7 +60,7 @@ esphome:
   # Bump `version` on every release and tag it (e.g. v1.1.0).
   project:
     name: "kinggh0stee.espcure"
-    version: "1.1.0"
+    version: "1.2.0"
   on_boot:
     # Heat-only PID — put the climate in HEAT mode so the heater chases temperature
     # from boot. The Peltier is driven separately by the dew-point/VPD loop.
