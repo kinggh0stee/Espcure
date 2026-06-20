@@ -561,6 +561,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#1b-name-the-device-required-if-you-run-more-than-one" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1b. Name the device (required if you run more than one)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#2-validate-config" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -869,6 +880,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#1b-name-the-device-required-if-you-run-more-than-one" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1b. Name the device (required if you run more than one)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#2-validate-config" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1065,14 +1087,65 @@
 <div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="n">python</span> <span class="n">-c</span> <span class="s2">&quot;import base64,os; print(base64.b64encode(os.urandom(32)).decode())&quot;</span>
 </code></pre></div></p>
 <hr />
+<h2 id="1b-name-the-device-required-if-you-run-more-than-one">1b. Name the device (required if you run more than one)<a class="headerlink" href="#1b-name-the-device-required-if-you-run-more-than-one" title="Permanent link">&para;</a></h2>
+<p>The device name and friendly name are substitutions at the top of <code>espcure.yaml</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="nt">substitutions</span><span class="p">:</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="w">  </span><span class="nt">device_name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">espcure</span><span class="w">      </span><span class="c1"># mDNS hostname + HA entity-ID prefix — must be unique &amp; lowercase</span>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="w">  </span><span class="nt">friendly_name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">EspCure</span><span class="w">    </span><span class="c1"># human-readable label in HA and the web UI</span>
+</code></pre></div>
+<p>A single EspCure works fine with the defaults. If you run <strong>two or more on the
+same network or Home Assistant</strong>, give each unit its own name <em>before flashing</em> —
+otherwise both fight over <code>espcure.local</code> and create duplicate HA entity IDs.</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Unit 1</th>
+<th>Unit 2</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>device_name</code></td>
+<td><code>espcure</code></td>
+<td><code>espcure-2</code></td>
+</tr>
+<tr>
+<td><code>friendly_name</code></td>
+<td><code>EspCure</code></td>
+<td><code>EspCure 2</code></td>
+</tr>
+<tr>
+<td>Web UI</td>
+<td><code>http://espcure.local</code></td>
+<td><code>http://espcure-2.local</code></td>
+</tr>
+<tr>
+<td>Setup AP SSID</td>
+<td><code>EspCure-Setup</code></td>
+<td><code>EspCure 2-Setup</code></td>
+</tr>
+</tbody>
+</table>
+<p><code>device_name</code> must be lowercase letters, digits, and hyphens. The firmware
+project ID (<code>kinggh0stee.espcure</code>) stays the same across all units — don't change it.</p>
+<blockquote>
+<p><strong>Keep the clean <code>espcure.local</code> address.</strong> Hand-picking <code>device_name</code> per unit
+(above) keeps a tidy mDNS hostname for each (<code>espcure.local</code>, <code>espcure-2.local</code>).
+There is also a <code>mac_suffix</code> substitution (default <code>"false"</code>) — leave it <code>"false"</code>
+unless you specifically want auto-unique naming. Setting it <code>"true"</code> appends the
+MAC (<code>espcure-a1b2c3.local</code>), which is convenient for flashing a batch from one
+config but <strong>gives up the easy <code>.local</code> name</strong>. Most builds should leave it off.</p>
+</blockquote>
+<hr />
 <h2 id="2-validate-config">2. Validate config<a class="headerlink" href="#2-validate-config" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>esphome<span class="w"> </span>config<span class="w"> </span>espcure.yaml
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>esphome<span class="w"> </span>config<span class="w"> </span>espcure.yaml
 </code></pre></div>
 <p>Fix any reported errors before flashing. This also downloads the Roboto font files on first run.</p>
 <hr />
 <h2 id="3-first-flash-usb">3. First flash (USB)<a class="headerlink" href="#3-first-flash-usb" title="Permanent link">&para;</a></h2>
 <p>Connect the ESP32-C6 DevKit via USB-C. If the device doesn't enter flash mode automatically, hold the <strong>BOOT</strong> button (GPIO9) while pressing <strong>RST</strong>, then release RST.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>esphome<span class="w"> </span>run<span class="w"> </span>espcure.yaml
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>esphome<span class="w"> </span>run<span class="w"> </span>espcure.yaml
 </code></pre></div>
 <p>When complete, the ESP32 reboots and connects to your WiFi. The built-in RGB LED (GPIO8) is a cure-progress indicator (50% brightness):</p>
 <table>
@@ -1217,7 +1290,7 @@
 <hr />
 <h2 id="10-subsequent-ota-updates">10. Subsequent OTA updates<a class="headerlink" href="#10-subsequent-ota-updates" title="Permanent link">&para;</a></h2>
 <p>After the first USB flash, all future updates are wireless:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>esphome<span class="w"> </span>run<span class="w"> </span>espcure.yaml<span class="w"> </span>--device<span class="w"> </span>espcure.local
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>esphome<span class="w"> </span>run<span class="w"> </span>espcure.yaml<span class="w"> </span>--device<span class="w"> </span>espcure.local
 </code></pre></div>
 <hr />
 <h2 id="fallback-recovery">Fallback / Recovery<a class="headerlink" href="#fallback-recovery" title="Permanent link">&para;</a></h2>
