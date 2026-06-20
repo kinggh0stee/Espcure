@@ -25,14 +25,36 @@
 #     sht_heater_on:  ";"
 #     sht_heater_off: ";"
 substitutions:
+  # ─── Device identity ─────────────────────────────────────────────────────────
+  # Running more than one EspCure on the same network/Home Assistant? Give each
+  # unit its own name BEFORE flashing. `device_name` becomes the mDNS hostname
+  # (http://<device_name>.local) and the prefix for every Home Assistant entity
+  # ID, so it MUST be unique per unit and lowercase (letters, digits, hyphens).
+  # `friendly_name` is the human-readable label shown in HA and the web UI.
+  #
+  #   Unit 1:  device_name: espcure      friendly_name: EspCure
+  #   Unit 2:  device_name: espcure-2    friendly_name: EspCure 2
+  device_name: espcure
+  friendly_name: EspCure
+
+  # Auto-unique naming. Set to "true" to append the device's MAC to the hostname
+  # (e.g. espcure-a1b2c3.local) so EVERY flashed unit is unique with NO per-unit
+  # editing — handy for flashing a batch from one config. Trade-off: you lose the
+  # clean http://<device_name>.local address (use the MAC-suffixed one or the IP).
+  # Leave "false" for a single unit or when you hand-pick `device_name` per unit.
+  mac_suffix: "false"
+
   sht_platform: sht3xd        # SHT31 (temporary). Change to sht4x when the SHT45 arrives.
   # Heater statements for the Clear Sensor Condensation button (see block above).
   sht_heater_on:  "id(sht45).set_heater_enabled(true);"
   sht_heater_off: "id(sht45).set_heater_enabled(false);"
 
 esphome:
-  name: espcure
-  friendly_name: EspCure
+  name: ${device_name}
+  friendly_name: ${friendly_name}
+  # Append the MAC to the hostname for automatic per-unit uniqueness (see the
+  # `mac_suffix` substitution above). Default "false" keeps the clean hostname.
+  name_add_mac_suffix: ${mac_suffix}
   comment: "Thermoelectric curing chamber — DIY Cannatrol"
   # Firmware version reported in the logs and Home Assistant device info.
   # Bump `version` on every release and tag it (e.g. v1.1.0).
@@ -79,7 +101,7 @@ wifi:
   ssid: !secret wifi_ssid
   password: !secret wifi_password
   ap:
-    ssid: "EspCure-Setup"
+    ssid: "${friendly_name}-Setup"
     password: !secret ap_password
 
 captive_portal:

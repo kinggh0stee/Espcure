@@ -6,6 +6,10 @@ All notable changes to EspCure are documented here.
 
 ## [Unreleased]
 
+### Added
+- **Renameable device — run multiple EspCures on one network/HA.** The device name and friendly name are now `device_name`/`friendly_name` substitutions at the top of `espcure.yaml` instead of being hardcoded. Set them per unit before flashing to give each its own mDNS hostname (`http://<device_name>.local`), Home Assistant entity-ID prefix, and setup-AP SSID (`<friendly_name>-Setup`), so two or more controllers no longer collide on `espcure.local` or duplicate entity IDs. Defaults are unchanged (`espcure` / `EspCure`). The firmware `project.name` (`kinggh0stee.espcure`) intentionally stays constant across units.
+- **Optional MAC-suffix auto-naming** — a `mac_suffix` substitution (default `"false"`) wires `esphome.name_add_mac_suffix`. Set it to `"true"` to append the device MAC to the hostname (`espcure-a1b2c3.local`) so every flashed unit is unique with no per-unit editing — useful for flashing a batch from one config. Trade-off: the clean `<device_name>.local` address is replaced by the MAC-suffixed one (or use the IP).
+
 ## v1.1.0 — 2026-06-17
 
 ### Fixed
