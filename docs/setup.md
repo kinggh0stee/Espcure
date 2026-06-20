@@ -71,6 +71,39 @@ python -c "import base64,os; print(base64.b64encode(os.urandom(32)).decode())"
 
 ---
 
+## 1b. Name the device (required if you run more than one)
+
+The device name and friendly name are substitutions at the top of `espcure.yaml`:
+
+```yaml
+substitutions:
+  device_name: espcure      # mDNS hostname + HA entity-ID prefix — must be unique & lowercase
+  friendly_name: EspCure    # human-readable label in HA and the web UI
+```
+
+A single EspCure works fine with the defaults. If you run **two or more on the
+same network or Home Assistant**, give each unit its own name *before flashing* —
+otherwise both fight over `espcure.local` and create duplicate HA entity IDs.
+
+| | Unit 1 | Unit 2 |
+|---|---|---|
+| `device_name` | `espcure` | `espcure-2` |
+| `friendly_name` | `EspCure` | `EspCure 2` |
+| Web UI | `http://espcure.local` | `http://espcure-2.local` |
+| Setup AP SSID | `EspCure-Setup` | `EspCure 2-Setup` |
+
+`device_name` must be lowercase letters, digits, and hyphens. The firmware
+project ID (`kinggh0stee.espcure`) stays the same across all units — don't change it.
+
+> **Keep the clean `espcure.local` address.** Hand-picking `device_name` per unit
+> (above) keeps a tidy mDNS hostname for each (`espcure.local`, `espcure-2.local`).
+> There is also a `mac_suffix` substitution (default `"false"`) — leave it `"false"`
+> unless you specifically want auto-unique naming. Setting it `"true"` appends the
+> MAC (`espcure-a1b2c3.local`), which is convenient for flashing a batch from one
+> config but **gives up the easy `.local` name**. Most builds should leave it off.
+
+---
+
 ## 2. Validate config
 
 ```bash

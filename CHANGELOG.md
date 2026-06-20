@@ -6,6 +6,10 @@ All notable changes to EspCure are documented here.
 
 ## [Unreleased]
 
+### Added
+- **Renameable device — run multiple EspCures on one network/HA.** The device name and friendly name are now `device_name`/`friendly_name` substitutions at the top of `espcure.yaml` instead of being hardcoded. Set them per unit before flashing to give each its own mDNS hostname (`http://<device_name>.local`), Home Assistant entity-ID prefix, and setup-AP SSID (`<friendly_name>-Setup`), so two or more controllers no longer collide on `espcure.local` or duplicate entity IDs. Defaults are unchanged (`espcure` / `EspCure`). The firmware `project.name` (`kinggh0stee.espcure`) intentionally stays constant across units.
+- **Optional MAC-suffix auto-naming** — a `mac_suffix` substitution (default `"false"`) wires `esphome.name_add_mac_suffix`. Set it to `"true"` to append the device MAC to the hostname (`espcure-a1b2c3.local`) so every flashed unit is unique with no per-unit editing — useful for flashing a batch from one config. Trade-off: the clean `<device_name>.local` address is replaced by the MAC-suffixed one (or use the IP).
+
 ### Changed
 - **Fans now run continuously while a cure program is active.** Previously the fan rail (GPIO5) was ON only when the Peltier was cooling or the heater was heating. Now, whenever a cure program (`10-Day Dry` or `Cannatrol 4+4`) is running, the fans run continuously for constant air circulation and even drying; with no program active the original behaviour (ON when cooling or heating) is unchanged. The Peltier hot-side airflow guarantee is preserved — the fan is still commanded ON in the same lambda as the Peltier.
 
