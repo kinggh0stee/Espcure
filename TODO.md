@@ -26,8 +26,8 @@ Priority: 🔴 Critical · 🟡 High · 🟢 Nice-to-have · ✅ Done
 - [x] Sub-agents + CLAUDE.md
 - [x] SSD1306 OLED display — 3-page cycling, BOOT button page advance
 - [x] WS2812 RGB LED (GPIO8) — cure-progress indicator, Frost Blink effect, Status LED Enable switch
-- [x] Rich HA dashboard — VPD gauge, badges, conditional program cards, progress bars, 7-day history
-- [x] VPD target mode — third control mode (`VPD Control Mode` switch), VPD setpoint/hysteresis entities
+- [x] Rich HA dashboard — badges, conditional program cards, progress bars, 7-day history
+- [x] VPD target mode implemented, then hidden (`internal: true`) — Dew Point is the only user-selectable mode as of v1.1.0
 - [x] Optional cold-plate DS18B20 section (commented YAML, GPIO10)
 - [x] GitHub Actions CI — `esphome config` validation on PRs (`.github/workflows/validate.yml`)
 - [x] Changelog (`CHANGELOG.md`)
@@ -86,7 +86,7 @@ Priority: 🔴 Critical · 🟡 High · 🟢 Nice-to-have · ✅ Done
 
 ## 🟡 Home Assistant Dashboard
 
-- [x] **Rich dashboard** — VPD gauge, color-coded badges, conditional program progress cards, 7-day history, VPD control section (all in `docs/ha-dashboard.yaml`)
+- [x] **Rich dashboard** — colour-coded badges, conditional program progress cards, 7-day history (all in `docs/ha-dashboard.yaml`)
 - [x] **Notifications** — HA automation YAML for frost + program complete alerts documented in `docs/cure-programs.md`; paste into HA to activate
 - [ ] **Energy monitoring** — future: requires INA219 current sensor hardware on 12 V rail
 
