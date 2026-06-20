@@ -828,7 +828,7 @@
 
 
 <h1 id="pid-tuning-log">PID Tuning Log<a class="headerlink" href="#pid-tuning-log" title="Permanent link">&para;</a></h1>
-<p>The temperature control loop is a heat-only <code>climate.pid</code> component in ESPHome, driving the PTC heater relay (heat) via LEDC at 15 Hz. The Peltier is <strong>not PID-driven</strong>; it is controlled by a separate 30 s bang-bang loop that chases dew point or VPD setpoints.</p>
+<p>The temperature control loop is a heat-only <code>climate.pid</code> component in ESPHome, driving the PTC heater relay (heat) via LEDC at 15 Hz. The Peltier is <strong>not PID-driven</strong>; it is controlled by a separate 30 s bang-bang loop that chases the dew-point setpoint.</p>
 <h2 id="current-parameters">Current Parameters<a class="headerlink" href="#current-parameters" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">control_parameters</span><span class="p">:</span>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="nt">kp</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.35</span>
