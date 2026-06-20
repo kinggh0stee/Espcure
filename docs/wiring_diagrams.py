@@ -90,31 +90,33 @@ def control_diagram():
     d.text((W / 2, 84), "ESP32-C6 GPIO → SSR control inputs  •  on-board LED & button  •  I²C sensors on a separate diagram",
            font=F_SUB, fill=(90, 95, 105), anchor="mm")
 
-    # Buck (power in)
-    box(d, 120, 130, 430, 210, "Buck 12 V→5 V", (245, 238, 226), "feeds ESP 5 V / VIN")
-    bx = 430
-
     # ESP32-C6
     EX0, EY0, EX1, EY1 = 150, 270, 560, 940
     box(d, EX0, EY0, EX1, EY1, "ESP32-C6 DevKitC-1", (224, 234, 248))
     EPX = EX1
-    esp = [("5V / VIN", 330, RED), ("GND", 410, BLACK),
-           ("GPIO5", 520, TEAL), ("GPIO18", 610, BLUE), ("GPIO19", 700, RED),
+    # Power in: the buck feeds 5 V into the USB-C port at the top of the board,
+    # so it enters at the top edge rather than wrapping across the box.
+    USBX = EX0 + 100
+    box(d, USBX - 120, 140, USBX + 120, 215, "Buck 12 V→5 V", (245, 238, 226), "5 V via USB-C")
+    poly(d, [(USBX, 215), (USBX, EY0)], RED, 9)
+    d.rectangle([USBX - 22, EY0 - 7, USBX + 22, EY0 + 7], fill=(225, 228, 236), outline=INK, width=2)
+    dot(d, USBX, EY0, RED)
+    d.text((USBX + 34, 246), "5 V (USB-C)", font=F_PIN, fill=RED, anchor="lm")
+
+    esp = [("GND", 410, BLACK),
+           ("GPIO5", 520, TEAL), ("GPIO18", 610, BLUE), ("GPIO19", 700, GREY),
            ("GPIO8  (WS2812 LED)", 800, GREY), ("GPIO9  (BOOT btn)", 860, GREY)]
     for lbl, y, c in esp:
         pin(d, EPX, y, lbl, "right", c)
     # on-board note for LED/button
     d.text((EX0 + 24, 800), "on-board —", font=F_SM, fill=GREY, anchor="lm")
     d.text((EX0 + 24, 860), "no wiring", font=F_SM, fill=GREY, anchor="lm")
-    # buck -> ESP 5V
-    poly(d, [(280, 210), (280, 330), (EPX, 330)], RED)
-    dot(d, EPX, 330, RED)
 
     # SSR modules (right)
     ssr = [
         ("Fan rail SSR", "GPIO5", 250, 400, 300, 360, TEAL),
         ("Peltier SSR (TEC)", "GPIO18", 470, 620, 520, 580, BLUE),
-        ("Heater SSR (PTC)", "GPIO19", 690, 840, 740, 800, RED),
+        ("Heater SSR (PTC)", "GPIO19", 690, 840, 740, 800, GREY),
     ]
     SPX = 1150
     risers = {"GPIO5": 900, "GPIO18": 945, "GPIO19": 990}
@@ -146,7 +148,7 @@ def control_diagram():
     d.text((150, 990), "I²C sensors (SHT45/SHT31 + SSD1306 OLED) share GPIO21 (SDA) / GPIO22 (SCL) — see the sensor wiring diagram (sht_wiring.png).",
            font=F_NOTE, fill=(70, 74, 82), anchor="lm")
 
-    legend(d, 150, 1035, [("GPIO5 fan", TEAL), ("GPIO18 TEC", BLUE), ("GPIO19 heater", RED), ("GND common", BLACK)])
+    legend(d, 150, 1035, [("GPIO5 fan", TEAL), ("GPIO18 TEC", BLUE), ("GPIO19 heater", GREY), ("GND common", BLACK)])
     notes(d, 150, 1075, [
         "Each GPIO drives an SSR-40 DD control input (IN+); all SSR IN− share the ESP32 GND. Outputs are active-HIGH; GPIO18/19 run LEDC at 15 Hz.",
         "3.3 V control is at the SSR-40 DD minimum (3 V) — test each SSR triggers reliably; if marginal add a 2N2222 NPN driver on the GPIO line.",
@@ -188,7 +190,7 @@ def power_diagram():
     ssr = [
         ("Fan rail SSR", 360, 470, 415, TEAL),
         ("Peltier SSR (TEC)", 540, 650, 595, BLUE),
-        ("Heater SSR (PTC)", 720, 830, 775, RED),
+        ("Heater SSR (PTC)", 720, 830, 775, GREY),
     ]
     SX0, SX1 = 560, 880
     for title, y0, y1, my, color in ssr:
