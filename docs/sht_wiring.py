@@ -31,8 +31,8 @@ F_LEG = font(22)
 
 RED = (210, 50, 50)      # 3.3 V power
 BLACK = (40, 40, 40)     # GND
-YELLOW = (220, 178, 15)  # SDA
-ORANGE = (232, 120, 22)  # SCL
+GREEN = (40, 160, 70)    # SDA
+YELLOW = (220, 178, 15)  # SCL
 
 
 def box(x0, y0, x1, y1, title, fill):
@@ -98,15 +98,15 @@ for lbl, y in oled.items():
 # ── Wires ──────────────────────────────────────────────────────────────────
 wire(RED,   (EPX, 340), 705, 320, 700, SPX, OPX)  # 3.3 V
 wire(BLACK, (EPX, 440), 745, 380, 760, SPX, OPX)  # GND
-wire(YELLOW, (EPX, 560), 785, 440, 820, SPX, OPX)  # SDA
-wire(ORANGE, (EPX, 660), 825, 500, 880, SPX, OPX)  # SCL
+wire(GREEN, (EPX, 560), 785, 440, 820, SPX, OPX)  # SDA
+wire(YELLOW, (EPX, 660), 825, 500, 880, SPX, OPX)  # SCL
 
 # Power callout on the 3V3 pin (answers "where does it get power?")
 d.text((EPX - 14, 305), "← power source", font=F_NOTE_B, fill=RED, anchor="rm")
 
 # ── Legend + notes ─────────────────────────────────────────────────────────
 LY = 980
-items = [("3.3 V (power)", RED), ("GND", BLACK), ("SDA — GPIO21", YELLOW), ("SCL — GPIO22", ORANGE)]
+items = [("3.3 V (power)", RED), ("GND", BLACK), ("SDA — GPIO21", GREEN), ("SCL — GPIO22", YELLOW)]
 x = 150
 for lbl, c in items:
     d.line([x, LY, x + 46, LY], fill=c, width=8)
