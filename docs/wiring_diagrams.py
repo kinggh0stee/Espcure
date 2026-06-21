@@ -23,7 +23,6 @@ BLACK = (45, 45, 48)       # GND / -12 V
 BLUE = (40, 110, 215)      # SDA / TEC control
 GOLD = (232, 120, 22)      # SCL (old orange)
 ORANGE = (232, 120, 22)    # fan control
-GREEN = (220, 178, 15)     # 5 V → ESP (old SDA yellow)
 GREY = (120, 125, 135)
 
 F_TITLE = font(40, True)
@@ -185,7 +184,7 @@ def power_diagram():
     poly(d, [(RAILX, 250), (560, 250)], RED); dot(d, RAILX, 250, RED)
     poly(d, [(560, 290), (540, 290), (540, BUSY)], BLACK); dot(d, 540, BUSY, BLACK)
     box(d, 900, 215, 1180, 295, "ESP32-C6  (VIN 5 V)", (224, 234, 248))
-    poly(d, [(820, 255), (900, 255)], GREEN)
+    poly(d, [(820, 255), (900, 255)], RED)
 
     ssr = [
         ("Fan rail SSR", 360, 470, 415, ORANGE),
@@ -213,7 +212,7 @@ def power_diagram():
         poly(d, [(LX0, my), (LX0 - 40, my), (LX0 - 40, BUSY)], BLACK)
         dot(d, LX0 - 40, BUSY, BLACK)
 
-    legend(d, 110, 1055, [("+12 V rail", RED), ("switched 12 V", ORANGE), ("−12 V / GND", BLACK), ("5 V → ESP", GREEN)])
+    legend(d, 110, 1055, [("+12 V rail", RED), ("switched 12 V", ORANGE), ("−12 V / GND", BLACK), ("5 V → ESP", RED)])
     notes(d, 110, 1100, [
         "All three SSR-40 DD LOAD+ tap the +12 V rail; each load's negative returns to the common −12 V bus. The fan rail SSR powers all three fans together (it switches ON whenever the Peltier or heater is active).",
         "The 25 A PSU covers 2× TEC + heater (~4.2 A) + fans with headroom. Mount each SSR-40 DD on a heatsink when it carries > 5 A. The buck (LM2596 / MP1584EN) drops 12 V → 5 V for the ESP32 VIN.",
