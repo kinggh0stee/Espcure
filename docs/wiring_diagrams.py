@@ -21,9 +21,9 @@ BG = (250, 250, 252)
 RED = (210, 50, 50)        # +12 V / power / heater control
 BLACK = (45, 45, 48)       # GND / -12 V
 BLUE = (40, 110, 215)      # SDA / TEC control
-GOLD = (225, 165, 25)      # SCL
-TEAL = (20, 160, 150)      # fan control
-GREEN = (40, 160, 70)
+GOLD = (232, 120, 22)      # SCL (old orange)
+ORANGE = (232, 120, 22)    # fan control
+GREEN = (220, 178, 15)     # 5 V → ESP (old SDA yellow)
 GREY = (120, 125, 135)
 
 F_TITLE = font(40, True)
@@ -104,7 +104,7 @@ def control_diagram():
     d.text((USBX + 34, 246), "5 V (USB-C)", font=F_PIN, fill=RED, anchor="lm")
 
     esp = [("GND", 410, BLACK),
-           ("GPIO5", 520, TEAL), ("GPIO18", 610, BLUE), ("GPIO19", 700, GREY),
+           ("GPIO5", 520, ORANGE), ("GPIO18", 610, BLUE), ("GPIO19", 700, GREY),
            ("GPIO8  (WS2812 LED)", 800, GREY), ("GPIO9  (BOOT btn)", 860, GREY)]
     for lbl, y, c in esp:
         pin(d, EPX, y, lbl, "right", c)
@@ -114,7 +114,7 @@ def control_diagram():
 
     # SSR modules (right)
     ssr = [
-        ("Fan rail SSR", "GPIO5", 250, 400, 300, 360, TEAL),
+        ("Fan rail SSR", "GPIO5", 250, 400, 300, 360, ORANGE),
         ("Peltier SSR (TEC)", "GPIO18", 470, 620, 520, 580, BLUE),
         ("Heater SSR (PTC)", "GPIO19", 690, 840, 740, 800, GREY),
     ]
@@ -148,7 +148,7 @@ def control_diagram():
     d.text((150, 990), "I²C sensors (SHT45/SHT31 + SSD1306 OLED) share GPIO21 (SDA) / GPIO22 (SCL) — see the sensor wiring diagram (sht_wiring.png).",
            font=F_NOTE, fill=(70, 74, 82), anchor="lm")
 
-    legend(d, 150, 1035, [("GPIO5 fan", TEAL), ("GPIO18 TEC", BLUE), ("GPIO19 heater", GREY), ("GND common", BLACK)])
+    legend(d, 150, 1035, [("GPIO5 fan", ORANGE), ("GPIO18 TEC", BLUE), ("GPIO19 heater", GREY), ("GND common", BLACK)])
     notes(d, 150, 1075, [
         "Each GPIO drives an SSR-40 DD control input (IN+); all SSR IN− share the ESP32 GND. Outputs are active-HIGH; GPIO18/19 run LEDC at 15 Hz.",
         "3.3 V control is at the SSR-40 DD minimum (3 V) — test each SSR triggers reliably; if marginal add a 2N2222 NPN driver on the GPIO line.",
@@ -188,7 +188,7 @@ def power_diagram():
     poly(d, [(820, 255), (900, 255)], GREEN)
 
     ssr = [
-        ("Fan rail SSR", 360, 470, 415, TEAL),
+        ("Fan rail SSR", 360, 470, 415, ORANGE),
         ("Peltier SSR (TEC)", 540, 650, 595, BLUE),
         ("Heater SSR (PTC)", 720, 830, 775, GREY),
     ]
@@ -213,7 +213,7 @@ def power_diagram():
         poly(d, [(LX0, my), (LX0 - 40, my), (LX0 - 40, BUSY)], BLACK)
         dot(d, LX0 - 40, BUSY, BLACK)
 
-    legend(d, 110, 1055, [("+12 V rail", RED), ("switched 12 V", TEAL), ("−12 V / GND", BLACK), ("5 V → ESP", GREEN)])
+    legend(d, 110, 1055, [("+12 V rail", RED), ("switched 12 V", ORANGE), ("−12 V / GND", BLACK), ("5 V → ESP", GREEN)])
     notes(d, 110, 1100, [
         "All three SSR-40 DD LOAD+ tap the +12 V rail; each load's negative returns to the common −12 V bus. The fan rail SSR powers all three fans together (it switches ON whenever the Peltier or heater is active).",
         "The 25 A PSU covers 2× TEC + heater (~4.2 A) + fans with headroom. Mount each SSR-40 DD on a heatsink when it carries > 5 A. The buck (LM2596 / MP1584EN) drops 12 V → 5 V for the ESP32 VIN.",
