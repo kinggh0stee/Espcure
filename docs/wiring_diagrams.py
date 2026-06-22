@@ -193,9 +193,9 @@ def power_diagram():
     ]
     SX0, SX1 = 560, 880
     for title, y0, y1, my, color in ssr:
-        box(d, SX0, y0, SX1, y1, title, (230, 232, 238), "SSR-40 DD")
-        pin(d, SX0, my, "L+", "left", RED)
-        pin(d, SX1, my, "out", "right", color)
+        box(d, SX0, y0, SX1, y1, title, (230, 232, 238))
+        pin(d, SX0, my, "+ in", "left", RED)
+        pin(d, SX1, my, "− out", "right", color)
         poly(d, [(RAILX, my), (SX0, my)], RED); dot(d, RAILX, my, RED)
 
     loads = [
@@ -214,7 +214,8 @@ def power_diagram():
 
     legend(d, 110, 1055, [("+12 V rail", RED), ("switched 12 V", ORANGE), ("−12 V / GND", BLACK), ("5 V → ESP", RED)])
     notes(d, 110, 1100, [
-        "All three SSR-40 DD LOAD+ tap the +12 V rail; each load's negative returns to the common −12 V bus. The fan rail SSR powers all three fans together (it switches ON whenever the Peltier or heater is active).",
+        "SSR load terminals are stamped +/− but the SSR only switches the +12 V line: PSU +12 V → SSR + in, SSR − out → load +. The − terminal is NOT ground — each load's negative returns to the −12 V bus and never touches an SSR.",
+        "All three SSR-40 DD + terminals tap the +12 V rail; the fan rail SSR powers all three fans together (it switches ON whenever a cure program is active, or the Peltier or heater is active).",
         "The 25 A PSU covers 2× TEC + heater (~4.2 A) + fans with headroom. Mount each SSR-40 DD on a heatsink when it carries > 5 A. The buck (LM2596 / MP1584EN) drops 12 V → 5 V for the ESP32 VIN.",
     ], width=128)
     img.save("docs/wiring_power.png")

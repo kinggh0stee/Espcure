@@ -59,9 +59,9 @@ For most users, a 0–1.5 % offset is sufficient.
 
 Both the SHT31 and SHT45 have a built-in resistive heater for evaporating condensation off the sensing element. It is **off during normal operation** so it never biases readings.
 
-If the humidity reading pegs near 100 % after a rapid temperature drop (condensation on the sensor face), press the **Clear Sensor Condensation** button in HA or the device web UI. The firmware enables the heater, forces a measurement cycle (the heater fires during it), waits ~1–1.5 s, then disables the heater and takes a clean reading.
+If the humidity reading pegs near 100 % after a rapid temperature drop (condensation on the sensor face), press the **Clear Sensor Condensation** button in HA or the device web UI.
 
-The button works on whichever sensor is selected — the heater API differs (`set_heater_enabled(true/false)` on the SHT31, `set_heater_max_duty(1.0/0.0)` on the SHT45), so both versions live in the button's `on_press` block in `espcure.yaml`; the active one matches the `sht_platform` substitution.
+The button works on whichever sensor is selected, via the `sht_heater_on`/`sht_heater_off` substitutions. On the **SHT31** (`sht3xd`) it pulses the real on-chip heater (`set_heater_enabled(true/false)`) for one measurement cycle, then takes a clean reading. The **SHT45** (`sht4x`) has **no on-demand heater API** — its heater is config-time only — so on the SHT45 the substitutions are no-ops (`";"`) and the button simply forces a fresh reading. (The firmware ships with the SHT45 active.)
 
 Avoid pressing the button repeatedly — the heater temporarily biases both temperature and RH upward, and the effect clears within one update cycle after it's disabled.
 

@@ -47,12 +47,19 @@ substitutions:
   # Firmware version — single source of truth. Bump this on every release; it
   # feeds both esphome.project.version (boot log + HA device info) and the
   # "Firmware Version" diagnostic text sensor shown on the web UI.
-  fw_version: "1.2.0"
+  fw_version: "1.3.0"
 
-  sht_platform: sht3xd        # SHT31 (temporary). Change to sht4x when the SHT45 arrives.
-  # Heater statements for the Clear Sensor Condensation button (see block above).
-  sht_heater_on:  "id(sht45).set_heater_enabled(true);"
-  sht_heater_off: "id(sht45).set_heater_enabled(false);"
+  # Chamber sensor — SHT45 (sht4x) is ACTIVE. The sht4x platform has no
+  # on-demand heater API, so the Clear Sensor Condensation button just takes a
+  # fresh reading (the heater statements are no-ops).
+  sht_platform:   sht4x
+  sht_heater_on:  ";"
+  sht_heater_off: ";"
+  # SHT31 option — to switch back, comment the three sht4x lines above and
+  # uncomment the three sht3xd lines below (SHT31 has a real runtime heater):
+  # sht_platform:   sht3xd
+  # sht_heater_on:  "id(sht45).set_heater_enabled(true);"
+  # sht_heater_off: "id(sht45).set_heater_enabled(false);"
 
 esphome:
   name: ${device_name}
