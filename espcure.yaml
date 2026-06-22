@@ -454,7 +454,7 @@ switch:
           value: 15.6       # start of the 2-day ramp
       - climate.control:
           id: temp_pid
-          target_temperature: 15.6    # 15.6 °C
+          target_temperature: 17.2    # 17.2 °C (63 °F)
       - switch.turn_on: use_dew_point_control
 
   # Cannatrol 4+4 program: 4 days dry (12.2 °C DP) then 4 days cure (11.1 °C DP)
@@ -726,7 +726,7 @@ climate:
     name: "Temperature Control"
     sensor: chamber_temp
     icon: "mdi:thermometer"
-    default_target_temperature: 15.6    # 15.6 °C — realistic floor for Peltier strength
+    default_target_temperature: 17.2    # 17.2 °C (63 °F) — matches validated program default
     heat_output: heater_output
     web_server:
       sorting_group_id: grp_climate
