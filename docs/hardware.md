@@ -78,22 +78,33 @@ A text version of the full system wiring:
                      │                  GND    ├──── all 3 SSR IN−
                      └──────────────────────────────────────┘
 
-  12V PSU (+) ──── SSR-40 DD (Fan)  LOAD+ ──── TEC fan 1 (+)
-               │                          └──── TEC fan 2 (+)
-               │                          └──── Heater fan (+)
+  # NOTE: the SSR switches the +12 V line only. PSU +12 V → SSR [+ in];
+  #       SSR [− out] → the load's POSITIVE lead. The − terminal is NOT ground.
+  12V PSU (+) ──── SSR (Fan)  [+ in]→(switch)→[− out] ──── TEC fan 1 (+)
+               │                                     └──── TEC fan 2 (+)
+               │                                     └──── Heater fan (+)
                │
-               ├──── SSR-40 DD (TEC)  LOAD+ ──── TEC 1 (+)
-               │                          └──── TEC 2 (+)  [parallel]
+               ├──── SSR (TEC)  [+ in]→(switch)→[− out] ──── TEC 1 (+)
+               │                                     └──── TEC 2 (+)  [parallel]
                │
-               └──── SSR-40 DD (Heat) LOAD+ ──── PTC element (+)
+               └──── SSR (Heat) [+ in]→(switch)→[− out] ──── PTC element (+)
 
-  12V PSU (−) ──── all TEC (−), fan (−), PTC element (−)  [common ground]
+  12V PSU (−) ──── all TEC (−), fan (−), PTC element (−)  [common ground; never touches an SSR]
 
   12V PSU (+) ─── Buck converter (12V→5V) ─── ESP32 VIN
 
   SHT45 VDD ─── 3.3V   SHT45 GND ─── GND
   OLED VCC  ─── 3.3V   OLED GND  ─── GND
 ```
+
+> ⚠️ **SSR load-terminal polarity (this trips people up):** A DC SSR-40 DD's
+> load terminals are stamped `+` and `−`, but the SSR is just a switch in the
+> **positive 12 V line** — it never carries the negative rail. Wire
+> **PSU +12 V → load `+` terminal**, and **load `−` terminal → the load's
+> positive (+) lead** (fan +, TEC +, PTC +). The `+/−` stamps mark the DC
+> polarity the SSR expects, *not* which rail each terminal carries. Every
+> load's **negative** returns straight to the PSU −12 V common bus and never
+> touches the SSR.
 
 ## OLED Display Wiring
 
