@@ -193,7 +193,7 @@ def power_diagram():
     ]
     SX0, SX1 = 560, 880
     for title, y0, y1, my, color in ssr:
-        box(d, SX0, y0, SX1, y1, title, (230, 232, 238), "SSR-40 DD")
+        box(d, SX0, y0, SX1, y1, title, (230, 232, 238))
         pin(d, SX0, my, "+ in", "left", RED)
         pin(d, SX1, my, "− out", "right", color)
         poly(d, [(RAILX, my), (SX0, my)], RED); dot(d, RAILX, my, RED)
