@@ -112,6 +112,7 @@ ota:
 wifi:
   ssid: !secret wifi_ssid
   password: !secret wifi_password
+  power_save_mode: none   # disable modem sleep — prevents ~15 min AP disconnects on some routers
   ap:
     ssid: "${friendly_name}-Setup"
     password: !secret ap_password
