@@ -145,7 +145,6 @@ The device-hosted dashboard gives full control without Home Assistant:
 | **Sensors** | Chamber temp (°C), RH, dew point, error diagnostics |
 | **Climate** | PID thermostat card — adjust target temp, see action state |
 | **Controls** | Cure programs, fan, dew-point mode toggle, Status LED Enable |
-| **Presets** | Apply Dry / Cure profile in one tap |
 | **PID Tuning** | Kp/Ki/Kd sliders — changes apply instantly, no reflash |
 | **Status** | Chamber Status, program progress |
 | **Dark mode** | Toggle in the top-right corner (follows system preference by default) |
@@ -195,10 +194,9 @@ A complete 5-tab Lovelace dashboard is at `docs/ha-dashboard.yaml`.
 - [ ] Fan relay turns ON automatically at boot
 - [ ] Status LED shows purple when idle (no program running)
 - [ ] OLED displays temperature and RH on Page 1 (if connected)
-- [ ] Climate entity shows target 15.6 °C
+- [ ] Climate entity shows target 17.2 °C
 - [ ] Dew-point humidity mode is active by default
 - [ ] Both cure program switches OFF by default
-- [ ] **Apply Dry Profile** sets 20 °C + 12.2 °C DP + dew-point mode ON
 - [ ] HA device shows all entities after integration is added
 
 ---

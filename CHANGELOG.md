@@ -6,9 +6,12 @@ All notable changes to EspCure are documented here.
 
 ## [Unreleased]
 
+### Removed
+- **Apply Dry Profile / Apply Cure Profile preset buttons removed.** The two one-tap presets set a fixed dew-point setpoint, forced the temp target to 20 °C, and enabled dew-point mode. They were redundant — the 10-Day Dry program covers drying and the always-visible **Dew Point Setpoint** number can park the chamber at any hold value by hand — and their 20 °C temp target conflicted with the new 17.2 °C (63 °F) default. To park a manual hold (e.g. a 52 °F / 11.1 °C storage cure), set the Dew Point Setpoint number directly with Dew Point mode ON. Removed from the device web UI, Home Assistant, and the HA dashboard.
+
 ### Changed
 - **Dew Point Hysteresis default tightened to 0.1 °C** (was 0.5 °C). The Peltier now holds the dew-point band ±0.1 °C instead of ±0.5 °C, tracking the setpoint much more tightly at the cost of more frequent on/off cycling. Adjustable live via the `Dew Point Hysteresis` number. Note: this is `restore_value: true`, so existing units keep their stored value across an update — set it to 0.1 in the web UI (or it applies automatically on a fresh/NVS-cleared install).
-- **Default temperature target raised to 17.2 °C (63 °F).** The PID `default_target_temperature` and the 10-Day Dry program's temp target moved from 15.6 °C (60 °F) to 17.2 °C (63 °F), matching the validated real-world program default (heater rarely runs; chamber floats ~63–67 °F). Dew-point setpoints and the 10-day ramp schedule (15.6 → 13.9 → 12.2 → 11.1 °C) are unchanged. The Cannatrol program and Dry/Cure preset buttons (20 °C) are unaffected.
+- **Default temperature target raised to 17.2 °C (63 °F).** The PID `default_target_temperature` and the 10-Day Dry program's temp target moved from 15.6 °C (60 °F) to 17.2 °C (63 °F), matching the validated real-world program default (heater rarely runs; chamber floats ~63–67 °F). Dew-point setpoints and the 10-day ramp schedule (15.6 → 13.9 → 12.2 → 11.1 °C) are unchanged. The Cannatrol program (20 °C) is unaffected.
 - **Default chamber sensor is now the SHT45 (`sht4x`).** The `sht_platform` substitution now ships as `sht4x` (was `sht3xd`/SHT31), with the matching no-op heater substitutions (`sht_heater_on`/`sht_heater_off` = `";"`) since the SHT45 has no on-demand heater API — the Clear Sensor Condensation button just takes a fresh reading. The SHT31 (`sht3xd`) remains a supported option, kept commented inline directly below the active lines for a one-step swap-back. Both variants still compile in CI. Re-calibrate after swapping (see `docs/calibration.md`).
 
 ### Added

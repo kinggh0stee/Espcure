@@ -164,18 +164,6 @@ views:
     icon: mdi:sprout
     cards:
 
-      # ── One-tap profile presets ───────────────────────────────────────────
-      - type: entities
-        title: Quick Profiles
-        icon: mdi:lightning-bolt
-        entities:
-          - entity: button.espcure_apply_dry_profile
-            name: Apply Dry Profile (20°C / 12.2°C DP)
-            action_name: Apply
-          - entity: button.espcure_apply_cure_profile
-            name: Apply Cure Profile (20°C / 11.1°C DP)
-            action_name: Apply
-
       # ── 10-day program status (conditional) ───────────────────────────────
       - type: conditional
         conditions:

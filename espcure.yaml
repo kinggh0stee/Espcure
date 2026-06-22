@@ -1006,41 +1006,6 @@ button:
           ESP_LOGI("espcure", "Clear Sensor Condensation: taking a fresh reading");
       - component.update: sht45
 
-  # ── Cannatrol one-tap presets ────────────────────────────────────────────────
-  # Apply full profile: temp + dew point setpoints + enable dew-point mode.
-
-  - platform: template
-    name: "Apply Dry Profile"
-    icon: "mdi:weather-sunny"
-    web_server:
-      sorting_group_id: grp_programs
-      sorting_weight: 1
-    on_press:
-      then:
-        - number.set:
-            id: dew_point_setpoint
-            value: 12.2        # Cannatrol dry
-        - climate.control:
-            id: temp_pid
-            target_temperature: 20.0   # 20 °C
-        - switch.turn_on: use_dew_point_control
-
-  - platform: template
-    name: "Apply Cure Profile"
-    icon: "mdi:leaf"
-    web_server:
-      sorting_group_id: grp_programs
-      sorting_weight: 2
-    on_press:
-      then:
-        - number.set:
-            id: dew_point_setpoint
-            value: 11.1        # Cannatrol cure
-        - climate.control:
-            id: temp_pid
-            target_temperature: 20.0   # 20 °C
-        - switch.turn_on: use_dew_point_control
-
 # ─── Binary sensors ───────────────────────────────────────────────────────────
 
 binary_sensor:

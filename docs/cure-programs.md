@@ -78,19 +78,6 @@ Temperature stays at 15.6 °C throughout — the heater holds the floor while th
 
 ---
 
-## One-Tap Profile Presets
-
-Two preset buttons available on both the device web UI (`http://espcure.local`) and in Home Assistant:
-
-| Button | Temp | Dew Point | Mode |
-|---|---|---|---|
-| **Apply Dry Profile** | 20 °C | 12.2 °C | Dew Point ON |
-| **Apply Cure Profile** | 20 °C | 11.1 °C | Dew Point ON |
-
-These set all relevant setpoints instantly without modifying the cure program switch or day counter.
-
----
-
 ## Manual Humidity Control
 
 When no program is running, set the dew-point target manually:
