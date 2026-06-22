@@ -134,19 +134,23 @@ The SHT45 on-chip heater is **off during normal operation** (`heater_max_duty: 0
 
 ## Swapping the chamber sensor (SHT31 ↔ SHT45)
 
-Both the SHT31-D and SHT45 use I²C address `0x44` and the same 4-wire connection, so the wiring never changes. They differ only in the ESPHome platform (`sht3xd` vs `sht4x`) and the on-chip heater API. The config selects between them with a single substitution at the top of `espcure.yaml`:
+Both the SHT31-D and SHT45 use I²C address `0x44` and the same 4-wire connection, so the wiring never changes. They differ only in the ESPHome platform (`sht3xd` vs `sht4x`) and the on-chip heater API. **The firmware ships with the SHT45 (`sht4x`) active**; the SHT31 lines are kept commented directly below for a one-step swap-back. The config selects between them with three grouped substitutions at the top of `espcure.yaml`:
 
 ```yaml
 substitutions:
-  sht_platform: sht3xd        # SHT31  (change to sht4x for the SHT45)
+  # SHT45 (active) — no on-demand heater API, so the heater statements are no-ops
+  sht_platform:   sht4x
+  sht_heater_on:  ";"
+  sht_heater_off: ";"
+  # SHT31 option (uncomment these, comment the sht4x trio above):
+  # sht_platform:   sht3xd
+  # sht_heater_on:  "id(sht45).set_heater_enabled(true);"
+  # sht_heater_off: "id(sht45).set_heater_enabled(false);"
 ```
 
-To swap, change **two** things, then reflash:
+To swap, comment one trio and uncomment the other, then reflash. No lambda editing — the **Clear Sensor Condensation** button pulls its heater statements from the `sht_heater_on`/`sht_heater_off` substitutions. The SHT31 has a real runtime heater (`set_heater_enabled(bool)`); the SHT45 has **no** on-demand heater API (its heater is config-time only), so on the SHT45 the button simply takes a fresh reading.
 
-1. The `sht_platform` substitution (`sht3xd` = SHT31, `sht4x` = SHT45).
-2. The **Clear Sensor Condensation** button lambda — the heater API differs (`set_heater_enabled(bool)` on the SHT31, `set_heater_max_duty(float)` on the SHT45). Both versions are kept in the button's `on_press` block; comment out one and uncomment the other.
-
-Run `esphome config espcure.yaml`, then `esphome run espcure.yaml`. Because the SHT31 has higher self-heating than the SHT45, **re-measure the calibration offset** after swapping (see `docs/calibration.md`).
+Run `esphome config espcure.yaml`, then `esphome run espcure.yaml`. CI compiles both variants, so a mismatched substitution fails the build. Because the SHT31 has higher self-heating than the SHT45, **re-measure the calibration offset** after swapping (see `docs/calibration.md`).
 
 ## Dehumidification
 

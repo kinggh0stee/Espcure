@@ -6,6 +6,9 @@ All notable changes to EspCure are documented here.
 
 ## [Unreleased]
 
+### Changed
+- **Default chamber sensor is now the SHT45 (`sht4x`).** The `sht_platform` substitution now ships as `sht4x` (was `sht3xd`/SHT31), with the matching no-op heater substitutions (`sht_heater_on`/`sht_heater_off` = `";"`) since the SHT45 has no on-demand heater API — the Clear Sensor Condensation button just takes a fresh reading. The SHT31 (`sht3xd`) remains a supported option, kept commented inline directly below the active lines for a one-step swap-back. Both variants still compile in CI. Re-calibrate after swapping (see `docs/calibration.md`).
+
 ### Added
 - **Firmware Version diagnostic sensor** — a new `Firmware Version` text sensor (Diagnostics group, top) shows the running firmware version (e.g. `1.2.0`) on the device web UI and in Home Assistant, so you can confirm what's flashed without reading boot logs. The version now comes from a single `fw_version` substitution that feeds both `esphome.project.version` and this sensor — bump it in one place per release.
 
