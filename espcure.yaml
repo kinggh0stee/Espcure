@@ -1222,23 +1222,31 @@ display:
             it.printf(0, 24, id(font_m), "Sensor init...");
             return;
           }
-          // Temp (large, left half)
+          // Row 1: Temp (large, left) + RH (large, right)
           it.printf(0,  0, id(font_l), "%.1f\xc2\xb0""C", id(chamber_temp).state);
-          // RH (large, right half)
           it.printf(68, 0, id(font_l), "%.0f%%", id(chamber_rh).state);
-          // Dew point
-          it.printf(0, 26, id(font_s), "DP %.1f\xc2\xb0""C", id(dew_point).state);
-          // VPD
-          it.printf(68, 26, id(font_s), "VPD%.2f", id(vpd).state);
-          // Horizontal divider
-          it.line(0, 37, 128, 37);
-          // Status bar
-          it.printf(0, 40, id(font_s), "%s", id(chamber_status).state.c_str());
-          // Temp target setpoint
-          it.printf(68, 40, id(font_s), "SP %.0f\xc2\xb0""C", id(temp_pid).target_temperature);
-          // Frost warning (bottom row when active)
+          // Row 2: Dew point actual (left) + DP setpoint (right)
+          it.printf(0,  24, id(font_s), "DP %.1f\xc2\xb0""C", id(dew_point).state);
+          it.printf(68, 24, id(font_s), "SP %.1f\xc2\xb0""C", id(dew_point_setpoint).state);
+          // Row 3: DP error (left) + chamber status (right)
+          if (!isnan(id(dew_point_error).state)) {
+            it.printf(0, 35, id(font_s), "Err %+.1f\xc2\xb0""C", id(dew_point_error).state);
+          }
+          it.printf(68, 35, id(font_s), "%s", id(chamber_status).state.c_str());
+          // Divider
+          it.line(0, 46, 128, 46);
+          // Bottom row: frost guard / active program day / standby
           if (id(frost_active)) {
-            it.printf(0, 54, id(font_s), "! FROST GUARD ACTIVE");
+            it.printf(0, 49, id(font_s), "FROST GUARD ACTIVE");
+          } else if (id(dry10_program_active).state) {
+            it.printf(0, 49, id(font_s), "10d Day %d  T%.0f\xc2\xb0""C",
+                      (int)id(dry10_day).state + 1, id(temp_pid).target_temperature);
+          } else if (id(cannatrol_program_active).state) {
+            it.printf(0, 49, id(font_s), "C44 Day %d  T%.0f\xc2\xb0""C",
+                      (int)id(cannatrol_day).state + 1, id(temp_pid).target_temperature);
+          } else {
+            it.printf(0, 49, id(font_s), "T %.0f\xc2\xb0""C  Standby",
+                      id(temp_pid).target_temperature);
           }
 
       # Page 2 — humidity control & setpoints
