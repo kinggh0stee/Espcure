@@ -6,6 +6,12 @@ All notable changes to EspCure are documented here.
 
 ## [Unreleased]
 
+## v1.3.1 — 2026-06-28
+
+### Fixed
+- **WiFi link no longer drops every ~15 minutes.** ESP-IDF's default WiFi modem sleep (`WIFI_PS_MIN_MODEM`) let the radio go dormant between DTIM beacons, which some access points (notably Ubiquiti's) read as a dead client and evict on a ~15-minute health-check timer — the device flapped offline→online without ever rebooting (uptime kept climbing). Added `power_save_mode: none` to the `wifi:` block to keep the radio always-on. Trade-off: ~20 mA higher idle current, negligible for a mains-powered controller.
+- **OLED page 1 decluttered.** The primary readings page dropped the never-used VPD figure and now shows the dew point alongside its setpoint (`DP 13.5°C  SP 11.1°C`), the dew-point error next to the chamber status, and a context-aware bottom row (frost guard / active program day + temp target / standby). Makes it clear at a glance whether the Peltier needs to run. Pages 2 and 3 are unchanged.
+
 ### Removed
 - **Apply Dry Profile / Apply Cure Profile preset buttons removed.** The two one-tap presets set a fixed dew-point setpoint, forced the temp target to 20 °C, and enabled dew-point mode. They were redundant — the 10-Day Dry program covers drying and the always-visible **Dew Point Setpoint** number can park the chamber at any hold value by hand — and their 20 °C temp target conflicted with the new 17.2 °C (63 °F) default. To park a manual hold (e.g. a 52 °F / 11.1 °C storage cure), set the Dew Point Setpoint number directly with Dew Point mode ON. Removed from the device web UI, Home Assistant, and the HA dashboard.
 
