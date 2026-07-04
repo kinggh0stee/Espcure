@@ -1,0 +1,389 @@
+# EspCure — single VIEW (tab) to add into an existing dashboard
+# ─────────────────────────────────────────────────────────────────────────────
+# Use this when you already have a dashboard (e.g. "Grow Tent") and just want to
+# add EspCure as ONE new tab, rather than a whole separate dashboard.
+#
+# Requires the same HACS cards as ha-dashboard-mushroom.yaml:
+#   Mushroom · mini-graph-card · ApexCharts card · card-mod
+#
+# HOW TO ADD IT (raw config editor):
+#   1. Open your Grow Tent dashboard → ✏️ Edit → ⋮ (top-right)
+#      → Raw configuration editor.
+#   2. If a broken half-empty "EspCure"/cannabis tab exists from a previous
+#      paste, DELETE that whole "- ... " view block first.
+#   3. Under the top-level `views:` list, paste EVERYTHING BELOW as a new list
+#      item — it must line up as a SIBLING of your other views (same
+#      indentation as your existing "- title: Grow ...").  Do NOT nest it
+#      inside another view.
+#   4. Save.
+#
+# Entity prefix: espcure  (change throughout if you renamed the device)
+
+- title: EspCure
+  path: espcure
+  icon: mdi:cannabis
+  type: sections
+  max_columns: 3
+  sections:
+    # ── Chamber snapshot ──────────────────────────────────────────────────
+    - type: grid
+      cards:
+        - type: heading
+          heading: Chamber
+          heading_style: title
+          icon: mdi:fridge-outline
+
+        - type: custom:mushroom-chips-card
+          alignment: center
+          chips:
+            - type: template
+              entity: sensor.espcure_chamber_status
+              content: "{{ states('sensor.espcure_chamber_status') }}"
+              icon: >-
+                {% set s = states('sensor.espcure_chamber_status') %}{% if s ==
+                'Cooling' %}mdi:snowflake{% elif s == 'Heating'
+                %}mdi:fire{% elif s == 'Frost Guard'
+                %}mdi:snowflake-alert{% else %}mdi:power-standby{% endif %}
+              icon_color: >-
+                {% set s = states('sensor.espcure_chamber_status') %}{% if s ==
+                'Cooling' %}blue{% elif s == 'Heating' %}red{% elif s ==
+                'Frost Guard' %}cyan{% else %}grey{% endif %}
+            - type: template
+              entity: binary_sensor.espcure_controller_online
+              icon: >-
+                {% if is_state('binary_sensor.espcure_controller_online',
+                'on') %}mdi:wifi{% else %}mdi:wifi-off{% endif %}
+              content: "{{ states('sensor.espcure_wifi_signal') }} dBm"
+              icon_color: >-
+                {% if is_state('binary_sensor.espcure_controller_online',
+                'on') %}green{% else %}red{% endif %}
+            - type: template
+              entity: sensor.espcure_firmware_version
+              icon: mdi:tag-outline
+              content: "v{{ states('sensor.espcure_firmware_version') }}"
+              icon_color: grey
+
+        - type: horizontal-stack
+          cards:
+            - type: custom:mushroom-template-card
+              primary: "{{ states('sensor.espcure_chamber_temperature') | float(0) | round(1) }} °C"
+              secondary: Temperature
+              icon: mdi:thermometer
+              icon_color: >-
+                {% set t = states('sensor.espcure_chamber_temperature') |
+                float(0) %}{% if t >= 26 %}red{% elif t >= 22 %}orange{% else
+                %}green{% endif %}
+              layout: vertical
+              card_mod:
+                style: |
+                  ha-card { border-radius: 16px; }
+            - type: custom:mushroom-template-card
+              primary: "{{ states('sensor.espcure_chamber_humidity') | float(0) | round(0) }} %"
+              secondary: Humidity
+              icon: mdi:water-percent
+              icon_color: >-
+                {% set h = states('sensor.espcure_chamber_humidity') |
+                float(0) %}{% if h >= 80 %}red{% elif h >= 68 %}orange{% else
+                %}blue{% endif %}
+              layout: vertical
+              card_mod:
+                style: |
+                  ha-card { border-radius: 16px; }
+            - type: custom:mushroom-template-card
+              primary: "{{ states('sensor.espcure_dew_point') | float(0) | round(1) }} °C"
+              secondary: Dew Point
+              icon: mdi:thermometer-water
+              icon_color: teal
+              layout: vertical
+              card_mod:
+                style: |
+                  ha-card { border-radius: 16px; }
+
+        - type: custom:mini-graph-card
+          name: Temp & Dew Point — 24 h
+          hours_to_show: 24
+          points_per_hour: 4
+          line_width: 3
+          animate: true
+          show:
+            fill: fade
+          entities:
+            - entity: sensor.espcure_chamber_temperature
+              name: Temp
+              color: "#ff9800"
+            - entity: sensor.espcure_dew_point
+              name: Dew Point
+              color: "#00bcd4"
+
+    # ── Dew-point control ─────────────────────────────────────────────────
+    - type: grid
+      cards:
+        - type: heading
+          heading: Dew-Point Control
+          heading_style: title
+          icon: mdi:water-thermometer
+
+        - type: custom:apexcharts-card
+          header:
+            show: true
+            title: Dew Point vs Setpoint
+            show_states: true
+            colorize_states: true
+          graph_span: 24h
+          yaxis:
+            - id: temp
+              decimals: 1
+              apex_config:
+                title:
+                  text: °C
+            - id: duty
+              opposite: true
+              min: 0
+              max: 100
+              decimals: 0
+          series:
+            - entity: sensor.espcure_dew_point
+              name: Dew Point
+              yaxis_id: temp
+              stroke_width: 3
+              color: "#00bcd4"
+            - entity: number.espcure_dew_point_setpoint
+              name: Setpoint
+              yaxis_id: temp
+              stroke_width: 2
+              curve: stepline
+              color: "#9e9e9e"
+            - entity: sensor.espcure_peltier_dehumidify_duty
+              name: Peltier
+              yaxis_id: duty
+              type: area
+              curve: stepline
+              opacity: 0.12
+              stroke_width: 1
+              color: "#3f51b5"
+
+        - type: custom:mushroom-number-card
+          entity: number.espcure_dew_point_setpoint
+          name: Dew Point Setpoint
+          icon: mdi:target
+          display_mode: buttons
+        - type: custom:mushroom-entity-card
+          entity: switch.espcure_dew_point_control_mode
+          name: Dew Point Mode
+          icon: mdi:thermometer-water
+          tap_action:
+            action: toggle
+        - type: custom:mushroom-template-card
+          primary: Dew Point Error
+          secondary: "{{ states('sensor.espcure_dew_point_error') | float(0) | round(1) }} °C vs setpoint"
+          icon: mdi:plus-minus-variant
+          icon_color: >-
+            {% set e = states('sensor.espcure_dew_point_error') | float(0)
+            %}{% if e > 0.3 %}orange{% elif e < -0.3 %}blue{% else %}green{%
+            endif %}
+
+    # ── Temperature (PID) ─────────────────────────────────────────────────
+    - type: grid
+      cards:
+        - type: heading
+          heading: Temperature
+          heading_style: title
+          icon: mdi:thermometer-lines
+        - type: custom:mushroom-climate-card
+          entity: climate.espcure_temperature_control
+          name: Chamber PID
+          hvac_modes:
+            - heat
+            - "off"
+          show_temperature_control: true
+          collapsible_controls: false
+        - type: custom:mini-graph-card
+          name: Heater vs Peltier — 6 h
+          hours_to_show: 6
+          points_per_hour: 12
+          line_width: 2
+          entities:
+            - entity: sensor.espcure_pid_heat_output
+              name: Heat %
+              color: "#f44336"
+            - entity: sensor.espcure_peltier_dehumidify_duty
+              name: Peltier %
+              color: "#3f51b5"
+
+    # ── Programs ──────────────────────────────────────────────────────────
+    - type: grid
+      cards:
+        - type: heading
+          heading: Programs
+          heading_style: title
+          icon: mdi:sprout
+
+        - type: custom:mushroom-entity-card
+          entity: switch.espcure_10_day_dry_program
+          name: 10-Day Dry Program
+          icon: mdi:sprout
+          tap_action:
+            action: toggle
+        - type: conditional
+          conditions:
+            - entity: switch.espcure_10_day_dry_program
+              state: "on"
+          card:
+            type: custom:apexcharts-card
+            chart_type: radialBar
+            header:
+              show: true
+              title: Dry Progress
+            series:
+              - entity: number.espcure_10_day_program_day
+                name: Day
+                min: 0
+                max: 10
+                color: "#4caf50"
+                show:
+                  name: false
+            apex_config:
+              plotOptions:
+                radialBar:
+                  dataLabels:
+                    value:
+                      formatter: |
+                        EVAL:function(v){ return Math.round(v/10) + ' / 10 days'; }
+        - type: custom:mushroom-template-card
+          primary: 10-Day Status
+          secondary: "{{ states('sensor.espcure_10_day_program_status') }}"
+          icon: mdi:information-outline
+          icon_color: green
+
+        - type: custom:mushroom-entity-card
+          entity: switch.espcure_cannatrol_4_4_program
+          name: Cannatrol 4+4 Program
+          icon: mdi:cannabis
+          tap_action:
+            action: toggle
+        - type: conditional
+          conditions:
+            - entity: switch.espcure_cannatrol_4_4_program
+              state: "on"
+          card:
+            type: custom:apexcharts-card
+            chart_type: radialBar
+            header:
+              show: true
+              title: Cure Progress
+            series:
+              - entity: number.espcure_cannatrol_program_day
+                name: Day
+                min: 0
+                max: 8
+                color: "#8bc34a"
+                show:
+                  name: false
+            apex_config:
+              plotOptions:
+                radialBar:
+                  dataLabels:
+                    value:
+                      formatter: |
+                        EVAL:function(v){ return Math.round(v/12.5) + ' / 8 days'; }
+        - type: custom:mushroom-template-card
+          primary: Cannatrol Status
+          secondary: "{{ states('sensor.espcure_cannatrol_program_status') }}"
+          icon: mdi:information-outline
+          icon_color: green
+
+    # ── Tuning & safety ───────────────────────────────────────────────────
+    - type: grid
+      cards:
+        - type: heading
+          heading: Tuning & Safety
+          heading_style: title
+          icon: mdi:tune
+        - type: custom:mushroom-number-card
+          entity: number.espcure_pid_kp
+          name: Kp — Proportional
+          display_mode: buttons
+        - type: custom:mushroom-number-card
+          entity: number.espcure_pid_ki
+          name: Ki — Integral
+          display_mode: buttons
+        - type: custom:mushroom-number-card
+          entity: number.espcure_pid_kd
+          name: Kd — Derivative
+          display_mode: buttons
+        - type: custom:mushroom-entity-card
+          entity: button.espcure_pid_autotune
+          name: Run PID Autotune
+          icon: mdi:auto-fix
+          tap_action:
+            action: toggle
+        - type: custom:mushroom-number-card
+          entity: number.espcure_min_chamber_temperature_frost_floor
+          name: Frost Floor
+          icon: mdi:snowflake-alert
+          display_mode: buttons
+        - type: custom:mushroom-number-card
+          entity: number.espcure_max_chamber_temperature_safety_ceiling
+          name: Max Chamber Temp
+          icon: mdi:fire-alert
+          display_mode: buttons
+        - type: custom:mushroom-template-card
+          primary: Frost Guard
+          secondary: >-
+            {{ 'ACTIVE — Peltier suspended' if
+            is_state('binary_sensor.espcure_frost_floor_active', 'on') else
+            'Normal' }}
+          icon: mdi:snowflake-alert
+          icon_color: >-
+            {{ 'cyan' if
+            is_state('binary_sensor.espcure_frost_floor_active', 'on') else
+            'grey' }}
+
+    # ── Device ────────────────────────────────────────────────────────────
+    - type: grid
+      cards:
+        - type: heading
+          heading: Device
+          heading_style: title
+          icon: mdi:chip
+        - type: custom:mushroom-chips-card
+          chips:
+            - type: entity
+              entity: sensor.espcure_ip_address
+              icon: mdi:ip-network
+            - type: entity
+              entity: sensor.espcure_uptime
+              icon: mdi:clock-outline
+        - type: custom:mini-graph-card
+          name: WiFi Signal — 24 h
+          hours_to_show: 24
+          points_per_hour: 2
+          line_width: 2
+          entities:
+            - entity: sensor.espcure_wifi_signal
+              name: dBm
+              color: "#607d8b"
+        - type: horizontal-stack
+          cards:
+            - type: custom:mushroom-entity-card
+              entity: switch.espcure_chamber_fans
+              name: Fans
+              icon: mdi:fan
+            - type: custom:mushroom-entity-card
+              entity: switch.espcure_status_led_enable
+              name: LED
+              icon: mdi:led-on
+        - type: horizontal-stack
+          cards:
+            - type: custom:mushroom-entity-card
+              entity: button.espcure_clear_sensor_condensation
+              name: Clear Condensation
+              icon: mdi:heat-wave
+              tap_action:
+                action: toggle
+            - type: custom:mushroom-entity-card
+              entity: button.espcure_restart_controller
+              name: Restart
+              icon: mdi:restart
+              tap_action:
+                action: toggle
