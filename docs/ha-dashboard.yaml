@@ -47,9 +47,6 @@ views:
           - entity: binary_sensor.espcure_controller_online
             name: Controller Online
         show_header_toggle: false
-        card_mod:
-          style: |
-            ha-card { border-radius: 12px; }
 
       # ── Primary sensor gauges ─────────────────────────────────────────────
       - type: horizontal-stack
