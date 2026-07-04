@@ -257,8 +257,6 @@ views:
                   min: 0
                   max: 10
                   color: "#4caf50"
-                  show:
-                    name: false
               apex_config:
                 plotOptions:
                   radialBar:
@@ -304,8 +302,6 @@ views:
                   min: 0
                   max: 8
                   color: "#8bc34a"
-                  show:
-                    name: false
               apex_config:
                 plotOptions:
                   radialBar:
