@@ -7,7 +7,10 @@ All notable changes to EspCure are documented here.
 ## [Unreleased]
 
 ### Added
-- **Humidity trend graph on the Mushroom dashboard's Overview page.** `docs/ha-dashboard-mushroom.yaml` previously only showed a 7-day humidity graph on the Programs page; the Overview page's "Chamber snapshot" section now also has a 24 h `Humidity` mini-graph-card (matching the cadence/style of the existing Temp & Dew Point graph) so humidity trend is visible without switching views.
+- **Humidity trend graph on the Mushroom dashboard's Overview page.** `docs/ha-dashboard-mushroom.yaml` previously only showed a 7-day humidity graph on the Programs page; the Overview page's "Chamber snapshot" section now also has a `Humidity` graph so trend is visible without switching views.
+
+### Changed
+- **Overview Humidity graph now has an interactive 1h/6h/12h/24h range toggle.** Replaced the fixed-24h `mini-graph-card` with a `custom:plotly-graph` card (new HACS dependency: [Plotly Graph Card](https://github.com/dbuezas/lovelace-plotly-graph-card)), which adds native clickable range-selector buttons plus pan/zoom on the chart itself. The Temp & Dew Point graph next to it is unchanged.
 
 ## v1.3.1 — 2026-06-28
 
