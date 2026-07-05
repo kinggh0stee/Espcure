@@ -119,6 +119,20 @@ views:
                 name: Dew Point
                 color: "#00bcd4"
 
+          # 24 h humidity trend
+          - type: custom:mini-graph-card
+            name: Humidity — 24 h
+            hours_to_show: 24
+            points_per_hour: 4
+            line_width: 3
+            animate: true
+            show:
+              fill: fade
+            entities:
+              - entity: sensor.espcure_chamber_humidity
+                name: RH
+                color: "#2196f3"
+
       # ── Dew-point control ───────────────────────────────────────────────
       - type: grid
         cards:
