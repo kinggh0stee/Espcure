@@ -5,6 +5,7 @@
 #   - Mushroom         (custom:mushroom-*)
 #   - mini-graph-card  (custom:mini-graph-card)
 #   - ApexCharts card  (custom:apexcharts-card)
+#   - Plotly Graph Card (custom:plotly-graph) — github.com/dbuezas/lovelace-plotly-graph-card
 #   - card-mod         (styling: rounded corners, conditional colors)
 #
 # Prefer zero dependencies? Use ha-dashboard.yaml instead — it needs no HACS.
@@ -119,19 +120,38 @@ views:
                 name: Dew Point
                 color: "#00bcd4"
 
-          # 24 h humidity trend
-          - type: custom:mini-graph-card
-            name: Humidity — 24 h
+          # Humidity — interactive range (1h/6h/12h/24h)
+          - type: custom:plotly-graph
+            title: Humidity
             hours_to_show: 24
-            points_per_hour: 4
-            line_width: 3
-            animate: true
-            show:
-              fill: fade
+            refresh_interval: 60
             entities:
               - entity: sensor.espcure_chamber_humidity
                 name: RH
-                color: "#2196f3"
+                line:
+                  color: "#2196f3"
+                  width: 3
+            layout:
+              height: 300
+              xaxis:
+                rangeselector:
+                  buttons:
+                    - step: hour
+                      count: 1
+                      label: 1h
+                      stepmode: backward
+                    - step: hour
+                      count: 6
+                      label: 6h
+                      stepmode: backward
+                    - step: hour
+                      count: 12
+                      label: 12h
+                      stepmode: backward
+                    - step: hour
+                      count: 24
+                      label: 24h
+                      stepmode: backward
 
       # ── Dew-point control ───────────────────────────────────────────────
       - type: grid
