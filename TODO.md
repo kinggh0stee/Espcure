@@ -12,7 +12,6 @@ Priority: 🔴 Critical · 🟡 High · 🟢 Nice-to-have · ✅ Done
 - [x] Dew Point humidity control mode (VPD hidden/internal)
 - [x] Dew point + VPD derived sensors
 - [x] 10-Day Dry dew-point program (ramp 15.6→12.2 °C, then 12.2, then 11.1)
-- [x] Cannatrol 4+4 built-in program (auto dry→cure phase at midnight)
 - [x] One-tap profile presets (Dry, Cure)
 - [x] High-temp safety ceiling (`max_chamber_temp`, default 27 °C)
 - [x] Live PID tuning (Kp/Ki/Kd number entities, persist across reboots)

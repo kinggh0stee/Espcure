@@ -47,7 +47,7 @@ substitutions:
   # Firmware version — single source of truth. Bump this on every release; it
   # feeds both esphome.project.version (boot log + HA device info) and the
   # "Firmware Version" diagnostic text sensor shown on the web UI.
-  fw_version: "1.3.1"
+  fw_version: "1.4.0"
 
   # Chamber sensor — SHT45 (sht4x) is ACTIVE. The sht4x platform has no
   # on-demand heater API, so the Clear Sensor Condensation button just takes a
@@ -183,17 +183,11 @@ globals:
     restore_value: false
     initial_value: "false"
 
-  # Cannatrol 4+4 program phase: 0 = dry (days 1–4), 1 = cure (days 5–8)
-  - id: cannatrol_phase
-    type: int
-    restore_value: true
-    initial_value: "0"
-
   # Last status-LED key applied (edge-trigger) so paint_status_led only issues a
   # light call on a real change (re-asserting every cycle would restart the
   # Frost Blink pulse). Keys: -2 = disabled, -1 = uninit, 0 = idle (purple),
-  # 1 = frost (white blink), 2 = cured (green); 1000+day = 10-day dry program,
-  # 2000+day = Cannatrol program (both fade blue->green by day).
+  # 1 = frost (white blink), 2 = cured (green); 1000+day = 10-day dry program
+  # (fades blue->green by day).
   - id: led_state
     type: int
     restore_value: false
@@ -446,7 +440,6 @@ switch:
       sorting_weight: 3
     on_turn_on:
       - lambda: id(cure_complete) = false;         // starting fresh — clear "cured"
-      - switch.turn_off: cannatrol_program_active  # only one program at a time
       - number.set:
           id: dry10_day
           value: 0
@@ -456,31 +449,6 @@ switch:
       - climate.control:
           id: temp_pid
           target_temperature: 17.2    # 17.2 °C (63 °F)
-      - switch.turn_on: use_dew_point_control
-
-  # Cannatrol 4+4 program: 4 days dry (12.2 °C DP) then 4 days cure (11.1 °C DP)
-  - platform: template
-    id: cannatrol_program_active
-    name: "Cannatrol 4+4 Program"
-    restore_mode: RESTORE_DEFAULT_OFF
-    optimistic: true
-    icon: "mdi:cannabis"
-    web_server:
-      sorting_group_id: grp_programs
-      sorting_weight: 5
-    on_turn_on:
-      - lambda: id(cure_complete) = false;         // starting fresh — clear "cured"
-      - switch.turn_off: dry10_program_active      # only one program at a time
-      - number.set:
-          id: cannatrol_day
-          value: 0
-      - lambda: id(cannatrol_phase) = 0;
-      - number.set:
-          id: dew_point_setpoint
-          value: 12.2       # Cannatrol dry profile
-      - climate.control:
-          id: temp_pid
-          target_temperature: 20.0    # 20 °C
       - switch.turn_on: use_dew_point_control
 
   # Humidity control mode — Dew Point (default).
@@ -516,14 +484,14 @@ switch:
 
 number:
   # ── Dew-point mode setpoints ─────────────────────────────────────────────────
-  # Cannatrol defaults: 12.2 °C for dry, 11.1 °C for cure
+  # Default 11.1 °C is a good all-around cure hold setpoint (low humidity, no frost risk)
   - platform: template
     id: dew_point_setpoint
     name: "Dew Point Setpoint"
     min_value: 4.0
     max_value: 18.0
     step: 0.1
-    initial_value: 11.1    # Cannatrol cure default
+    initial_value: 11.1    # cure-hold default; 10-Day Dry program overrides on start
     restore_value: true
     optimistic: true
     unit_of_measurement: "°C"
@@ -601,23 +569,6 @@ number:
     web_server:
       sorting_group_id: grp_setup
       sorting_weight: 9
-    on_value:
-      - script.execute: paint_status_led   # repaint the cure-progress color
-
-  - platform: template
-    id: cannatrol_day
-    name: "Cannatrol Program Day"
-    min_value: 0
-    max_value: 9
-    step: 1
-    initial_value: 0
-    restore_value: true
-    optimistic: true
-    icon: "mdi:calendar-today"
-    entity_category: config
-    web_server:
-      sorting_group_id: grp_setup
-      sorting_weight: 10
     on_value:
       - script.execute: paint_status_led   # repaint the cure-progress color
 
@@ -775,31 +726,6 @@ time:
                     sp.set_value(dp);
                     sp.perform();
 
-          # Cannatrol 4+4: days 1-4 dry (12.2 °C DP), days 5-8 cure (11.1 °C DP)
-          - if:
-              condition:
-                switch.is_on: cannatrol_program_active
-              then:
-                - lambda: |-
-                    int day = (int)id(cannatrol_day).state + 1;
-                    auto dc = id(cannatrol_day).make_call();
-                    dc.set_value((float)day);
-                    dc.perform();
-                    if (day <= 4) {
-                      id(cannatrol_phase) = 0;
-                      auto sp = id(dew_point_setpoint).make_call();
-                      sp.set_value(12.2f);
-                      sp.perform();
-                    } else if (day <= 8) {
-                      id(cannatrol_phase) = 1;
-                      auto sp = id(dew_point_setpoint).make_call();
-                      sp.set_value(11.1f);
-                      sp.perform();
-                    } else {
-                      id(cure_complete) = true;   // cured
-                      id(cannatrol_program_active).turn_off();
-                    }
-
 # ─── Status LED painter (shared by the 2 s loop and the enable switch) ────────
 # Extracted into a script so toggling "Status LED Enable" repaints the LED
 # instantly instead of waiting up to 2 s for the next interval tick. Still
@@ -829,12 +755,10 @@ script:
           float r = 1.0f, g = 0.0f, b = 1.0f;   // default = purple (idle)
           if (frost) {
             key = 1;
-          } else if (id(dry10_program_active).state || id(cannatrol_program_active).state) {
-            int   day;
-            float total;
-            int   base;
-            if (id(dry10_program_active).state) { day = (int)id(dry10_day).state;     total = 10.0f; base = 1000; }
-            else                                { day = (int)id(cannatrol_day).state; total = 8.0f;  base = 2000; }
+          } else if (id(dry10_program_active).state) {
+            int   day   = (int)id(dry10_day).state;
+            float total = 10.0f;
+            int   base  = 1000;
             float p = day / total;              // 0 at start -> 1 at the final day
             if (p < 0.0f) p = 0.0f; else if (p > 1.0f) p = 1.0f;
             key = base + day;                   // unique per (program, day) -> repaint daily
@@ -945,7 +869,7 @@ interval:
       - lambda: |-
           // Fan runs unconditionally every cycle. Continuous circulation while a
           // cure program is active; otherwise on only when cooling or heating.
-          bool program = id(dry10_program_active).state || id(cannatrol_program_active).state;
+          bool program = id(dry10_program_active).state;
           bool cooling = id(peltier_cooling);
           bool heating = id(temp_pid).action == esphome::climate::CLIMATE_ACTION_HEATING;
           if (program || cooling || heating) {
@@ -1126,33 +1050,6 @@ text_sensor:
       sorting_group_id: grp_programs
       sorting_weight: 4
 
-  # Cannatrol 4+4 program progress
-  - platform: template
-    id: cannatrol_program_status
-    name: "Cannatrol Program Status"
-    icon: "mdi:cannabis"
-    lambda: |-
-      if (!id(cannatrol_program_active).state) return std::string("Inactive");
-      char buf[56];
-      int day = (int)id(cannatrol_day).state;
-      // Derive the phase from the day counter directly (cure begins at day 5)
-      // so the label is self-consistent even if cannatrol_phase ever desyncs.
-      if (day < 5) {
-        // days 0-4 display as Day 1/4 – Day 4/4; day=4 is transitional (still dry)
-        int d = (day + 1 <= 4) ? day + 1 : 4;
-        snprintf(buf, sizeof(buf), "Dry Phase \xe2\x80\x94 Day %d/4 (12.2\xc2\xb0""C DP)", d);
-      } else {
-        // cure days start at cannatrol_day=5; day-4 gives 1-4 (clamped)
-        int c = day - 4;
-        if (c > 4) c = 4;
-        snprintf(buf, sizeof(buf), "Cure Phase \xe2\x80\x94 Day %d/4 (11.1\xc2\xb0""C DP)", c);
-      }
-      return std::string(buf);
-    update_interval: 30s
-    web_server:
-      sorting_group_id: grp_programs
-      sorting_weight: 6
-
 # ─── Display (SSD1306 0.96" OLED — optional) ─────────────────────────────────
 # Requires an SSD1306 or SH1106 I²C OLED wired to the existing I²C bus:
 #   OLED VCC → 3.3V   OLED GND → GND
@@ -1207,9 +1104,6 @@ display:
           } else if (id(dry10_program_active).state) {
             it.printf(0, 49, id(font_s), "10d Day %d  T%.0f\xc2\xb0""C",
                       (int)id(dry10_day).state + 1, id(temp_pid).target_temperature);
-          } else if (id(cannatrol_program_active).state) {
-            it.printf(0, 49, id(font_s), "C44 Day %d  T%.0f\xc2\xb0""C",
-                      (int)id(cannatrol_day).state + 1, id(temp_pid).target_temperature);
           } else {
             it.printf(0, 49, id(font_s), "T %.0f\xc2\xb0""C  Standby",
                       id(temp_pid).target_temperature);
@@ -1231,9 +1125,8 @@ display:
           it.printf(0,  0, id(font_m), "Programs");
           it.line(0, 15, 128, 15);
           it.printf(0, 18, id(font_s), "10d: %s", id(dry10_program_status).state.c_str());
-          it.printf(0, 30, id(font_s), "C44: %s", id(cannatrol_program_status).state.c_str());
           if (!isnan(id(dew_point_error).state)) {
-            it.printf(0, 42, id(font_s), "DP err %+.1f\xc2\xb0""C", id(dew_point_error).state);
+            it.printf(0, 30, id(font_s), "DP err %+.1f\xc2\xb0""C", id(dew_point_error).state);
           }
 
 # ─── Status LED (WS2812 RGB, built into ESP32-C6 DevKitC-1 on GPIO8) ─────────

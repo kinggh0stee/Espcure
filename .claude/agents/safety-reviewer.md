@@ -42,7 +42,7 @@ You are the safety reviewer for **EspCure**. Your approval is required before an
 
 ### Cure logic safety
 - [ ] Dew-point program setpoints stay within the `dew_point_setpoint` range (4–18 °C)
-- [ ] Program day counters bounded (10-day ≤ 10, Cannatrol ≤ 9)
+- [ ] Program day counters bounded (10-day ≤ 10)
 
 ## Output format
 

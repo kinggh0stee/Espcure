@@ -44,7 +44,7 @@ Also verify `secrets.yaml.example` contains a stub for every `!secret` key used 
 | Fan on with Peltier | Fan commanded ON in same lambda as any Peltier `set_level(1.0)` |
 | Frost guard | Forces Peltier off below `min_chamber_temp`; heater keeps running |
 | High-temp ceiling | `max_chamber_temp` present, forces Peltier on above limit |
-| Program day counters | 10-day ≤ 10, Cannatrol ≤ 9 |
+| Program day counters | 10-day ≤ 10 |
 
 ### Documentation sync (soft warning)
 - If `climate.pid` kp/ki/kd changed → warn if `docs/pid-tuning.md` not in diff

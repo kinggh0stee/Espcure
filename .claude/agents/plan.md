@@ -31,7 +31,7 @@ Your role is to think deeply before any code is written. When invoked, produce:
 **Control strategy:**
 - Temperature: **heat-only** PID, target 15.6 °C, ±0.5 °C deadband (heater chases temp)
 - Humidity: Peltier bang-bang on dew point / VPD (cold-plate condensation); two modes (Dew Point default + VPD)
-- Programs: 10-Day Dry (dew-point ramp) and Cannatrol 4+4
+- Programs: 10-Day Dry (dew-point ramp)
 - Frost guard: Peltier forced off below `min_chamber_temp` (default 4 °C), resumes at floor + 2 °C; heater keeps running
 - Safety ceiling: `max_chamber_temp` (default 27 °C) forces the Peltier on (heat-only PID can't cool)
 

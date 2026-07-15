@@ -12,6 +12,9 @@ All notable changes to EspCure are documented here.
 ### Changed
 - **Overview Humidity graph now has an interactive 1h/6h/12h/24h range toggle.** Replaced the fixed-24h `mini-graph-card` with a `custom:plotly-graph` card (new HACS dependency: [Plotly Graph Card](https://github.com/dbuezas/lovelace-plotly-graph-card)), which adds native clickable range-selector buttons plus pan/zoom on the chart itself. The Temp & Dew Point graph next to it is unchanged.
 
+### Removed
+- **Cannatrol 4+4 built-in program removed.** The 4-day dry → 4-day cure program is no longer available. Removed: `switch.cannatrol_program_active`, `number.cannatrol_day`, `global.cannatrol_phase`, `text_sensor.cannatrol_program_status`, midnight cron phase-transition logic, and HA dashboard cards for Cannatrol program status. The 10-Day Dry program is now the only built-in cure protocol. Units mid-run on a Cannatrol cycle will have it stop after OTA update; the Peltier reverts to the plain dew-point setpoint. Manual dew-point hold control is still available via the **Dew Point Setpoint** number.
+
 ## v1.3.1 — 2026-06-28
 
 ### Fixed
