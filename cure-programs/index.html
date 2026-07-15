@@ -625,27 +625,16 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#built-in-programs" class="md-nav__link">
+  <a href="#built-in-program" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Built-in Programs
+        Built-in Program
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Built-in Programs">
+    <nav class="md-nav" aria-label="Built-in Program">
       <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#cannatrol-44-program" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Cannatrol 4+4 Program
-      
-    </span>
-  </a>
-  
-</li>
         
           <li class="md-nav__item">
   <a href="#10-day-dry-program" class="md-nav__link">
@@ -668,17 +657,6 @@
     <span class="md-ellipsis">
       
         Manual Humidity Control
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#program-comparison" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Program Comparison
       
     </span>
   </a>
@@ -735,17 +713,6 @@
   
     <nav class="md-nav" aria-label="Home Assistant Automation Examples">
       <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#alert-cannatrol-program-complete" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Alert: Cannatrol Program Complete
-      
-    </span>
-  </a>
-  
-</li>
         
           <li class="md-nav__item">
   <a href="#alert-10-day-dry-program-complete" class="md-nav__link">
@@ -880,27 +847,16 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#built-in-programs" class="md-nav__link">
+  <a href="#built-in-program" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Built-in Programs
+        Built-in Program
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Built-in Programs">
+    <nav class="md-nav" aria-label="Built-in Program">
       <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#cannatrol-44-program" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Cannatrol 4+4 Program
-      
-    </span>
-  </a>
-  
-</li>
         
           <li class="md-nav__item">
   <a href="#10-day-dry-program" class="md-nav__link">
@@ -923,17 +879,6 @@
     <span class="md-ellipsis">
       
         Manual Humidity Control
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#program-comparison" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Program Comparison
       
     </span>
   </a>
@@ -990,17 +935,6 @@
   
     <nav class="md-nav" aria-label="Home Assistant Automation Examples">
       <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#alert-cannatrol-program-complete" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Alert: Cannatrol Program Complete
-      
-    </span>
-  </a>
-  
-</li>
         
           <li class="md-nav__item">
   <a href="#alert-10-day-dry-program-complete" class="md-nav__link">
@@ -1075,7 +1009,7 @@
 <h2 id="control-architecture-overview">Control Architecture Overview<a class="headerlink" href="#control-architecture-overview" title="Permanent link">&para;</a></h2>
 <p>EspCure uses a <strong>decoupled control topology</strong>:</p>
 <ul>
-<li><strong>Temperature (heater only)</strong>: PID loop targets 15.6 °C by default, rarely activates (chamber floats 17–19 °C). A safety ceiling at 27 °C forces the Peltier ON above that point regardless of humidity demand.</li>
+<li><strong>Temperature (heater only)</strong>: PID loop targets 17.2 °C by default, rarely activates (chamber floats 17–19 °C). A safety ceiling at 27 °C forces the Peltier ON above that point regardless of humidity demand.</li>
 <li><strong>Humidity (Peltier cold plate)</strong>: Bang-bang loop on dew point, runs every 30 s at full 15 Hz, condensing moisture from the air onto the Peltier cold plate. This is the sole dehumidification mechanism.</li>
 <li><strong>Fan (GPIO5)</strong>: runs <strong>continuously while a cure program is active</strong> (constant air circulation for even drying); otherwise ON when the Peltier is cooling OR the heater is heating, and OFF when idle with no program.</li>
 </ul>
@@ -1103,45 +1037,11 @@
 <p>A VPD control mode still exists in the firmware (<code>use_vpd_control</code>, <code>vpd_setpoint</code>, <code>vpd_hysteresis</code>, plus the VPD sensors) but is <code>internal: true</code> — hidden from the web UI and Home Assistant, so it can't be selected. Dew Point is the single humidity mode. To re-enable VPD, remove the <code>internal: true</code> flags in <code>espcure.yaml</code> (see the note in <code>CLAUDE.md</code>).</p>
 </blockquote>
 <hr />
-<h2 id="built-in-programs">Built-in Programs<a class="headerlink" href="#built-in-programs" title="Permanent link">&para;</a></h2>
-<p>Two automated cure programs are available. Enabling one automatically disables the other. Both require Home Assistant time sync (midnight cron).</p>
-<h3 id="cannatrol-44-program">Cannatrol 4+4 Program<a class="headerlink" href="#cannatrol-44-program" title="Permanent link">&para;</a></h3>
-<p>Fast, commercial-style cure using dew-point control. Matches the Cannatrol's default protocol.</p>
-<table>
-<thead>
-<tr>
-<th>Phase</th>
-<th>Days</th>
-<th>Temp</th>
-<th>Dew Point</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Dry</td>
-<td>1–4</td>
-<td>20 °C</td>
-<td>12.2 °C</td>
-</tr>
-<tr>
-<td>Cure</td>
-<td>5–8</td>
-<td>20 °C</td>
-<td>11.1 °C</td>
-</tr>
-</tbody>
-</table>
-<p><strong>Enable</strong>: Toggle <strong>Cannatrol 4+4 Program</strong> switch ON. This automatically:
-- Enables Dew Point Control Mode
-- Sets temperature target to 20.0 °C
-- Sets dew point to 12.2 °C (dry phase)
-- Resets the day counter</p>
-<p><strong>Phase transition</strong>: Midnight on day 5 drops the dew point setpoint to 11.1 °C.</p>
-<p><strong>Status sensor</strong>: <code>Cannatrol Program Status</code> shows e.g. <code>Dry Phase — Day 2/4 (12.2°C DP)</code>.</p>
-<hr />
+<h2 id="built-in-program">Built-in Program<a class="headerlink" href="#built-in-program" title="Permanent link">&para;</a></h2>
+<p>One automated cure program is available. It requires Home Assistant time sync (midnight cron).</p>
 <h3 id="10-day-dry-program">10-Day Dry Program<a class="headerlink" href="#10-day-dry-program" title="Permanent link">&para;</a></h3>
 <p>Proven dew-point recipe with a controlled ramp and steady-state holds. This replaces the previous 18-day RH-based program.</p>
-<p>Temperature stays at 15.6 °C throughout — the heater holds the floor while the Peltier chases dew point.</p>
+<p>Temperature stays at 17.2 °C throughout — the heater holds the floor while the Peltier chases dew point.</p>
 <table>
 <thead>
 <tr>
@@ -1155,32 +1055,32 @@
 <tr>
 <td>1</td>
 <td>15.6 °C</td>
-<td>15.6 °C</td>
+<td>17.2 °C</td>
 <td>Ramp start — set the moment the program is enabled</td>
 </tr>
 <tr>
 <td>2</td>
 <td>13.9 °C</td>
-<td>15.6 °C</td>
+<td>17.2 °C</td>
 <td>Ramp midpoint</td>
 </tr>
 <tr>
 <td>3–6</td>
 <td>12.2 °C</td>
-<td>15.6 °C</td>
+<td>17.2 °C</td>
 <td>Dry hold (4 days)</td>
 </tr>
 <tr>
 <td>7–10</td>
 <td>11.1 °C</td>
-<td>15.6 °C</td>
+<td>17.2 °C</td>
 <td>Cure hold (4 days); program auto-disables at midnight after day 10</td>
 </tr>
 </tbody>
 </table>
 <p><strong>Enable</strong>: Toggle the <strong>10-Day Dry Program</strong> switch ON. This automatically:
-- Enables Dew Point Control Mode (disables Cannatrol 4+4)
-- Sets the temperature target to 15.6 °C
+- Enables Dew Point Control Mode
+- Sets the temperature target to 17.2 °C
 - Sets the dew point to 15.6 °C (ramp start)
 - Resets the day counter (shows Day 1)</p>
 <p><strong>The 2-day ramp</strong>: dew point starts at 15.6 °C on enable, drops to 13.9 °C at the first midnight, and reaches 12.2 °C at the second — a gentle ramp that lets the Peltier begin condensing without aggressively drying the material.</p>
@@ -1200,43 +1100,6 @@
 - <strong>Dew Point Hysteresis</strong> — dead band ÷ 2; default 0.5 °C</p>
 <p>The <strong>Dew Point Error</strong> diagnostic sensor shows the current deviation from dew-point setpoint (positive = too humid).</p>
 <hr />
-<h2 id="program-comparison">Program Comparison<a class="headerlink" href="#program-comparison" title="Permanent link">&para;</a></h2>
-<table>
-<thead>
-<tr>
-<th>Program</th>
-<th>Duration</th>
-<th>Temp</th>
-<th>Dew Point</th>
-<th>Best for</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>Cannatrol 4+4</strong></td>
-<td>~8 days</td>
-<td>20 °C</td>
-<td>12.2→11.1 °C</td>
-<td>Fast cure; commercial-style; near-ambient</td>
-</tr>
-<tr>
-<td><strong>10-Day Dry</strong></td>
-<td>10 days</td>
-<td>15.6 °C</td>
-<td>15.6→13.9→12.2→11.1 °C</td>
-<td>Proven recipe; gentle ramp; slower drying</td>
-</tr>
-<tr>
-<td><strong>Manual Dew Point</strong></td>
-<td>Ongoing</td>
-<td>User-set</td>
-<td>User-set</td>
-<td>Storage or custom protocol</td>
-</tr>
-</tbody>
-</table>
-<p><strong>Why two programs?</strong> Cannatrol 4+4 starts hard (12.2 °C DP day 1) and is faster. The 10-Day Dry ramps gently from 15.6 °C DP to avoid shocking the material.</p>
-<hr />
 <h2 id="safety-controls">Safety Controls<a class="headerlink" href="#safety-controls" title="Permanent link">&para;</a></h2>
 <h3 id="frost-floor-min-chamber-temp">Frost Floor (Min Chamber Temp)<a class="headerlink" href="#frost-floor-min-chamber-temp" title="Permanent link">&para;</a></h3>
 <p>If chamber air temperature (SHT45) drops below the floor (default 4 °C), the Peltier is suspended until the chamber recovers 2 °C above that point. The heater continues running to aid recovery. Adjust in HA via the <strong>Min Chamber Temperature</strong> number entity.</p>
@@ -1244,90 +1107,76 @@
 <p>If chamber air temperature exceeds the ceiling (default 27 °C), the Peltier is forced ON regardless of humidity demand, giving temperature an emergency downward authority. User-adjustable 22–32 °C in HA via <strong>Max Chamber Temperature</strong> number entity. This does not normally activate during standard 17–19 °C operation.</p>
 <hr />
 <h2 id="home-assistant-automation-examples">Home Assistant Automation Examples<a class="headerlink" href="#home-assistant-automation-examples" title="Permanent link">&para;</a></h2>
-<h3 id="alert-cannatrol-program-complete">Alert: Cannatrol Program Complete<a class="headerlink" href="#alert-cannatrol-program-complete" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">alias</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;EspCure</span><span class="nv"> </span><span class="s">—</span><span class="nv"> </span><span class="s">Cannatrol</span><span class="nv"> </span><span class="s">Program</span><span class="nv"> </span><span class="s">Complete&quot;</span>
+<h3 id="alert-10-day-dry-program-complete">Alert: 10-Day Dry Program Complete<a class="headerlink" href="#alert-10-day-dry-program-complete" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">alias</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;EspCure</span><span class="nv"> </span><span class="s">—</span><span class="nv"> </span><span class="s">10-Day</span><span class="nv"> </span><span class="s">Dry</span><span class="nv"> </span><span class="s">Complete&quot;</span>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="nt">triggers</span><span class="p">:</span>
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">trigger</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">state</span>
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">    </span><span class="nt">entity_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">switch.espcure_cannatrol_4_4_program</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">    </span><span class="nt">entity_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">switch.espcure_10_day_dry_program</span>
 <a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="w">    </span><span class="nt">from</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;on&quot;</span>
 <a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="w">    </span><span class="nt">to</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;off&quot;</span>
 <a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="nt">actions</span><span class="p">:</span>
 <a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">action</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">notify.mobile_app_your_phone</span>
 <a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="w">    </span><span class="nt">data</span><span class="p">:</span>
 <a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="w">      </span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;EspCure&quot;</span>
-<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="w">      </span><span class="nt">message</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Cannatrol</span><span class="nv"> </span><span class="s">4+4</span><span class="nv"> </span><span class="s">program</span><span class="nv"> </span><span class="s">complete.</span><span class="nv"> </span><span class="s">Chamber</span><span class="nv"> </span><span class="s">is</span><span class="nv"> </span><span class="s">in</span><span class="nv"> </span><span class="s">hold</span><span class="nv"> </span><span class="s">mode.&quot;</span>
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="w">      </span><span class="nt">message</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;10-Day</span><span class="nv"> </span><span class="s">Dry</span><span class="nv"> </span><span class="s">program</span><span class="nv"> </span><span class="s">complete.</span><span class="nv"> </span><span class="s">Chamber</span><span class="nv"> </span><span class="s">is</span><span class="nv"> </span><span class="s">in</span><span class="nv"> </span><span class="s">hold</span><span class="nv"> </span><span class="s">mode</span><span class="nv"> </span><span class="s">at</span><span class="nv"> </span><span class="s">11.1</span><span class="nv"> </span><span class="s">°C</span><span class="nv"> </span><span class="s">DP.&quot;</span>
 <a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">single</span>
 </code></pre></div>
-<h3 id="alert-10-day-dry-program-complete">Alert: 10-Day Dry Program Complete<a class="headerlink" href="#alert-10-day-dry-program-complete" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nt">alias</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;EspCure</span><span class="nv"> </span><span class="s">—</span><span class="nv"> </span><span class="s">10-Day</span><span class="nv"> </span><span class="s">Dry</span><span class="nv"> </span><span class="s">Complete&quot;</span>
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="nt">triggers</span><span class="p">:</span>
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">trigger</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">state</span>
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">    </span><span class="nt">entity_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">switch.espcure_10_day_dry_program</span>
-<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">    </span><span class="nt">from</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;on&quot;</span>
-<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="w">    </span><span class="nt">to</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;off&quot;</span>
-<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="nt">actions</span><span class="p">:</span>
-<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">action</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">notify.mobile_app_your_phone</span>
-<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="w">    </span><span class="nt">data</span><span class="p">:</span>
-<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="w">      </span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;EspCure&quot;</span>
-<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="w">      </span><span class="nt">message</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;10-Day</span><span class="nv"> </span><span class="s">Dry</span><span class="nv"> </span><span class="s">program</span><span class="nv"> </span><span class="s">complete.</span><span class="nv"> </span><span class="s">Chamber</span><span class="nv"> </span><span class="s">is</span><span class="nv"> </span><span class="s">in</span><span class="nv"> </span><span class="s">hold</span><span class="nv"> </span><span class="s">mode</span><span class="nv"> </span><span class="s">at</span><span class="nv"> </span><span class="s">11.1</span><span class="nv"> </span><span class="s">°C</span><span class="nv"> </span><span class="s">DP.&quot;</span>
-<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">single</span>
-</code></pre></div>
 <h3 id="alert-temperature-out-of-range">Alert: Temperature Out of Range<a class="headerlink" href="#alert-temperature-out-of-range" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nt">alias</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;EspCure</span><span class="nv"> </span><span class="s">—</span><span class="nv"> </span><span class="s">Temperature</span><span class="nv"> </span><span class="s">Alert&quot;</span>
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="nt">triggers</span><span class="p">:</span>
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">trigger</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">numeric_state</span>
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">    </span><span class="nt">entity_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sensor.espcure_chamber_temperature</span>
-<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">    </span><span class="nt">above</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">22</span>
-<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="w">    </span><span class="nt">for</span><span class="p">:</span>
-<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="w">      </span><span class="nt">minutes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">30</span>
-<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">trigger</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">numeric_state</span>
-<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="w">    </span><span class="nt">entity_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sensor.espcure_chamber_temperature</span>
-<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="w">    </span><span class="nt">below</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10</span>
-<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="w">    </span><span class="nt">for</span><span class="p">:</span>
-<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="w">      </span><span class="nt">minutes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">30</span>
-<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a><span class="nt">actions</span><span class="p">:</span>
-<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">action</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">notify.mobile_app_your_phone</span>
-<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a><span class="w">    </span><span class="nt">data</span><span class="p">:</span>
-<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a><span class="w">      </span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;EspCure</span><span class="nv"> </span><span class="s">Alert&quot;</span>
-<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a><span class="w">      </span><span class="nt">message</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">&gt;</span>
-<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a><span class="w">        </span><span class="no">Chamber temperature out of range:</span>
-<a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a><span class="w">        </span><span class="no">{{ states(&#39;sensor.espcure_chamber_temperature&#39;) }} °C</span>
-<a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">single</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nt">alias</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;EspCure</span><span class="nv"> </span><span class="s">—</span><span class="nv"> </span><span class="s">Temperature</span><span class="nv"> </span><span class="s">Alert&quot;</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="nt">triggers</span><span class="p">:</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">trigger</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">numeric_state</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">    </span><span class="nt">entity_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sensor.espcure_chamber_temperature</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">    </span><span class="nt">above</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">22</span>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="w">    </span><span class="nt">for</span><span class="p">:</span>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="w">      </span><span class="nt">minutes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">30</span>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">trigger</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">numeric_state</span>
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="w">    </span><span class="nt">entity_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sensor.espcure_chamber_temperature</span>
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="w">    </span><span class="nt">below</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10</span>
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="w">    </span><span class="nt">for</span><span class="p">:</span>
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="w">      </span><span class="nt">minutes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">30</span>
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="nt">actions</span><span class="p">:</span>
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">action</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">notify.mobile_app_your_phone</span>
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a><span class="w">    </span><span class="nt">data</span><span class="p">:</span>
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a><span class="w">      </span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;EspCure</span><span class="nv"> </span><span class="s">Alert&quot;</span>
+<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a><span class="w">      </span><span class="nt">message</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">&gt;</span>
+<a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a><span class="w">        </span><span class="no">Chamber temperature out of range:</span>
+<a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a><span class="w">        </span><span class="no">{{ states(&#39;sensor.espcure_chamber_temperature&#39;) }} °C</span>
+<a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">single</span>
 </code></pre></div>
 <h3 id="alert-frost-protection-triggered">Alert: Frost Protection Triggered<a class="headerlink" href="#alert-frost-protection-triggered" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nt">alias</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;EspCure</span><span class="nv"> </span><span class="s">—</span><span class="nv"> </span><span class="s">Frost</span><span class="nv"> </span><span class="s">Protection</span><span class="nv"> </span><span class="s">Active&quot;</span>
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="nt">triggers</span><span class="p">:</span>
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">trigger</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">state</span>
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">    </span><span class="nt">entity_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">binary_sensor.espcure_frost_floor_active</span>
-<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">    </span><span class="nt">to</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;on&quot;</span>
-<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="nt">actions</span><span class="p">:</span>
-<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">action</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">notify.mobile_app_your_phone</span>
-<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="w">    </span><span class="nt">data</span><span class="p">:</span>
-<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="w">      </span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;EspCure</span><span class="nv"> </span><span class="s">Warning&quot;</span>
-<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a><span class="w">      </span><span class="nt">message</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Frost</span><span class="nv"> </span><span class="s">floor</span><span class="nv"> </span><span class="s">active</span><span class="nv"> </span><span class="s">—</span><span class="nv"> </span><span class="s">Peltier</span><span class="nv"> </span><span class="s">suspended</span><span class="nv"> </span><span class="s">until</span><span class="nv"> </span><span class="s">chamber</span><span class="nv"> </span><span class="s">warms.&quot;</span>
-<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">single</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nt">alias</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;EspCure</span><span class="nv"> </span><span class="s">—</span><span class="nv"> </span><span class="s">Frost</span><span class="nv"> </span><span class="s">Protection</span><span class="nv"> </span><span class="s">Active&quot;</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="nt">triggers</span><span class="p">:</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">trigger</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">state</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">    </span><span class="nt">entity_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">binary_sensor.espcure_frost_floor_active</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">    </span><span class="nt">to</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;on&quot;</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="nt">actions</span><span class="p">:</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">action</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">notify.mobile_app_your_phone</span>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="w">    </span><span class="nt">data</span><span class="p">:</span>
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="w">      </span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;EspCure</span><span class="nv"> </span><span class="s">Warning&quot;</span>
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="w">      </span><span class="nt">message</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Frost</span><span class="nv"> </span><span class="s">floor</span><span class="nv"> </span><span class="s">active</span><span class="nv"> </span><span class="s">—</span><span class="nv"> </span><span class="s">Peltier</span><span class="nv"> </span><span class="s">suspended</span><span class="nv"> </span><span class="s">until</span><span class="nv"> </span><span class="s">chamber</span><span class="nv"> </span><span class="s">warms.&quot;</span>
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">single</span>
 </code></pre></div>
 <h3 id="alert-dew-point-out-of-range">Alert: Dew Point Out of Range<a class="headerlink" href="#alert-dew-point-out-of-range" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nt">alias</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;EspCure</span><span class="nv"> </span><span class="s">—</span><span class="nv"> </span><span class="s">Dew</span><span class="nv"> </span><span class="s">Point</span><span class="nv"> </span><span class="s">Alert&quot;</span>
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="nt">triggers</span><span class="p">:</span>
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">trigger</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">numeric_state</span>
-<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="w">    </span><span class="nt">entity_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sensor.espcure_chamber_dew_point</span>
-<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="w">    </span><span class="nt">above</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">15</span>
-<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="w">    </span><span class="nt">for</span><span class="p">:</span>
-<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="w">      </span><span class="nt">hours</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
-<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">trigger</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">numeric_state</span>
-<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a><span class="w">    </span><span class="nt">entity_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sensor.espcure_chamber_dew_point</span>
-<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a><span class="w">    </span><span class="nt">below</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8</span>
-<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a><span class="w">    </span><span class="nt">for</span><span class="p">:</span>
-<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a><span class="w">      </span><span class="nt">hours</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
-<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a><span class="nt">actions</span><span class="p">:</span>
-<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">action</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">notify.mobile_app_your_phone</span>
-<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a><span class="w">    </span><span class="nt">data</span><span class="p">:</span>
-<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a><span class="w">      </span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;EspCure</span><span class="nv"> </span><span class="s">Alert&quot;</span>
-<a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a><span class="w">      </span><span class="nt">message</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">&gt;</span>
-<a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a><span class="w">        </span><span class="no">Chamber dew point out of range:</span>
-<a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a><span class="w">        </span><span class="no">{{ states(&#39;sensor.espcure_chamber_dew_point&#39;) }} °C</span>
-<a id="__codelineno-4-20" name="__codelineno-4-20" href="#__codelineno-4-20"></a><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">single</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nt">alias</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;EspCure</span><span class="nv"> </span><span class="s">—</span><span class="nv"> </span><span class="s">Dew</span><span class="nv"> </span><span class="s">Point</span><span class="nv"> </span><span class="s">Alert&quot;</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="nt">triggers</span><span class="p">:</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">trigger</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">numeric_state</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">    </span><span class="nt">entity_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sensor.espcure_chamber_dew_point</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">    </span><span class="nt">above</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">15</span>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="w">    </span><span class="nt">for</span><span class="p">:</span>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="w">      </span><span class="nt">hours</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">trigger</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">numeric_state</span>
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="w">    </span><span class="nt">entity_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sensor.espcure_chamber_dew_point</span>
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a><span class="w">    </span><span class="nt">below</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8</span>
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a><span class="w">    </span><span class="nt">for</span><span class="p">:</span>
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a><span class="w">      </span><span class="nt">hours</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a><span class="nt">actions</span><span class="p">:</span>
+<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">action</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">notify.mobile_app_your_phone</span>
+<a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a><span class="w">    </span><span class="nt">data</span><span class="p">:</span>
+<a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a><span class="w">      </span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;EspCure</span><span class="nv"> </span><span class="s">Alert&quot;</span>
+<a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a><span class="w">      </span><span class="nt">message</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">&gt;</span>
+<a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a><span class="w">        </span><span class="no">Chamber dew point out of range:</span>
+<a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a><span class="w">        </span><span class="no">{{ states(&#39;sensor.espcure_chamber_dew_point&#39;) }} °C</span>
+<a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">single</span>
 </code></pre></div>
 
 
