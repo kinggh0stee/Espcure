@@ -305,51 +305,6 @@ views:
             icon: mdi:information-outline
             icon_color: green
 
-      # ── Cannatrol 4+4 ───────────────────────────────────────────────────
-      - type: grid
-        cards:
-          - type: heading
-            heading: Cannatrol 4+4
-            heading_style: title
-            icon: mdi:cannabis
-
-          - type: custom:mushroom-entity-card
-            entity: switch.espcure_cannatrol_4_4_program
-            name: Cannatrol 4+4 Program
-            icon: mdi:cannabis
-            tap_action:
-              action: toggle
-
-          - type: conditional
-            conditions:
-              - entity: switch.espcure_cannatrol_4_4_program
-                state: "on"
-            card:
-              type: custom:apexcharts-card
-              chart_type: radialBar
-              header:
-                show: true
-                title: Cure Progress
-              series:
-                - entity: number.espcure_cannatrol_program_day
-                  name: Day
-                  min: 0
-                  max: 8
-                  color: "#8bc34a"
-              apex_config:
-                plotOptions:
-                  radialBar:
-                    dataLabels:
-                      value:
-                        formatter: |
-                          EVAL:function(v){ return Math.round(v/12.5) + ' / 8 days'; }
-
-          - type: custom:mushroom-template-card
-            primary: Status
-            secondary: "{{ states('sensor.espcure_cannatrol_program_status') }}"
-            icon: mdi:information-outline
-            icon_color: green
-
       # ── Humidity trend ──────────────────────────────────────────────────
       - type: grid
         cards:

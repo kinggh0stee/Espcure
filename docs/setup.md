@@ -161,7 +161,7 @@ If you wired an SSD1306 OLED to GPIO21/22 (see `docs/display-plan.md`), it auto-
 |---|---|
 | **Main** | Temperature °C + RH % (large), dew point, VPD, chamber status, temp setpoint, frost banner |
 | **Control** | Humidity control mode, temp setpoint (°C), frost floor, WiFi signal |
-| **Programs** | 10-Day Dry + Cannatrol 4+4 status, active humidity/DP error |
+| **Programs** | 10-Day Dry program status, active humidity/DP error |
 
 Press the **BOOT button** (GPIO9, on the DevKit board) to manually cycle pages.
 

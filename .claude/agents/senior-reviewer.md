@@ -41,7 +41,7 @@ Invoke me after:
 - [ ] PID `kp`, `ki`, `kd` changes are documented in `docs/pid-tuning.md`
 - [ ] Humidity (dew-point/VPD) bang-bang deadband is symmetric and non-zero
 - [ ] Program setpoints stay within entity ranges
-- [ ] Day counters bounded (10-day ≤ 10, Cannatrol ≤ 9)
+- [ ] Day counters bounded (10-day ≤ 10)
 - [ ] `use_dew_point_control` switch correctly gates dew-point vs RH path — not both active
 
 ### 4. Documentation sync

@@ -21,7 +21,6 @@ You are the Home Assistant integration specialist for **EspCure**.
 | `sensor.pid_heat_output` | Sensor | 0–1 (heat-only PID) |
 | `switch.chamber_fans` | Switch | On when Peltier cooling or heater heating |
 | `switch.10_day_dry_program` | Switch | Enable 10-day dew-point dry |
-| `switch.cannatrol_4_4_program` | Switch | Enable Cannatrol 4+4 |
 | `switch.dew_point_control_mode` | Switch | Dew-point mode (default) |
 | `switch.vpd_control_mode` | Switch | VPD mode (mutually exclusive) |
 | `number.dew_point_setpoint` | Number | °C |

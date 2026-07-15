@@ -38,7 +38,7 @@ The display cycles every 5 seconds automatically. Press the **BOOT button** (GPI
 |---|---|
 | **Main** | Temperature °C (large) + RH % (large), dew point, VPD, chamber status, temp setpoint, frost banner |
 | **Control** | Humidity control mode, temp setpoint (°C), frost floor, WiFi signal |
-| **Programs** | 10-Day Dry status, Cannatrol 4+4 status, active humidity/DP error |
+| **Programs** | 10-Day Dry program status, active humidity/DP error |
 
 The display auto-updates every 5 s. Page advance respects the 5 s timer — a manual press restarts it from that page.
 
@@ -116,7 +116,6 @@ display:
           it.printf(10, 160, id(font_s), sc,     "%s", id(chamber_status).state.c_str());
           it.printf(10, 178, id(font_s), white,  "%s", id(humidity_control_mode).state.c_str());
           it.printf(10, 210, id(font_s), yellow, "%s", id(dry10_program_status).state.c_str());
-          it.printf(10, 228, id(font_s), yellow, "%s", id(cannatrol_program_status).state.c_str());
 ```
 
 Color coding convention:

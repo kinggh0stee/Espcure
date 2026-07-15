@@ -185,38 +185,6 @@ views:
           - entity: number.espcure_10_day_program_day
             name: Current Day
 
-      # ── Cannatrol 4+4 program status (conditional) ─────────────────────────
-      - type: conditional
-        conditions:
-          - entity: switch.espcure_cannatrol_4_4_program
-            state: "on"
-        card:
-          type: markdown
-          content: >
-            **Cannatrol 4+4 Active** — {{ states('sensor.espcure_cannatrol_program_status') }}
-
-            Progress: `{{ '█' * (states('number.espcure_cannatrol_program_day') | int) }}{{ '░' * (8 - (states('number.espcure_cannatrol_program_day') | int)) }}` ({{ states('number.espcure_cannatrol_program_day') }}/8 days)
-
-      # ── Cannatrol 4+4 program ─────────────────────────────────────────────
-      - type: entities
-        title: Cannatrol 4+4 Program
-        icon: mdi:cannabis
-        entities:
-          - entity: switch.espcure_cannatrol_4_4_program
-            name: Enable Cannatrol 4+4
-          - entity: sensor.espcure_cannatrol_program_status
-            name: Status
-          - entity: number.espcure_cannatrol_program_day
-            name: Current Day
-          - entity: switch.espcure_dew_point_control_mode
-            name: Dew Point Control Mode
-          - entity: number.espcure_dew_point_setpoint
-            name: Dew Point Setpoint (°C)
-          - entity: number.espcure_dew_point_hysteresis
-            name: Dew Point Hysteresis (°C)
-          - entity: sensor.espcure_dew_point_error
-            name: Dew Point Error
-
       # ── 7-day history ─────────────────────────────────────────────────────
       - type: history-graph
         title: Humidity — Last 7 Days

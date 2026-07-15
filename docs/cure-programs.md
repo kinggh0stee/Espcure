@@ -4,7 +4,7 @@
 
 EspCure uses a **decoupled control topology**:
 
-- **Temperature (heater only)**: PID loop targets 15.6 °C by default, rarely activates (chamber floats 17–19 °C). A safety ceiling at 27 °C forces the Peltier ON above that point regardless of humidity demand.
+- **Temperature (heater only)**: PID loop targets 17.2 °C by default, rarely activates (chamber floats 17–19 °C). A safety ceiling at 27 °C forces the Peltier ON above that point regardless of humidity demand.
 - **Humidity (Peltier cold plate)**: Bang-bang loop on dew point, runs every 30 s at full 15 Hz, condensing moisture from the air onto the Peltier cold plate. This is the sole dehumidification mechanism.
 - **Fan (GPIO5)**: runs **continuously while a cure program is active** (constant air circulation for even drying); otherwise ON when the Peltier is cooling OR the heater is heating, and OFF when idle with no program.
 
@@ -20,47 +20,26 @@ The Peltier is driven by **Dew Point** control — the only user-selectable humi
 
 ---
 
-## Built-in Programs
+## Built-in Program
 
-Two automated cure programs are available. Enabling one automatically disables the other. Both require Home Assistant time sync (midnight cron).
-
-### Cannatrol 4+4 Program
-
-Fast, commercial-style cure using dew-point control. Matches the Cannatrol's default protocol.
-
-| Phase | Days | Temp | Dew Point |
-|---|---|---|---|
-| Dry | 1–4 | 20 °C | 12.2 °C |
-| Cure | 5–8 | 20 °C | 11.1 °C |
-
-**Enable**: Toggle **Cannatrol 4+4 Program** switch ON. This automatically:
-- Enables Dew Point Control Mode
-- Sets temperature target to 20.0 °C
-- Sets dew point to 12.2 °C (dry phase)
-- Resets the day counter
-
-**Phase transition**: Midnight on day 5 drops the dew point setpoint to 11.1 °C.
-
-**Status sensor**: `Cannatrol Program Status` shows e.g. `Dry Phase — Day 2/4 (12.2°C DP)`.
-
----
+One automated cure program is available. It requires Home Assistant time sync (midnight cron).
 
 ### 10-Day Dry Program
 
 Proven dew-point recipe with a controlled ramp and steady-state holds. This replaces the previous 18-day RH-based program.
 
-Temperature stays at 15.6 °C throughout — the heater holds the floor while the Peltier chases dew point.
+Temperature stays at 17.2 °C throughout — the heater holds the floor while the Peltier chases dew point.
 
 | Day (shown) | Dew Point | Temp | Notes |
 |---|---|---|---|
-| 1 | 15.6 °C | 15.6 °C | Ramp start — set the moment the program is enabled |
-| 2 | 13.9 °C | 15.6 °C | Ramp midpoint |
-| 3–6 | 12.2 °C | 15.6 °C | Dry hold (4 days) |
-| 7–10 | 11.1 °C | 15.6 °C | Cure hold (4 days); program auto-disables at midnight after day 10 |
+| 1 | 15.6 °C | 17.2 °C | Ramp start — set the moment the program is enabled |
+| 2 | 13.9 °C | 17.2 °C | Ramp midpoint |
+| 3–6 | 12.2 °C | 17.2 °C | Dry hold (4 days) |
+| 7–10 | 11.1 °C | 17.2 °C | Cure hold (4 days); program auto-disables at midnight after day 10 |
 
 **Enable**: Toggle the **10-Day Dry Program** switch ON. This automatically:
-- Enables Dew Point Control Mode (disables Cannatrol 4+4)
-- Sets the temperature target to 15.6 °C
+- Enables Dew Point Control Mode
+- Sets the temperature target to 17.2 °C
 - Sets the dew point to 15.6 °C (ramp start)
 - Resets the day counter (shows Day 1)
 
@@ -90,17 +69,6 @@ The **Dew Point Error** diagnostic sensor shows the current deviation from dew-p
 
 ---
 
-## Program Comparison
-
-| Program | Duration | Temp | Dew Point | Best for |
-|---|---|---|---|---|
-| **Cannatrol 4+4** | ~8 days | 20 °C | 12.2→11.1 °C | Fast cure; commercial-style; near-ambient |
-| **10-Day Dry** | 10 days | 15.6 °C | 15.6→13.9→12.2→11.1 °C | Proven recipe; gentle ramp; slower drying |
-| **Manual Dew Point** | Ongoing | User-set | User-set | Storage or custom protocol |
-
-**Why two programs?** Cannatrol 4+4 starts hard (12.2 °C DP day 1) and is faster. The 10-Day Dry ramps gently from 15.6 °C DP to avoid shocking the material.
-
----
 
 ## Safety Controls
 
@@ -115,23 +83,6 @@ If chamber air temperature exceeds the ceiling (default 27 °C), the Peltier is 
 ---
 
 ## Home Assistant Automation Examples
-
-### Alert: Cannatrol Program Complete
-
-```yaml
-alias: "EspCure — Cannatrol Program Complete"
-triggers:
-  - trigger: state
-    entity_id: switch.espcure_cannatrol_4_4_program
-    from: "on"
-    to: "off"
-actions:
-  - action: notify.mobile_app_your_phone
-    data:
-      title: "EspCure"
-      message: "Cannatrol 4+4 program complete. Chamber is in hold mode."
-mode: single
-```
 
 ### Alert: 10-Day Dry Program Complete
 
