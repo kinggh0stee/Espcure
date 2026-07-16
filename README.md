@@ -11,10 +11,10 @@ Two decoupled control loops: the **Peltier chases dew point / VPD** (cooling the
 - **Heat-only temperature PID** — PTC heater chases setpoint (default 17.2 °C / 63 °F); live-tunable Kp/Ki/Kd without reflashing
 - **Peltier cold-plate dehumidification** — condenses moisture from air; no external dehumidifier relay
 - **Self-tuning Allende cooling loop** — chases dew point with continuous duty (0–100%) and learns the chamber's steady-state offset autonomously; VPD mode exists in code but is hidden (`internal: true`)
-- **10-Day Dry program** — proven dew-point recipe: 2-day ramp 15.6→13.9→12.2 °C DP, hold 12.2 °C (days 3–6), hold 11.1 °C (days 7–10), auto-off after day 10
+- **10-Day Dry program** — proven dew-point recipe: 2-day ramp 15.6→13.9→12.2 °C DP, hold 12.2 °C (days 2–5), hold 11.1 °C (days 6–9), auto-off after day 10; epoch-anchored day tracking with SNTP fallback — self-heals missed ticks and outages
 - **Dew point + VPD sensors** — derived from SHT45 readings via Magnus formula
 - **Temperature safety ceiling** — forces Peltier cooling ON if chamber exceeds 27 °C regardless of humidity demand
-- **Software frost floor** — Peltier auto-disables below 4 °C, heater aids recovery; no cold-plate sensor needed
+- **Frost and dry floors** — Peltier auto-disables below 4 °C (temp) or 55% RH (humidity), heater aids temperature recovery; no cold-plate sensor needed
 - **SSD1306 OLED display** — 3-page cycling (temp/RH/dew point vs setpoint, control settings, program status); BOOT button (GPIO9) cycles pages
 - **WS2812 RGB LED** (GPIO8, built-in) — cure-progress indicator at 50% brightness: purple when idle (no program), fades blue→green during active program (by day), solid green when cured, white blink during frost guard (safety); toggled by **Status LED Enable** switch
 - **Device-hosted web UI** at `http://espcure.local` — full React dashboard with entities organized into groups (Climate & Temperature, Humidity & Dew Point, Cure Programs, Status & Indicators, Setup & Tuning, Diagnostics); no HA required

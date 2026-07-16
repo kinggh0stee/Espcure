@@ -57,7 +57,7 @@ Invoke me after:
 
 ### 6. ESPHome-specific gotchas
 - [ ] `framework: type: esp-idf` unchanged (ESP32-C6 is not Arduino-compatible)
-- [ ] `time.homeassistant` used for cure-program cron (not `sntp`)
+- [ ] Cure-program day advancement is epoch-anchored (60 s interval); time resolution prefers `ha_time` with `sntp_time` fallback — no midnight cron
 - [ ] `restore_value: true` on all globals that must survive reboots
 - [ ] Dew-point formula uses Magnus approximation from SHT45 T + RH — not a direct sensor
 

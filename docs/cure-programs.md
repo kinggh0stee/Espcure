@@ -22,7 +22,7 @@ The Peltier is driven by **Dew Point** control — the only user-selectable humi
 
 ## Built-in Program
 
-One automated cure program is available. It requires Home Assistant time sync (midnight cron).
+One automated cure program is available. Time sync is preferred but not required — the program self-heals missed ticks and operates with SNTP fallback.
 
 ### 10-Day Dry Program
 
@@ -35,23 +35,27 @@ Temperature stays at 17.2 °C throughout — the heater holds the floor while th
 | 1 | 15.6 °C | 17.2 °C | Ramp start — set the moment the program is enabled |
 | 2 | 13.9 °C | 17.2 °C | Ramp midpoint |
 | 3–6 | 12.2 °C | 17.2 °C | Dry hold (4 days) |
-| 7–10 | 11.1 °C | 17.2 °C | Cure hold (4 days); program auto-disables at midnight after day 10 |
+| 7–10 | 11.1 °C | 17.2 °C | Cure hold (4 days); program auto-disables after 10 days elapse |
 
 **Enable**: Toggle the **10-Day Dry Program** switch ON. This automatically:
 - Enables Dew Point Control Mode
 - Sets the temperature target to 17.2 °C
 - Sets the dew point to 15.6 °C (ramp start)
 - Resets the day counter (shows Day 1)
+- Anchors the program start time to the current moment
 
-**The 2-day ramp**: dew point starts at 15.6 °C on enable, drops to 13.9 °C at the first midnight, and reaches 12.2 °C at the second — a gentle ramp that lets the Peltier begin condensing without aggressively drying the material.
+**The 2-day ramp**: dew point starts at 15.6 °C on enable, reaches 13.9 °C one day later, and reaches 12.2 °C two days from start — a gentle ramp that lets the Peltier begin condensing without aggressively drying the material.
 
-**Day progression** (at each midnight):
-- Day 1 → 2: dew point 15.6 → 13.9 °C
-- Day 2 → 3: dew point 13.9 → 12.2 °C (ramp complete)
-- Days 3–6: hold 12.2 °C (dry phase, 4 days)
-- Day 6 → 7: dew point 12.2 → 11.1 °C (cure phase begins)
-- Days 7–10: hold 11.1 °C (cure phase, 4 days)
-- After day 10's midnight: program auto-disables
+**Day progression** (every 24 hours from program start, self-healing):
+- Day 0: dew point 15.6 °C (ramp origin, set on enable)
+- Day 1: dew point 13.9 °C (ramp midpoint)
+- Days 2–5: hold 12.2 °C (dry phase, 4 days)
+- Days 6–9: hold 11.1 °C (cure phase, 4 days)
+- Day ≥10: program auto-disables
+
+Days are true 24-hour periods from program start, not calendar-midnight boundaries. A program started at 11 PM on one day is not treated as "two days old" the next morning — it ages by actual hours elapsed. If the device loses connection or restarts mid-program, the day counter catches up on the next valid time source (HA time preferred, SNTP fallback, or manual edit).
+
+**Manual day edit**: Dragging the **10-Day Program Day** number re-anchors the program. Setting it to day N is equivalent to re-starting the program N days ago, re-locking the schedule.
 
 **Status sensor**: `10-Day Program Status` shows e.g. `Day 3/10 — Dry 12.2°C`.
 
@@ -75,6 +79,12 @@ The **Dew Point Error** diagnostic sensor shows the current deviation from dew-p
 ### Frost Floor (Min Chamber Temp)
 
 If chamber air temperature (SHT45) drops below the floor (default 4 °C), the Peltier is suspended until the chamber recovers 2 °C above that point. The heater continues running to aid recovery. Adjust in HA via the **Min Chamber Temperature** number entity.
+
+### Dry Floor (Min Chamber RH)
+
+If chamber relative humidity drops below the floor (default 55%), the Peltier is suspended until humidity recovers 3% above that point. The dry floor mirrors the frost floor on the humidity side — a safety net against over-drying the product. Chamber RH typically stays 65–75% during normal operation, so the 55% floor is rarely triggered except in a runaway dehumidification scenario. Adjust in HA via the **Min Chamber RH (Dry Floor)** number entity (range 30–60%).
+
+Note: the dew-point setpoint schedule continues advancing while the dry floor holds the Peltier off — only the duty output is gated.
 
 ### Safety Ceiling (Max Chamber Temp)
 

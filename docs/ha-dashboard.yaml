@@ -100,7 +100,7 @@ views:
             name: Frost Guard
             icon: mdi:snowflake-alert
 
-      # ── Climate + Frost floor ─────────────────────────────────────────────
+      # ── Climate + Safety floors ───────────────────────────────────────────
       - type: horizontal-stack
         cards:
           - type: thermostat
@@ -113,12 +113,14 @@ views:
                   - "off"
 
           - type: entities
-            title: Frost Floor
+            title: Safety Floors
             entities:
               - entity: number.espcure_min_chamber_temperature_frost_floor
-                name: Frost Floor Temp
+                name: Temperature Floor (°C)
               - entity: binary_sensor.espcure_frost_floor_active
-                name: Active
+                name: Frost Floor Active
+              - entity: number.espcure_min_chamber_rh_dry_floor
+                name: Humidity Floor (%)
               - entity: sensor.espcure_peltier_dehumidify_duty
                 name: Peltier Duty
               - entity: sensor.espcure_pid_heat_output
