@@ -1,6 +1,6 @@
 # PID Tuning Log
 
-The temperature control loop is a heat-only `climate.pid` component in ESPHome, driving the PTC heater relay (heat) via LEDC at 15 Hz. The Peltier is **not PID-driven**; it is controlled by a separate 30 s bang-bang loop that chases the dew-point setpoint.
+The temperature control loop is a heat-only `climate.pid` component in ESPHome, driving the PTC heater relay (heat) via LEDC at 15 Hz. The Peltier is **not PID-driven**; it is controlled by a separate 20 s self-tuning "Allende" proportional+adaptive-bias loop that chases the dew-point setpoint (replaced the previous 30 s bang-bang loop in v1.5.0).
 
 ## Current Parameters
 
@@ -32,7 +32,18 @@ Values are persisted across reboots (`restore_value: true`) and automatically re
 
 ## Autotune Procedure
 
-The `PID Autotune` button in HA / web UI triggers ESPHome's built-in relay-feedback autotune. This characterises the **heater only** — the Peltier is bang-bang controlled by a separate dew-point/VPD loop and not part of the heat PID.
+The `PID Autotune` button in HA / web UI triggers ESPHome's built-in relay-feedback autotune. This characterises the **heater only** — the Peltier is controlled by the separate 20 s Allende loop and is **not** part of the heat PID.
+
+### Allende cooling-loop parameters (v1.5.0+)
+
+The Peltier (cooling) loop is a proportional+adaptive-bias controller, **not** a PID. Its tuning entities are separate from the heater PID:
+
+| Entity | Default | Role |
+|---|---|---|
+| `Cool Gain (Allende)` | 0.03125 (1/32) | Proportional gain (1/°C). Duty = (0.5 + error × gain) × bias. Increase if response is sluggish. |
+| `Dew Point Deadband` | 0.1 °C | ±band gating bias adaptation and the satisfied-cutoff. Narrow = more frequent updates; wide = less wear but slower response. |
+| `Cool Bias (Allende)` | diagnostic | Live integrator state (0.0–3.0). Should settle ~1.0 at steady state. Pinned at 0 or 3 indicates gain or deadband needs adjustment. |
+| `Reset Cool Bias` | button | Resets the integrator to 1.0. Use after a long frost event or if the bias drifts to an extreme. |
 
 > **Heat-only loop — what to expect:** The relay-feedback autotune oscillates between two output levels: `positive_output: 1.0` (heater full on) and `negative_output: 0.0` (heater off, chamber drifts down passively). This matches how the loop works in production. Because passive cool-down is slow, the downward half-cycles are much longer than the upward half-cycles — expect the test to take **60–120 minutes** for a small thermoelectric fridge. The asymmetry means the resulting gains are approximate; if they produce oscillation or overshoot, follow the diagnostic table below to adjust manually. The heater rarely runs in normal curing operation, so very precise gains are not essential.
 

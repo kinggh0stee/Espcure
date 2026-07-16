@@ -71,6 +71,7 @@ nav:
   - Setup: setup.md
   - Calibration: calibration.md
   - PID Tuning: pid-tuning.md
+  - Cooling Loop: cooling-loop.md
   - Cure Programs: cure-programs.md
   - Display: display-plan.md
 

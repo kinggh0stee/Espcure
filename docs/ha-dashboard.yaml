@@ -245,8 +245,9 @@ views:
             or the heater is heating. They are commanded on in the same step as the
             Peltier so the hot side always has airflow — Peltier hot-side cooling depends on it.
           - **SSR-40 DD** relays must be on heatsinks when carrying > 5 A.
-          - **Peltier** is bang-bang driven (`ledc` 15 Hz, full on/off) by the dew-point
-            loop — it is the dehumidifier, not a temperature output.
+          - **Peltier** runs continuous 0-100% duty (`ledc` 15 Hz) driven by the
+            self-tuning Allende dew-point loop — it is the dehumidifier, not a
+            temperature output.
           - **Frost guard** monitors chamber *air* temperature and forces the Peltier
             off below the floor. If ice forms on the Peltier fins, raise the Frost Floor.
           - **Max Chamber Temp** forces the Peltier on above the ceiling — the only

@@ -8,7 +8,7 @@
 | 2 | **MCU** | ESP32-C6 DevKit (e.g. Espressif ESP32-C6-DevKitC-1) | 3.3 V logic; requires ESP-IDF firmware |
 | 3 | **Chamber sensor** | SHT45 breakout (Adafruit #5665 or equiv.) **or** SHT31-D (both I²C 0x44) | I²C, 3.3 V. SHT45: ±0.1 °C / ±1 % RH. SHT31: ±0.3 °C / ±2 % RH. Select via the `sht_platform` substitution in `espcure.yaml` — see "Swapping the chamber sensor" below |
 | 4 | **SSR — Fan rail** | SSR-40 DD (DC-DC solid-state relay) | Controls all 3 fans together (2 TEC hot-side + heater fan); runs continuously while a cure program is active, else ON when Peltier or heater active |
-| 5 | **SSR — Peltier cooling** | SSR-40 DD | Controls both TECs in parallel; LEDC 15 Hz bang-bang (dew point / VPD driven) |
+| 5 | **SSR — Peltier cooling** | SSR-40 DD | Controls both TECs in parallel; LEDC 15 Hz continuous duty (Allende dew-point loop) |
 | 6 | **SSR — Heater** | SSR-40 DD | Controls PTC element only (heater fan wired to fan rail); LEDC 15 Hz PID driven |
 | 7 | **PTC heater** | 12 V 50 W PTC ceramic heater with integrated 12 V fan, 87.5 × 60 × 42 mm (AliExpress) | Fan and element have **separate connectors** (white JST = fan; bare red/black = PTC element) — no splicing needed |
 | 8 | **12 V PSU** | Generic 12 V 300 W switching PSU (25 A) | 25 A headroom covers 2× TECs + heater (4.2 A) + fans comfortably |
@@ -23,7 +23,7 @@
 | 5 | SSR-40 DD — Fan rail IN | Active HIGH; all 3 fans; continuous while a cure program is active, else on when Peltier or heater active |
 | 8 | WS2812 RGB LED | Built into ESP32-C6 DevKitC-1 — no wiring needed |
 | 9 | BOOT button (display page cycle) | Built into DevKitC-1 — INPUT_PULLUP, active low |
-| 18 | SSR-40 DD — Peltier TEC IN | LEDC 15 Hz; active HIGH; both TECs in parallel; bang-bang driven by dew point/VPD loop |
+| 18 | SSR-40 DD — Peltier TEC IN | LEDC 15 Hz; active HIGH; both TECs in parallel; continuous duty driven by the Allende dew-point loop |
 | 19 | SSR-40 DD — Heater IN | LEDC 15 Hz; active HIGH; PTC element only; driven by heat-only PID |
 | 21 | SDA (SHT45 + OLED) | I²C — shared by both devices |
 | 22 | SCL (SHT45 + OLED) | I²C — shared by both devices |

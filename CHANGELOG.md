@@ -7,12 +7,21 @@ All notable changes to EspCure are documented here.
 ## [Unreleased]
 
 ### Added
-- **Humidity trend graph on the Mushroom dashboard's Overview page.** `docs/ha-dashboard-mushroom.yaml` previously only showed a 7-day humidity graph on the Programs page; the Overview page's "Chamber snapshot" section now also has a `Humidity` graph so trend is visible without switching views.
+- **Allende self-tuning cooling loop** — the Peltier is now driven by a 20 s proportional+adaptive-bias controller instead of the old 30 s bang-bang loop. Continuous duty (0–100%) output with learned steady-state bias that adapts every 20 s, reducing manual tweaking and power waste. See `docs/cooling-loop.md` for tuning guidance.
+- **Cool Gain (Allende) number** — proportional gain entity (default 0.03125, range 0.0–0.2). Scales dew-point error to duty output. Increase if response is sluggish; decrease if oscillating.
+- **Cool Bias (Allende) diagnostic sensor** — read-only view of the live Allende integrator state (0.0–3.0). Should settle around 1.0 at steady state. Pinned at 0 or 3 may indicate gain or deadband needs adjustment.
+- **Reset Cool Bias button** — manually resets the Allende integrator to 1.0 (e.g. after a long frost event or hardware change).
+- **`docs/cooling-loop.md`** — new documentation page explaining the Allende loop, how to tune gain/deadband, and how to interpret bias diagnostics.
+- **Preferences flash write batching** — added `preferences.flash_write_interval: 5min` to batch NVS writes; the cool_bias integrator updates every 20 s, so unbatched writes would wear flash quickly. Batched 5-minute intervals are safe and wear-friendly.
 
 ### Changed
+- **Peltier now outputs continuous 0–100% duty instead of on/off.** The Allende loop drives `peltier_output.set_level(0.0–1.0)` every 20 s, where output is calculated as `(0.5 + error×gain)×bias`. The `peltier_output_pct` diagnostic sensor now reports the real continuous duty percentage instead of a fixed 0 or 100.
+- **Dew Point Hysteresis renamed to Dew Point Deadband.** The entity ID stays the same (`dew_point_hysteresis`), but the UI label now reflects its expanded role in the Allende loop: it gates bias adaptation (only ticks if `|error| > deadband`) and triggers satisfied-cutoff (Peltier forced to 0 if `error < -deadband`).
 - **Overview Humidity graph now has an interactive 1h/6h/12h/24h range toggle.** Replaced the fixed-24h `mini-graph-card` with a `custom:plotly-graph` card (new HACS dependency: [Plotly Graph Card](https://github.com/dbuezas/lovelace-plotly-graph-card)), which adds native clickable range-selector buttons plus pan/zoom on the chart itself. The Temp & Dew Point graph next to it is unchanged.
 
 ### Removed
+- **The old 30 s bang-bang Peltier loop has been replaced by the 20 s Allende loop.** The `interval: 30s` block that did on/off (`set_level(1.0/0.0)`) humidity control is gone. The 60 s frost-guard loop remains to short-circuit Peltier during frost events.
+- **VPD control has been removed from the Allende loop.** VPD entities (`vpd_setpoint`, `vpd_hysteresis`, `vpd`, `vpd_error`, `use_vpd_control`) remain in the code but are marked `internal: true` (hidden from the UI and HA). The 20 s loop now only implements dew-point mode. To restore VPD, remove the `internal: true` flags and update HA dashboard references.
 - **Cannatrol 4+4 built-in program removed.** The 4-day dry → 4-day cure program is no longer available. Removed: `switch.cannatrol_program_active`, `number.cannatrol_day`, `global.cannatrol_phase`, `text_sensor.cannatrol_program_status`, midnight cron phase-transition logic, and HA dashboard cards for Cannatrol program status. The 10-Day Dry program is now the only built-in cure protocol. Units mid-run on a Cannatrol cycle will have it stop after OTA update; the Peltier reverts to the plain dew-point setpoint. Manual dew-point hold control is still available via the **Dew Point Setpoint** number.
 
 ## v1.3.1 — 2026-06-28
