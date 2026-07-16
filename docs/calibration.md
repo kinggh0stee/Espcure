@@ -69,7 +69,7 @@ Avoid pressing the button repeatedly — the heater temporarily biases both temp
 
 ## Dew Point Accuracy
 
-Dew point is derived from temperature + RH via the Magnus formula (no separate sensor). Combined uncertainty after calibration is approximately ±0.3–0.5 °C. This is sufficient for Cannatrol-style control (setpoint hysteresis defaults to ±0.5 °C).
+Dew point is derived from temperature + RH via the Magnus formula (no separate sensor). Combined uncertainty after calibration is approximately ±0.3–0.5 °C. This is sufficient for Cannatrol-style control (Dew Point Deadband defaults to ±0.1 °C).
 
 To improve dew point accuracy, prioritize calibrating the temperature sensor first — a 0.2 °C temperature error introduces ~0.2 °C dew point error.
 

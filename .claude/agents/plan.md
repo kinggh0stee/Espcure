@@ -29,8 +29,8 @@ Your role is to think deeply before any code is written. When invoked, produce:
 - Fan rail (on when Peltier cooling or heater heating)
 
 **Control strategy:**
-- Temperature: **heat-only** PID, target 15.6 °C, ±0.5 °C deadband (heater chases temp)
-- Humidity: Peltier bang-bang on dew point / VPD (cold-plate condensation); two modes (Dew Point default + VPD)
+- Temperature: **heat-only** PID, target 17.2 °C, ±0.5 °C deadband (heater chases temp)
+- Humidity: Peltier driven by the 20 s self-tuning Allende loop (proportional + adaptive bias) on dew point; VPD mode exists in code but is `internal: true`/dead
 - Programs: 10-Day Dry (dew-point ramp)
 - Frost guard: Peltier forced off below `min_chamber_temp` (default 4 °C), resumes at floor + 2 °C; heater keeps running
 - Safety ceiling: `max_chamber_temp` (default 27 °C) forces the Peltier on (heat-only PID can't cool)

@@ -7,12 +7,11 @@ Priority: 🔴 Critical · 🟡 High · 🟢 Nice-to-have · ✅ Done
 ## ✅ Completed
 
 - [x] ESP32-C6 + SHT45 ESPHome config (ESP-IDF framework)
-- [x] Heat-only PID temperature control — PTC heater chases temp (default 15.6 °C)
-- [x] Peltier-chases-dew-point topology — TEC bang-bang drives cold-plate condensation
+- [x] Heat-only PID temperature control — PTC heater chases temp (default 17.2 °C / 63 °F)
+- [x] Peltier-chases-dew-point topology — TEC drives cold-plate condensation
 - [x] Dew Point humidity control mode (VPD hidden/internal)
 - [x] Dew point + VPD derived sensors
 - [x] 10-Day Dry dew-point program (ramp 15.6→12.2 °C, then 12.2, then 11.1)
-- [x] One-tap profile presets (Dry, Cure)
 - [x] High-temp safety ceiling (`max_chamber_temp`, default 27 °C)
 - [x] Live PID tuning (Kp/Ki/Kd number entities, persist across reboots)
 - [x] Software frost floor (no cold-plate sensor required; forces Peltier off)
@@ -31,6 +30,11 @@ Priority: 🔴 Critical · 🟡 High · 🟢 Nice-to-have · ✅ Done
 - [x] GitHub Actions CI — `esphome config` validation on PRs (`.github/workflows/validate.yml`)
 - [x] Changelog (`CHANGELOG.md`)
 
+### v1.5.0 Shipped (Unreleased)
+
+- [x] **Allende self-tuning cooling loop** — Peltier dew-point control replaced the 30 s bang-bang hysteresis loop with a 20 s proportional + adaptive-bias controller (continuous 0–100% duty, learned steady-state bias, "satisfied cutoff" safety refinement). New `Cool Gain`/`Cool Bias`/`Reset Cool Bias` entities; `Dew Point Hysteresis` repurposed as `Dew Point Deadband`. See `docs/cooling-loop.md`.
+- [x] **Cannatrol 4+4 program removed** — 10-Day Dry is now the only built-in cure program.
+
 ### v1.1.0 Shipped
 
 - [x] Cure-progress status LED — purple idle, blue→green by day, solid green cured, white blink frost guard
@@ -46,9 +50,9 @@ Priority: 🔴 Critical · 🟡 High · 🟢 Nice-to-have · ✅ Done
 
 ---
 
-## 🔴 Before First Flash
+## 🟢 First-Flash Checklist (reference, per new unit)
 
-> Config and CI are ready. These are physical deployment steps — follow **`docs/setup.md`**:
+> The project itself is well past first flash (see CHANGELOG for release history) — this is reference guidance for anyone building a *new* EspCure unit. Full walkthrough: **`docs/setup.md`**:
 > 1. `cp secrets.yaml.example secrets.yaml` and fill in credentials
 > 2. `esphome config espcure.yaml` locally with your real secrets
 > 3. Verify GPIO5/18/19/21/22/23 against your DevKit pinout
@@ -60,7 +64,7 @@ Priority: 🔴 Critical · 🟡 High · 🟢 Nice-to-have · ✅ Done
 ## 🟡 Hardware Additions
 
 - [x] **Display (SSD1306 OLED)** — config live in `espcure.yaml`; wire VCC/GND/SDA/SCL to GPIO21/22
-  - 3 pages: Primary (temp/RH/DP/VPD), Control (setpoints/WiFi), Programs (status/error)
+  - 3 pages: Primary (temp/RH/dew point vs setpoint/status), Control (setpoints/WiFi), Program status (no VPD shown)
   - BOOT button (GPIO9) cycles pages — no extra wiring
   - Upgrade path to color TFT documented in `docs/display-plan.md`
 
@@ -93,8 +97,8 @@ Priority: 🔴 Critical · 🟡 High · 🟢 Nice-to-have · ✅ Done
 
 ## 🟢 Features (Future Iterations)
 
-- [x] **VPD target mode** — fully implemented (humidity control mode; drives the Peltier)
-- [x] **Peltier-chases-dew-point topology** — heat-only PID + Peltier dehumidification + safety ceiling
+- [x] **VPD target mode** — fully implemented (humidity control mode; drives the Peltier), later hidden (`internal: true`)
+- [x] **Peltier-chases-dew-point topology** — heat-only PID + self-tuning Allende Peltier dehumidification + safety ceiling
 - [x] **Cold-plate sensor** — optional commented section in `espcure.yaml`; DS18B20 one-wire on GPIO10
 - [ ] **SD card logging** — local CSV data log without HA dependency (requires SPI SD card module)
 - [ ] **HA energy dashboard** — requires INA219 power sensor hardware
