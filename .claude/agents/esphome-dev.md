@@ -20,11 +20,11 @@ Edit `espcure.yaml` to implement requested changes. Always:
 
 ## ESPHome rules for this project
 
-- **Peltier output**: `ledc` at 15 Hz; driven by the 30 s/60 s lambdas (`set_level`), never a climate `cool_output`. Turn the fan on in the same lambda whenever the Peltier goes to 1.0.
+- **Peltier output**: `ledc` at 15 Hz; driven by the 20 s Allende lambda + the 60 s frost-guard lambda (`set_level`), never a climate `cool_output`. Turn the fan on in the same lambda whenever the Peltier output is nonzero.
 - **Credentials**: All via `!secret` — never inline values.
 - **Lambda C++**: Use `isnan()` guard before reading sensor values in lambdas.
 - **Globals**: Use `restore_value: true` for state that must survive reboots (`peltier_cooling` is non-restored runtime state).
-- **Climate PID**: Heat-only; target temperature in Celsius (`default_target_temperature: 15.6`).
+- **Climate PID**: Heat-only; target temperature in Celsius (`default_target_temperature: 17.2`).
 - **Frost guard**: Never remove or weaken the frost-protection interval. If refactoring, ensure equivalent logic exists.
 
 ## GPIO pinout (don't change without hardware-advisor review)
@@ -34,7 +34,7 @@ Edit `espcure.yaml` to implement requested changes. Always:
 | 5 | Fan relay (on when Peltier cooling or heater heating) |
 | 8 | WS2812 RGB status LED (built-in) |
 | 9 | BOOT / page button (built-in) |
-| 18 | Peltier SSR (`ledc` 15 Hz; driven by 30 s humidity loop, not the PID) |
+| 18 | Peltier SSR (`ledc` 15 Hz; driven by the 20 s Allende loop, not the PID) |
 | 19 | PTC heater SSR (`ledc` 15 Hz; PID `heat_output`) |
 | 21 | SDA (SHT45 + SSD1306 OLED) |
 | 22 | SCL (SHT45 + SSD1306 OLED) |

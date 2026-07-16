@@ -15,7 +15,7 @@ Two decoupled control loops: the **Peltier chases dew point / VPD** (cooling the
 - **Dew point + VPD sensors** — derived from SHT45 readings via Magnus formula
 - **Temperature safety ceiling** — forces Peltier cooling ON if chamber exceeds 27 °C regardless of humidity demand
 - **Software frost floor** — Peltier auto-disables below 4 °C, heater aids recovery; no cold-plate sensor needed
-- **SSD1306 OLED display** — 3-page cycling (temp/RH/DP/VPD, control settings, program status); BOOT button (GPIO9) cycles pages
+- **SSD1306 OLED display** — 3-page cycling (temp/RH/dew point vs setpoint, control settings, program status); BOOT button (GPIO9) cycles pages
 - **WS2812 RGB LED** (GPIO8, built-in) — cure-progress indicator at 50% brightness: purple when idle (no program), fades blue→green during active program (by day), solid green when cured, white blink during frost guard (safety); toggled by **Status LED Enable** switch
 - **Device-hosted web UI** at `http://espcure.local` — full React dashboard with entities organized into groups (Climate & Temperature, Humidity & Dew Point, Cure Programs, Status & Indicators, Setup & Tuning, Diagnostics); no HA required
 - **Home Assistant integration** via encrypted native API; all entities with device_class + state_class
@@ -65,6 +65,7 @@ Full guide (including key generation on both platforms): [`docs/setup.md`](docs/
 | [`docs/setup.md`](docs/setup.md) | Flash guide, HA integration, first-run checklist |
 | [`docs/calibration.md`](docs/calibration.md) | SHT45 offset calibration procedure |
 | [`docs/pid-tuning.md`](docs/pid-tuning.md) | Heat-only PID autotune + tuning log |
+| [`docs/cooling-loop.md`](docs/cooling-loop.md) | Allende self-tuning Peltier cooling loop — how it works, tuning |
 | [`docs/cure-programs.md`](docs/cure-programs.md) | 10-Day Dry cure program, HA automations |
 | [`docs/ha-dashboard.yaml`](docs/ha-dashboard.yaml) | Ready-to-import Lovelace dashboard (5 tabs) |
 | [`docs/display-plan.md`](docs/display-plan.md) | OLED display wiring + TFT upgrade path |

@@ -41,7 +41,7 @@ Also verify `secrets.yaml.example` contains a stub for every `!secret` key used 
 |---|---|
 | Peltier output | `ledc` 15 Hz; single writer (no climate `cool_output`) |
 | Heater output | `ledc` 15 Hz; PID `heat_output` |
-| Fan on with Peltier | Fan commanded ON in same lambda as any Peltier `set_level(1.0)` |
+| Fan on with Peltier | Fan commanded ON in same lambda as any nonzero Peltier `set_level()` |
 | Frost guard | Forces Peltier off below `min_chamber_temp`; heater keeps running |
 | High-temp ceiling | `max_chamber_temp` present, forces Peltier on above limit |
 | Program day counters | 10-day ≤ 10 |

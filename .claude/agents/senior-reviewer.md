@@ -30,16 +30,16 @@ Invoke me after:
 
 ### 2. Safety rules (non-negotiable)
 - [ ] Peltier (GPIO18) and heater (GPIO19) are `ledc` at 15 Hz — not `slow_pwm`
-- [ ] Peltier has exactly one writer (the 30 s/60 s lambdas) — never a climate `cool_output`
+- [ ] Peltier has exactly two writers, both intentional — the 20 s Allende lambda and the 60 s frost-guard lambda — never a climate `cool_output`
 - [ ] Frost-guard interval (60 s) is intact — forces the Peltier off below the floor; heater keeps running
-- [ ] `frost_active` global short-circuits the 30 s loop (Peltier off)
+- [ ] `frost_active` global short-circuits the 20 s Allende loop (Peltier off)
 - [ ] High-temp ceiling (`max_chamber_temp`) gives the heat-only PID an emergency downward path
-- [ ] Fan commanded ON in the same lambda as any Peltier `set_level(1.0)`; fan `RESTORE_DEFAULT_OFF`
+- [ ] Fan commanded ON in the same lambda as any nonzero Peltier `set_level()`; fan `RESTORE_DEFAULT_OFF`
 - [ ] `isnan()` guard present in every lambda that reads a sensor value
 
 ### 3. Control logic integrity
 - [ ] PID `kp`, `ki`, `kd` changes are documented in `docs/pid-tuning.md`
-- [ ] Humidity (dew-point/VPD) bang-bang deadband is symmetric and non-zero
+- [ ] Allende Dew Point Deadband (gates bias adaptation + satisfied-cutoff) is non-zero; Cool Gain and Cool Bias stay within their clamped ranges
 - [ ] Program setpoints stay within entity ranges
 - [ ] Day counters bounded (10-day ≤ 10)
 - [ ] `use_dew_point_control` switch correctly gates dew-point vs RH path — not both active
