@@ -5,7 +5,7 @@
 EspCure uses a **decoupled control topology**:
 
 - **Temperature (heater only)**: PID loop targets 17.2 °C by default, rarely activates (chamber floats 17–19 °C). A safety ceiling at 27 °C forces the Peltier ON above that point regardless of humidity demand.
-- **Humidity (Peltier cold plate)**: Bang-bang loop on dew point, runs every 30 s at full 15 Hz, condensing moisture from the air onto the Peltier cold plate. This is the sole dehumidification mechanism.
+- **Humidity (Peltier cold plate)**: Self-tuning Allende loop on dew point, runs every 20 s with continuous duty (0–100%, learned via adaptive bias), condensing moisture from the air onto the Peltier cold plate. This is the sole dehumidification mechanism. See `docs/cooling-loop.md` for tuning details.
 - **Fan (GPIO5)**: runs **continuously while a cure program is active** (constant air circulation for even drying); otherwise ON when the Peltier is cooling OR the heater is heating, and OFF when idle with no program.
 
 ## Humidity Control Mode
@@ -63,7 +63,7 @@ When no program is running, set the dew-point target manually:
 
 **Dew Point Mode** (the only selectable mode):
 - **Dew Point Setpoint** — target dew point °C
-- **Dew Point Hysteresis** — dead band ÷ 2; default 0.5 °C
+- **Dew Point Deadband** — ± band around setpoint (full value, not halved); default 0.1 °C. Gates the Allende bias adaptation and the satisfied-cutoff — see `docs/cooling-loop.md`
 
 The **Dew Point Error** diagnostic sensor shows the current deviation from dew-point setpoint (positive = too humid).
 

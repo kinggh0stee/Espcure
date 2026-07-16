@@ -47,7 +47,7 @@ substitutions:
   # Firmware version — single source of truth. Bump this on every release; it
   # feeds both esphome.project.version (boot log + HA device info) and the
   # "Firmware Version" diagnostic text sensor shown on the web UI.
-  fw_version: "1.4.0"
+  fw_version: "1.5.0"
 
   # Chamber sensor — SHT45 (sht4x) is ACTIVE. The sht4x platform has no
   # on-demand heater API, so the Clear Sensor Condensation button just takes a
@@ -97,6 +97,11 @@ esp32:
     type: esp-idf
 
 # ─── Core services ────────────────────────────────────────────────────────────
+
+# Coalesce NVS flash writes — the cool_bias Allende integrator updates every 20 s,
+# so without this every tick would wear flash. 5 min batches the writes safely.
+preferences:
+  flash_write_interval: 5min
 
 logger:
   level: INFO
@@ -175,7 +180,7 @@ globals:
     restore_value: false
     initial_value: "false"
 
-  # Peltier cooling demand — tracks the dew-point/VPD bang-bang loop state.
+  # Peltier cooling demand — tracks the Allende cooling loop state (duty > eps).
   # The Peltier is a float (ledc) output that can't be read back in lambda, so
   # this global is the single source of truth for "cold plate is condensing".
   - id: peltier_cooling
@@ -199,6 +204,21 @@ globals:
     type: bool
     restore_value: true
     initial_value: "false"
+
+  # Continuous Peltier duty (0.0–1.0) last commanded by the Allende loop.
+  # A float ledc output can't be read back, so this mirrors it for the duty sensor.
+  - id: peltier_duty
+    type: float
+    restore_value: false
+    initial_value: "0.0"
+
+  # Allende adaptive bias (integrator). Slowly learned steady-state correction —
+  # restored across reboots so the chamber doesn't re-learn on every power cycle.
+  # Starts at 1.0 (centred on the 0.5 proportional baseline). Clamped 0.0–3.0.
+  - id: cool_bias
+    type: float
+    restore_value: true
+    initial_value: "1.0"
 
 # ─── Sensors ──────────────────────────────────────────────────────────────────
 
@@ -293,9 +313,8 @@ sensor:
       sorting_group_id: grp_diag
       sorting_weight: 5
 
-  # Peltier duty as a readable entity (bang-bang: 0 or 100 %). Reads the
-  # peltier_cooling global since a float output can't be read back in lambda.
-  # It's a derived diagnostic of the humidity loop, not a hardware control.
+  # Peltier duty as a readable entity — reports the real continuous Allende duty
+  # (0–100 %). Reads peltier_duty since a float ledc output can't be read back.
   - platform: template
     id: peltier_output_pct
     name: "Peltier (Dehumidify) Duty"
@@ -304,7 +323,7 @@ sensor:
     icon: "mdi:snowflake"
     entity_category: diagnostic
     lambda: |-
-      return id(peltier_cooling) ? 100.0f : 0.0f;
+      return id(peltier_duty) * 100.0f;
     update_interval: 5s
     web_server:
       sorting_group_id: grp_diag
@@ -343,6 +362,21 @@ sensor:
     web_server:
       sorting_group_id: grp_diag
       sorting_weight: 4
+
+  # Allende adaptive bias — diagnostic view of the integrator state. Useful for
+  # confirming the loop is learning; a value pinned at 0 or 3 may indicate the
+  # deadband is too wide or the gain too small. Reset via "Reset Cool Bias" button.
+  - platform: template
+    id: cool_bias_sensor
+    name: "Cool Bias (Allende)"
+    state_class: measurement
+    icon: "mdi:sigma"
+    entity_category: diagnostic
+    lambda: 'return id(cool_bias);'
+    update_interval: 5s
+    web_server:
+      sorting_group_id: grp_diag
+      sorting_weight: 6
 
   # ── System diagnostics ───────────────────────────────────────────────────────
   - platform: uptime
@@ -467,7 +501,7 @@ switch:
       - switch.turn_off: use_vpd_control
 
   # VPD control mode — internal: true. VPD is hidden from the UI (the build runs
-  # Dew Point mode), so this switch can't be enabled; the VPD branch in the 30 s
+  # Dew Point mode), so this switch can't be enabled; the VPD branch in the 20 s
   # loop is dead-but-harmless. Kept (not deleted) so re-enabling VPD is a
   # one-line revert. Still toggled off by use_dew_point_control's on_turn_on.
   - platform: template
@@ -500,9 +534,13 @@ number:
       sorting_group_id: grp_humidity
       sorting_weight: 3
 
+  # Allende deadband (repurposed from "Dew Point Hysteresis"). In Allende mode this
+  # is the ± band that (a) gates bias adaptation — the integrator only ticks when
+  # |error| > deadband, and (b) triggers the "satisfied cutoff" — the Peltier is
+  # set to 0 when the dew point is already below setpoint by more than the deadband.
   - platform: template
     id: dew_point_hysteresis
-    name: "Dew Point Hysteresis"
+    name: "Dew Point Deadband"
     min_value: 0.1
     max_value: 2.0
     step: 0.1
@@ -641,6 +679,26 @@ number:
             ki: !lambda return id(pid_ki).state;
             kd: !lambda return x;
 
+  # ── Allende cooling controller gain ─────────────────────────────────────────
+  # Proportional gain around the 0.5 duty baseline. Default 0.03125 (1/32) gives
+  # ~3 % duty per °C of dew-point error — conservative for a Peltier that has
+  # significant thermal inertia. Increase if the chamber is slow to respond.
+  - platform: template
+    id: allende_cool_gain
+    name: "Cool Gain (Allende)"
+    min_value: 0.0
+    max_value: 0.2
+    step: 0.005
+    initial_value: 0.03125
+    restore_value: true
+    optimistic: true
+    unit_of_measurement: "1/°C"
+    icon: "mdi:snowflake-thermometer"
+    entity_category: config
+    web_server:
+      sorting_group_id: grp_setup
+      sorting_weight: 10
+
   # ── VPD mode setpoints — internal: true (VPD mode is hidden from the UI) ──────
   - platform: template
     id: vpd_setpoint
@@ -672,7 +730,7 @@ number:
 
 climate:
   # Heat-only PID: the heater chases temperature. The Peltier is NOT a PID output
-  # — it is driven by the dew-point/VPD bang-bang loop (cold-plate condensation).
+  # — it is driven by the 20 s Allende cooling loop (cold-plate condensation).
   - platform: pid
     id: temp_pid
     name: "Temperature Control"
@@ -789,52 +847,76 @@ script:
 # ─── Interval automations ─────────────────────────────────────────────────────
 
 interval:
-  # Dew-point / VPD bang-bang loop (30 s) — drives the PELTIER (cold-plate
-  # condensation). Priority: frost guard → high-temp ceiling → VPD mode →
-  # Dew Point mode → off.
-  # Cooling the plate below the dew point condenses moisture out of the air.
-  - interval: 30s
+  # Allende self-tuning cooling loop (20 s) — drives the PELTIER (cold-plate
+  # condensation). Priority: frost guard → high-temp ceiling → dew-point mode → off.
+  # VPD control is internal/hidden (dead branch removed here; VPD entities remain
+  # in the file untouched for a one-line revert per the existing project convention).
+  - interval: 20s
     then:
       - lambda: |-
-          // Frost guard overrides everything — never cool below the floor.
+          const float PELTIER_ON_EPS = 0.01f;
+
+          // 1) Frost guard — hard override; never cool below the floor. Bias frozen.
           if (id(frost_active)) {
             id(peltier_cooling) = false;
+            id(peltier_duty) = 0.0f;
             id(peltier_output).set_level(0.0f);
             return;
           }
-          // High-temperature safety ceiling — force cooling regardless of humidity
-          // demand so a heat-only PID can't let the chamber overheat. Default 27 °C
-          // (27 °C) is well above the 17–19 °C operating range, so this never fires
-          // in normal use. The hot-side fan is commanded ON in the same pass.
+          // 2) High-temp safety ceiling — heat-only PID can't cool, so force full.
+          //    Fan ON in the same pass (hot-side airflow).
           if (!isnan(id(chamber_temp).state) &&
               id(chamber_temp).state > id(max_chamber_temp).state) {
             id(peltier_cooling) = true;
+            id(peltier_duty) = 1.0f;
             id(fan_relay).turn_on();
             id(peltier_output).set_level(1.0f);
             return;
           }
-          bool on = id(peltier_cooling);
-          // NOTE: whenever the Peltier is commanded ON, the hot-side fan is turned ON
-          // in the same lambda so the TEC never runs at full duty without airflow.
-          if (id(use_vpd_control).state) {
-            if (isnan(id(vpd).state)) return;
-            float v    = id(vpd).state;
-            float sp   = id(vpd_setpoint).state;
-            float hyst = id(vpd_hysteresis).state / 2.0f;
-            // Low VPD = too humid → cool the plate to condense moisture
-            if (!on && v < sp - hyst) { id(peltier_cooling) = true;  id(fan_relay).turn_on(); id(peltier_output).set_level(1.0f); }
-            else if (on && v > sp + hyst) { id(peltier_cooling) = false; id(peltier_output).set_level(0.0f); }
-          } else if (id(use_dew_point_control).state) {
-            if (isnan(id(dew_point).state)) return;
-            float dp   = id(dew_point).state;
-            float sp   = id(dew_point_setpoint).state;
-            float hyst = id(dew_point_hysteresis).state / 2.0f;
-            if (!on && dp > sp + hyst) { id(peltier_cooling) = true;  id(fan_relay).turn_on(); id(peltier_output).set_level(1.0f); }
-            else if (on && dp < sp - hyst) { id(peltier_cooling) = false; id(peltier_output).set_level(0.0f); }
-          } else {
-            // No humidity mode active — Peltier idle.
-            if (on) { id(peltier_cooling) = false; id(peltier_output).set_level(0.0f); }
+          // 3) No active cooling mode (VPD is dead/internal) — Peltier idle, bias frozen.
+          if (!id(use_dew_point_control).state) {
+            id(peltier_cooling) = false;
+            id(peltier_duty) = 0.0f;
+            id(peltier_output).set_level(0.0f);
+            return;
           }
+          // 4) Sensor fault — fail safe to OFF; do NOT adapt bias on bad data.
+          if (isnan(id(dew_point).state)) {
+            id(peltier_cooling) = false;
+            id(peltier_duty) = 0.0f;
+            id(peltier_output).set_level(0.0f);
+            return;
+          }
+
+          // ---- Allende (self-tuning) ----
+          float error = id(dew_point).state - id(dew_point_setpoint).state; // + = too humid
+          float db    = id(dew_point_hysteresis).state;   // +/- deadband (repurposed)
+          float gain  = id(allende_cool_gain).state;
+          float bias  = id(cool_bias);
+
+          // Adaptive bias (integrator): tick == 20 s.
+          if (error > db)       bias += 0.01f;
+          else if (error < -db) bias -= 0.01f;
+          if (bias > 3.0f) bias = 3.0f;
+          if (bias < 0.0f) bias = 0.0f;
+          id(cool_bias) = bias;
+
+          // Proportional output around the 0.5 baseline, scaled by bias.
+          float out = (0.5f + error * gain) * bias;
+
+          // Satisfied cutoff (deliberate safety refinement, not verbatim Allende):
+          // already drier than target, stop condensing instead of waiting on slow
+          // bias decay (the 0.5 baseline would otherwise keep the TEC running).
+          if (error < -db) out = 0.0f;
+
+          if (out < 0.0f) out = 0.0f;
+          if (out > 1.0f) out = 1.0f;
+
+          id(peltier_duty) = out;
+          bool cooling = out > PELTIER_ON_EPS;
+          id(peltier_cooling) = cooling;
+          if (cooling) id(fan_relay).turn_on();   // fan invariant: airflow whenever TEC runs
+          id(peltier_output).set_level(out);
 
   # Software frost guard (60 s)
   # No cold-plate sensor — uses chamber air as proxy.
@@ -851,11 +933,12 @@ interval:
             id(frost_active) = true;
             ESP_LOGW("espcure", "Frost floor reached (%.1f°C <= %.1f°C) — Peltier suspended", t, floor);
             id(peltier_cooling) = false;
+            id(peltier_duty) = 0.0f;
             id(peltier_output).set_level(0.0f);
           } else if (id(frost_active) && t > floor + 2.0f) {
             id(frost_active) = false;
             ESP_LOGI("espcure", "Chamber recovered (%.1f°C) — Peltier may resume", t);
-            // The 30 s humidity loop re-engages the Peltier on its next pass.
+            // The 20 s Allende loop re-engages the Peltier on its next pass.
           }
 
   # Fan + Status LED refresh (2 s)
@@ -930,6 +1013,19 @@ button:
           ${sht_heater_off}
           ESP_LOGI("espcure", "Clear Sensor Condensation: taking a fresh reading");
       - component.update: sht45
+
+  # Manually resets the Allende bias integrator to 1.0 (centred).
+  # Use this if the bias has drifted to an extreme (0 or 3) — for example after a
+  # long frost event or if the chamber setup changes significantly.
+  - platform: template
+    name: "Reset Cool Bias"
+    icon: "mdi:restart"
+    entity_category: config
+    web_server:
+      sorting_group_id: grp_setup
+      sorting_weight: 11
+    on_press:
+      - lambda: 'id(cool_bias) = 1.0f;'
 
 # ─── Binary sensors ───────────────────────────────────────────────────────────
 

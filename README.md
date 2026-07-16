@@ -10,7 +10,7 @@ Two decoupled control loops: the **Peltier chases dew point / VPD** (cooling the
 
 - **Heat-only temperature PID** — PTC heater chases setpoint (default 17.2 °C / 63 °F); live-tunable Kp/Ki/Kd without reflashing
 - **Peltier cold-plate dehumidification** — condenses moisture from air; no external dehumidifier relay
-- **Dew Point humidity control** (default) — Cannatrol-style bang-bang on dew point °C; VPD mode exists in code but is hidden (`internal: true`)
+- **Self-tuning Allende cooling loop** — chases dew point with continuous duty (0–100%) and learns the chamber's steady-state offset autonomously; VPD mode exists in code but is hidden (`internal: true`)
 - **10-Day Dry program** — proven dew-point recipe: 2-day ramp 15.6→13.9→12.2 °C DP, hold 12.2 °C (days 3–6), hold 11.1 °C (days 7–10), auto-off after day 10
 - **Dew point + VPD sensors** — derived from SHT45 readings via Magnus formula
 - **Temperature safety ceiling** — forces Peltier cooling ON if chamber exceeds 27 °C regardless of humidity demand
