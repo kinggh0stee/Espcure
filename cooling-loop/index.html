@@ -944,7 +944,16 @@
 <h2 id="why-allende">Why Allende?<a class="headerlink" href="#why-allende" title="Permanent link">&para;</a></h2>
 <p>Previous versions used a simple on/off (bang-bang) loop: if dew point was above setpoint, turn on; below setpoint, turn off. Bang-bang works but wastes power running the TEC at full duty when partial duty would hold setpoint just as well. The Allende method replaces this with <strong>continuous duty 0–100%</strong> and <strong>adaptive bias learning</strong> — the controller self-tunes its steady-state operating point, so you set it and mostly forget it.</p>
 <h2 id="how-it-works">How It Works<a class="headerlink" href="#how-it-works" title="Permanent link">&para;</a></h2>
-<p>The loop runs every 20 seconds (vs. the old 30 s bang-bang):</p>
+<p>The loop runs every 20 seconds (vs. the old 30 s bang-bang) with the following priority chain:</p>
+<ol>
+<li><strong>Frost guard</strong> (hard override) — if chamber temp &lt; frost floor, force Peltier OFF.</li>
+<li><strong>High-temp safety ceiling</strong> — if chamber temp &gt; ceiling, force Peltier ON at 100%.</li>
+<li><strong>Humidity mode gate</strong> — if dew-point mode is OFF, force Peltier OFF.</li>
+<li><strong>Sensor fault guard</strong> — if dew point is invalid (NaN), force Peltier OFF.</li>
+<li><strong>Dry floor</strong> — if chamber RH &lt; dry floor, force Peltier OFF until RH recovers. Bias integrator frozen.</li>
+<li><strong>Allende math</strong> — proportional + adaptive bias control.</li>
+</ol>
+<p>The Allende formula itself (step 6):</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>output = (0.5 + error × gain) × bias
 </code></pre></div>
 <ul>
@@ -952,12 +961,12 @@
 <li><strong>Gain</strong> (<code>Cool Gain (Allende)</code>, default 0.03125) = proportional scaler in duty/%°C. Controls response speed.</li>
 <li><strong>Bias</strong> (<code>Cool Bias (Allende)</code>) = adaptive integrator (0.0–3.0, default start 1.0). Self-learns the chamber's offset.</li>
 </ul>
-<p><strong>Adaptive bias</strong> ticks every 20 s:
+<p><strong>Adaptive bias</strong> ticks every 20 s (unless dry floor or frost guard is active):
 - If <code>|error| &gt; deadband</code>, the bias drifts ±0.01 towards correction (learns).
 - If <code>|error| &lt; deadband</code>, bias freezes (satisfied).
 - Clamped 0.0–3.0 so it can't drift to infinity.</p>
 <p><strong>Satisfied cutoff</strong> (safety feature): once dew point is more than one deadband <strong>below</strong> the setpoint (already dry enough), the Peltier is forced to 0% duty — this prevents over-cooling.</p>
-<p>Frost guard and high-temp safety ceiling still override the Allende loop exactly as before.</p>
+<p><strong>Dry floor</strong> (step 5): If chamber RH drops below <code>Min Chamber RH (Dry Floor)</code> (default 55%), the Peltier is suspended and the bias integrator is frozen (no adaptation). Peltier resumes once RH recovers 3% above the floor (e.g. 58% if floor is 55%). This prevents over-drying if condensation runs away. The dew-point setpoint schedule continues advancing — only the Peltier duty is gated.</p>
 <h2 id="tuning">Tuning<a class="headerlink" href="#tuning" title="Permanent link">&para;</a></h2>
 <p>Four entities control the loop:</p>
 <table>

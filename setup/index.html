@@ -674,10 +674,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#8-set-up-ha-time-sync" class="md-nav__link">
+  <a href="#8-time-sync-mostly-automatic" class="md-nav__link">
     <span class="md-ellipsis">
       
-        8. Set up HA time sync
+        8. Time sync (mostly automatic)
       
     </span>
   </a>
@@ -1020,10 +1020,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#8-set-up-ha-time-sync" class="md-nav__link">
+  <a href="#8-time-sync-mostly-automatic" class="md-nav__link">
     <span class="md-ellipsis">
       
-        8. Set up HA time sync
+        8. Time sync (mostly automatic)
       
     </span>
   </a>
@@ -1321,10 +1321,10 @@ config but <strong>gives up the easy <code>.local</code> name</strong>. Most bui
 <li>[ ] HA device shows all entities after integration is added</li>
 </ul>
 <hr />
-<h2 id="8-set-up-ha-time-sync">8. Set up HA time sync<a class="headerlink" href="#8-set-up-ha-time-sync" title="Permanent link">&para;</a></h2>
-<p>The midnight cure step-down cron requires accurate time. Ensure your Home Assistant timezone is correct:</p>
+<h2 id="8-time-sync-mostly-automatic">8. Time sync (mostly automatic)<a class="headerlink" href="#8-time-sync-mostly-automatic" title="Permanent link">&para;</a></h2>
+<p>Cure-program day advancement is epoch-anchored and needs a valid clock, but it is resilient: the ESP32 prefers Home Assistant time when connected and falls back to SNTP (internet NTP) otherwise, self-healing any missed ticks. Still, make sure your Home Assistant timezone is correct:</p>
 <p><strong>Settings → System → General → Time zone</strong></p>
-<p>The ESP32 syncs time from HA on connect. Without this, the midnight cron will not fire at the right time.</p>
+<p>If neither HA nor internet NTP is reachable, the program simply pauses day advancement until a time source becomes valid — no days are lost.</p>
 <hr />
 <h2 id="9-calibrate-sensors">9. Calibrate sensors<a class="headerlink" href="#9-calibrate-sensors" title="Permanent link">&para;</a></h2>
 <p>After the chamber has been running for 30 minutes, follow <code>docs/calibration.md</code> to apply temperature and humidity offsets. The SHT45 reads within ±0.1 °C from the factory but mounting position and airflow introduce small errors.</p>
