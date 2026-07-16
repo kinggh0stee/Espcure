@@ -13,7 +13,7 @@
         <link rel="canonical" href="https://kinggh0stee.github.io/Espcure/cure-programs/">
       
       
-        <link rel="prev" href="../pid-tuning/">
+        <link rel="prev" href="../cooling-loop/">
       
       
         <link rel="next" href="../display-plan/">
@@ -320,6 +320,25 @@
   
   
   
+  
+    <li class="md-tabs__item">
+      <a href="../cooling-loop/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Cooling Loop
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
     
   
   
@@ -524,6 +543,33 @@
     
   
     PID Tuning
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cooling-loop/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cooling Loop
   
 
     
@@ -1010,7 +1056,7 @@
 <p>EspCure uses a <strong>decoupled control topology</strong>:</p>
 <ul>
 <li><strong>Temperature (heater only)</strong>: PID loop targets 17.2 °C by default, rarely activates (chamber floats 17–19 °C). A safety ceiling at 27 °C forces the Peltier ON above that point regardless of humidity demand.</li>
-<li><strong>Humidity (Peltier cold plate)</strong>: Bang-bang loop on dew point, runs every 30 s at full 15 Hz, condensing moisture from the air onto the Peltier cold plate. This is the sole dehumidification mechanism.</li>
+<li><strong>Humidity (Peltier cold plate)</strong>: Self-tuning Allende loop on dew point, runs every 20 s with continuous duty (0–100%, learned via adaptive bias), condensing moisture from the air onto the Peltier cold plate. This is the sole dehumidification mechanism. See <code>docs/cooling-loop.md</code> for tuning details.</li>
 <li><strong>Fan (GPIO5)</strong>: runs <strong>continuously while a cure program is active</strong> (constant air circulation for even drying); otherwise ON when the Peltier is cooling OR the heater is heating, and OFF when idle with no program.</li>
 </ul>
 <h2 id="humidity-control-mode">Humidity Control Mode<a class="headerlink" href="#humidity-control-mode" title="Permanent link">&para;</a></h2>
@@ -1097,7 +1143,7 @@
 <p>When no program is running, set the dew-point target manually:</p>
 <p><strong>Dew Point Mode</strong> (the only selectable mode):
 - <strong>Dew Point Setpoint</strong> — target dew point °C
-- <strong>Dew Point Hysteresis</strong> — dead band ÷ 2; default 0.5 °C</p>
+- <strong>Dew Point Deadband</strong> — ± band around setpoint (full value, not halved); default 0.1 °C. Gates the Allende bias adaptation and the satisfied-cutoff — see <code>docs/cooling-loop.md</code></p>
 <p>The <strong>Dew Point Error</strong> diagnostic sensor shows the current deviation from dew-point setpoint (positive = too humid).</p>
 <hr />
 <h2 id="safety-controls">Safety Controls<a class="headerlink" href="#safety-controls" title="Permanent link">&para;</a></h2>
@@ -1213,7 +1259,7 @@
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../pid-tuning/" class="md-footer__link md-footer__link--prev" aria-label="Previous: PID Tuning">
+          <a href="../cooling-loop/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Cooling Loop">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
@@ -1223,7 +1269,7 @@
                 Previous
               </span>
               <div class="md-ellipsis">
-                PID Tuning
+                Cooling Loop
               </div>
             </div>
           </a>
