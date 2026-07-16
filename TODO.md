@@ -83,7 +83,7 @@ Priority: 🔴 Critical · 🟡 High · 🟢 Nice-to-have · ✅ Done
 > - Set SHT45 temperature/RH `offset` values in `espcure.yaml` after calibration
 > - Verify each SSR-40 DD triggers reliably at 3.3 V (add 2N2222 NPN if marginal — see `docs/hardware.md`)
 > - Confirm the hot-side fan energizes the instant the Peltier turns on (shared fan rail)
-> - Verify `time.homeassistant` syncs (required for midnight cure program cron)
+> - Verify a time source syncs — HA time preferred, SNTP fallback (drives the epoch-anchored cure-program day advancement)
 
 ---
 
@@ -128,8 +128,9 @@ Priority: 🔴 Critical · 🟡 High · 🟢 Nice-to-have · ✅ Done
 ## Known Limitations
 
 - `web_server` v3 dark mode follows system preference — no server-side force-dark option in ESPHome YAML
-- Cure programs require HA time sync (`time.homeassistant`); device must be connected to HA for midnight cron to fire reliably
+- Cure programs prefer HA time sync but self-heal with SNTP fallback — day advancement runs every 60 s and catches up if rebooted or disconnected (no lost days like the old midnight-cron model)
 - Frost protection reacts to chamber *air* temperature (SHT45), not cold-plate surface — may be slow to respond to rapid over-cooling
+- Dry floor (RH safety) has a 3% release hysteresis (e.g. trip below 55%, release above 58%) to prevent chatter when RH oscillates near the floor
 - SHT45 self-heating (~0.1–0.2 °C) means temperature reads slightly high; calibrate with offset after install
 - SSR-40 DD control voltage is at the minimum spec (3.3 V = 3 V min) — verify each SSR before final install
 - Humidity control is downward-only (Peltier condensation); there is no humidifier in this build

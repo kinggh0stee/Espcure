@@ -8,7 +8,16 @@ Previous versions used a simple on/off (bang-bang) loop: if dew point was above 
 
 ## How It Works
 
-The loop runs every 20 seconds (vs. the old 30 s bang-bang):
+The loop runs every 20 seconds (vs. the old 30 s bang-bang) with the following priority chain:
+
+1. **Frost guard** (hard override) — if chamber temp < frost floor, force Peltier OFF.
+2. **High-temp safety ceiling** — if chamber temp > ceiling, force Peltier ON at 100%.
+3. **Humidity mode gate** — if dew-point mode is OFF, force Peltier OFF.
+4. **Sensor fault guard** — if dew point is invalid (NaN), force Peltier OFF.
+5. **Dry floor** — if chamber RH < dry floor, force Peltier OFF until RH recovers. Bias integrator frozen.
+6. **Allende math** — proportional + adaptive bias control.
+
+The Allende formula itself (step 6):
 
 ```
 output = (0.5 + error × gain) × bias
@@ -18,14 +27,14 @@ output = (0.5 + error × gain) × bias
 - **Gain** (`Cool Gain (Allende)`, default 0.03125) = proportional scaler in duty/%°C. Controls response speed.
 - **Bias** (`Cool Bias (Allende)`) = adaptive integrator (0.0–3.0, default start 1.0). Self-learns the chamber's offset.
 
-**Adaptive bias** ticks every 20 s:
+**Adaptive bias** ticks every 20 s (unless dry floor or frost guard is active):
 - If `|error| > deadband`, the bias drifts ±0.01 towards correction (learns).
 - If `|error| < deadband`, bias freezes (satisfied).
 - Clamped 0.0–3.0 so it can't drift to infinity.
 
 **Satisfied cutoff** (safety feature): once dew point is more than one deadband **below** the setpoint (already dry enough), the Peltier is forced to 0% duty — this prevents over-cooling.
 
-Frost guard and high-temp safety ceiling still override the Allende loop exactly as before.
+**Dry floor** (step 5): If chamber RH drops below `Min Chamber RH (Dry Floor)` (default 55%), the Peltier is suspended and the bias integrator is frozen (no adaptation). Peltier resumes once RH recovers 3% above the floor (e.g. 58% if floor is 55%). This prevents over-drying if condensation runs away. The dew-point setpoint schedule continues advancing — only the Peltier duty is gated.
 
 ## Tuning
 

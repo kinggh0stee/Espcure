@@ -46,11 +46,13 @@ views:
                   {% set s = states('sensor.espcure_chamber_status') %}{% if s ==
                   'Cooling' %}mdi:snowflake{% elif s == 'Heating'
                   %}mdi:fire{% elif s == 'Frost Guard'
-                  %}mdi:snowflake-alert{% else %}mdi:power-standby{% endif %}
+                  %}mdi:snowflake-alert{% elif s == 'Dry Floor'
+                  %}mdi:water-alert{% else %}mdi:power-standby{% endif %}
                 icon_color: >-
                   {% set s = states('sensor.espcure_chamber_status') %}{% if s ==
                   'Cooling' %}blue{% elif s == 'Heating' %}red{% elif s ==
-                  'Frost Guard' %}cyan{% else %}grey{% endif %}
+                  'Frost Guard' %}cyan{% elif s == 'Dry Floor' %}amber{% else
+                  %}grey{% endif %}
               - type: template
                 entity: binary_sensor.espcure_controller_online
                 icon: >-
@@ -381,13 +383,18 @@ views:
             icon: mdi:shield-alert
           - type: custom:mushroom-number-card
             entity: number.espcure_min_chamber_temperature_frost_floor
-            name: Frost Floor
+            name: Temperature Floor
             icon: mdi:snowflake-alert
             display_mode: buttons
           - type: custom:mushroom-number-card
             entity: number.espcure_max_chamber_temperature_safety_ceiling
             name: Max Chamber Temp
             icon: mdi:fire-alert
+            display_mode: buttons
+          - type: custom:mushroom-number-card
+            entity: number.espcure_min_chamber_rh_dry_floor
+            name: Humidity Floor
+            icon: mdi:water-alert
             display_mode: buttons
           - type: custom:mushroom-template-card
             primary: Frost Guard

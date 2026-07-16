@@ -201,13 +201,13 @@ A complete 5-tab Lovelace dashboard is at `docs/ha-dashboard.yaml`.
 
 ---
 
-## 8. Set up HA time sync
+## 8. Time sync (mostly automatic)
 
-The midnight cure step-down cron requires accurate time. Ensure your Home Assistant timezone is correct:
+Cure-program day advancement is epoch-anchored and needs a valid clock, but it is resilient: the ESP32 prefers Home Assistant time when connected and falls back to SNTP (internet NTP) otherwise, self-healing any missed ticks. Still, make sure your Home Assistant timezone is correct:
 
 **Settings → System → General → Time zone**
 
-The ESP32 syncs time from HA on connect. Without this, the midnight cron will not fire at the right time.
+If neither HA nor internet NTP is reachable, the program simply pauses day advancement until a time source becomes valid — no days are lost.
 
 ---
 

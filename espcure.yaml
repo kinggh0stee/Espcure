@@ -47,7 +47,7 @@ substitutions:
   # Firmware version — single source of truth. Bump this on every release; it
   # feeds both esphome.project.version (boot log + HA device info) and the
   # "Firmware Version" diagnostic text sensor shown on the web UI.
-  fw_version: "1.5.0"
+  fw_version: "1.6.0"
 
   # Chamber sensor — SHT45 (sht4x) is ACTIVE. The sht4x platform has no
   # on-demand heater API, so the Clear Sensor Condensation button just takes a
@@ -219,6 +219,29 @@ globals:
     type: float
     restore_value: true
     initial_value: "1.0"
+
+  # 10-Day Dry program start timestamp (epoch seconds). Single authority for
+  # elapsed-day computation. 0 = not yet anchored (filled on first valid-time tick
+  # after the program is enabled). Restored so a reboot mid-program keeps the anchor.
+  - id: dry10_start_epoch
+    type: uint32_t
+    restore_value: true
+    initial_value: "0"
+
+  # Guards the dry10_day on_value re-anchor against the day-advance interval's own
+  # writes: the interval sets this true immediately before writing dry10_day, so the
+  # re-anchor only fires on genuine manual/external edits.
+  - id: dry10_day_internal
+    type: bool
+    restore_value: false
+    initial_value: "false"
+
+  # Dry floor -- set when chamber RH drops below min_chamber_rh; forces the Peltier
+  # off (stop dehumidifying) until RH recovers. Mirrors frost_active.
+  - id: dry_floor_active
+    type: bool
+    restore_value: false
+    initial_value: "false"
 
 # ─── Sensors ──────────────────────────────────────────────────────────────────
 
@@ -473,7 +496,9 @@ switch:
       sorting_group_id: grp_programs
       sorting_weight: 3
     on_turn_on:
-      - lambda: id(cure_complete) = false;         // starting fresh — clear "cured"
+      - lambda: |-
+          id(cure_complete) = false;         // starting fresh -- clear "cured"
+          id(dry10_start_epoch) = 0;         // re-anchor on the next valid-time tick
       - number.set:
           id: dry10_day
           value: 0
@@ -484,6 +509,8 @@ switch:
           id: temp_pid
           target_temperature: 17.2    # 17.2 °C (63 °F)
       - switch.turn_on: use_dew_point_control
+    on_turn_off:
+      - lambda: id(dry10_start_epoch) = 0;
 
   # Humidity control mode — Dew Point (default).
   # The active mode drives the Peltier (cold-plate condensation), not a relay.
@@ -592,6 +619,27 @@ number:
       sorting_group_id: grp_setup
       sorting_weight: 2
 
+  # ── Dry floor (minimum humidity) ─────────────────────────────────────────────
+  # Symmetric with the frost floor. If chamber RH drops below this, the Peltier is
+  # forced OFF (stop dehumidifying) until RH recovers (+3 % hysteresis). Default
+  # 55 % never trips in normal operation (chamber runs ~65-75 %); a safety net
+  # against over-drying. Max capped at 60 % so it can't chatter against normal RH.
+  - platform: template
+    id: min_chamber_rh
+    name: "Min Chamber RH (Dry Floor)"
+    min_value: 30.0
+    max_value: 60.0
+    step: 1.0
+    initial_value: 55.0
+    restore_value: true
+    optimistic: true
+    unit_of_measurement: "%"
+    icon: "mdi:water-percent-alert"
+    entity_category: config
+    web_server:
+      sorting_group_id: grp_setup
+      sorting_weight: 1.5
+
   # ── Cure program counters ────────────────────────────────────────────────────
   - platform: template
     id: dry10_day
@@ -609,6 +657,15 @@ number:
       sorting_weight: 9
     on_value:
       - script.execute: paint_status_led   # repaint the cure-progress color
+      - lambda: |-
+          // Ignore the day-advance interval's own writes; re-anchor only on
+          // genuine manual/external edits so a hand-set day sticks (epoch is authority).
+          if (id(dry10_day_internal)) { id(dry10_day_internal) = false; return; }
+          if (!id(dry10_program_active).state) return;
+          auto t = id(ha_time).now();
+          if (!t.is_valid()) t = id(sntp_time).now();
+          if (t.is_valid())
+            id(dry10_start_epoch) = (uint32_t)t.timestamp - (uint32_t)((int)x * 86400);
 
   # ── Live PID tuning ──────────────────────────────────────────────────────────
   # Changing any coefficient immediately applies via set_control_parameters.
@@ -757,32 +814,17 @@ climate:
       ki_multiplier: 0.05
       kd_multiplier: 0.0
 
-# ─── Time (Home Assistant — drives daily cure program steps) ──────────────────
+# ─── Time ─────────────────────────────────────────────────────────────────────
+# Primary: Home Assistant (preferred when connected, matches HA local timezone).
+# Fallback: SNTP (keeps cure-program day advancement alive during HA/API outages).
+# The midnight cron has been removed -- day advancement is handled by the epoch-
+# anchored 60 s interval below, which self-heals missed ticks and multi-day gaps.
 
 time:
   - platform: homeassistant
     id: ha_time
-    on_time:
-      - cron: "0 0 0 * * *"    # midnight daily (ESPHome cron: sec min hour dom mon dow)
-        then:
-          # 10-day dry program: dew-point ramp 15.6→12.2 °C over 2 days, then 12.2, then 11.1
-          - if:
-              condition:
-                switch.is_on: dry10_program_active
-              then:
-                - lambda: |-
-                    int day = (int)id(dry10_day).state + 1;
-                    auto dc = id(dry10_day).make_call();
-                    dc.set_value((float)day);
-                    dc.perform();
-                    float dp;
-                    if (day == 1)                 dp = 13.9f;   // 13.9 °C — mid-ramp
-                    else if (day >= 2 && day <= 5) dp = 12.2f;  // 12.2 °C — dry hold
-                    else if (day >= 6 && day <= 9) dp = 11.1f;  // 11.1 °C — cure hold
-                    else { id(cure_complete) = true; id(dry10_program_active).turn_off(); return; }  // cured
-                    auto sp = id(dew_point_setpoint).make_call();
-                    sp.set_value(dp);
-                    sp.perform();
+  - platform: sntp
+    id: sntp_time
 
 # ─── Status LED painter (shared by the 2 s loop and the enable switch) ────────
 # Extracted into a script so toggling "Status LED Enable" repaints the LED
@@ -887,6 +929,28 @@ interval:
             id(peltier_output).set_level(0.0f);
             return;
           }
+          // 5) Dry floor -- stop condensing if chamber RH has fallen to the floor.
+          //    Hysteresis: trip below min_chamber_rh, release above min + 3 %.
+          //    Bias frozen (we return before the integrator). RH is valid here --
+          //    dew_point is derived from RH, so a NaN RH was caught at step 4.
+          {
+            const float DRY_FLOOR_RECOVER = 3.0f;   // %RH release band
+            float rh       = id(chamber_rh).state;
+            float rh_floor = id(min_chamber_rh).state;
+            if (!id(dry_floor_active) && rh < rh_floor) {
+              id(dry_floor_active) = true;
+              ESP_LOGW("espcure", "Dry floor reached (%.0f%% < %.0f%%) -- Peltier suspended", rh, rh_floor);
+            } else if (id(dry_floor_active) && rh > rh_floor + DRY_FLOOR_RECOVER) {
+              id(dry_floor_active) = false;
+              ESP_LOGI("espcure", "Chamber RH recovered (%.0f%%) -- Peltier may resume", rh);
+            }
+          }
+          if (id(dry_floor_active)) {
+            id(peltier_cooling) = false;
+            id(peltier_duty) = 0.0f;
+            id(peltier_output).set_level(0.0f);
+            return;
+          }
 
           // ---- Allende (self-tuning) ----
           float error = id(dew_point).state - id(dew_point_setpoint).state; // + = too humid
@@ -940,6 +1004,60 @@ interval:
             ESP_LOGI("espcure", "Chamber recovered (%.1f°C) — Peltier may resume", t);
             // The 20 s Allende loop re-engages the Peltier on its next pass.
           }
+
+  # 10-Day Dry -- epoch-anchored day advancement (60 s). Replaces the deleted
+  # midnight cron. Self-heals missed ticks and multi-day gaps: elapsed days are
+  # computed from the restored program-start epoch against whichever time source
+  # is valid. Writes dew_point_setpoint for the current day; the dry floor (20 s
+  # loop) may still hold the Peltier off -- the SETPOINT advances regardless.
+  - interval: 60s
+    then:
+      - lambda: |-
+          if (!id(dry10_program_active).state) return;
+
+          // Resolve a valid time: prefer HA, fall back to SNTP.
+          auto t = id(ha_time).now();
+          if (!t.is_valid()) t = id(sntp_time).now();
+          if (!t.is_valid()) return;                 // no time yet -- retry next tick
+          uint32_t now_ts = (uint32_t) t.timestamp;
+
+          // Anchor on the first valid tick after the program was enabled.
+          if (id(dry10_start_epoch) == 0) {
+            id(dry10_start_epoch) = now_ts;          // day 0 (15.6 C) already applied on start
+            return;
+          }
+
+          // Clock-skew guard: if time stepped BACKWARD past the anchor (e.g. an HA
+          // time correction), unsigned subtraction would underflow to a huge value
+          // and falsely complete the program. Re-anchor and wait instead.
+          if (now_ts < id(dry10_start_epoch)) {
+            id(dry10_start_epoch) = now_ts;
+            return;
+          }
+          int elapsed = (int)((now_ts - id(dry10_start_epoch)) / 86400);
+          if (elapsed == (int)id(dry10_day).state) return;   // no day change
+
+          // Program complete (also covers a multi-day catch-up jump past day 10).
+          if (elapsed >= 10) {
+            id(dry10_day_internal) = true;
+            auto dc = id(dry10_day).make_call(); dc.set_value(10.0f); dc.perform();
+            id(cure_complete) = true;
+            id(dry10_program_active).turn_off();
+            ESP_LOGI("espcure", "10-Day Dry complete (elapsed %d d) -- auto-off", elapsed);
+            return;
+          }
+
+          // Advance directly to the current day (jumps intermediate days on catch-up).
+          id(dry10_day_internal) = true;
+          auto dc = id(dry10_day).make_call(); dc.set_value((float)elapsed); dc.perform();
+
+          float dp;
+          if      (elapsed == 0) dp = 15.6f;   // ramp origin
+          else if (elapsed == 1) dp = 13.9f;   // mid-ramp
+          else if (elapsed <= 5) dp = 12.2f;   // dry hold (days 2-5)
+          else                   dp = 11.1f;   // cure hold (days 6-9)
+          auto sp = id(dew_point_setpoint).make_call(); sp.set_value(dp); sp.perform();
+          ESP_LOGI("espcure", "10-Day Dry advanced to day %d -- DP setpoint %.1f", elapsed, dp);
 
   # Fan + Status LED refresh (2 s)
   # Fan: runs continuously while a cure program is active (air circulation for
@@ -1095,6 +1213,7 @@ text_sensor:
     icon: "mdi:information-outline"
     lambda: |-
       if (id(frost_active)) return std::string("Frost Guard");
+      if (id(dry_floor_active)) return std::string("Dry Floor");
       if (id(peltier_cooling)) return std::string("Cooling");
       if (id(temp_pid).action == esphome::climate::CLIMATE_ACTION_HEATING) return std::string("Heating");
       return std::string("Idle");
