@@ -81,7 +81,7 @@ Priority: 🔴 Critical · 🟡 High · 🟢 Nice-to-have · ✅ Done
 > These require a running, installed device. See **`docs/setup.md`** and **`docs/pid-tuning.md`**:
 > - Run PID autotune and log results in `docs/pid-tuning.md`
 > - Set SHT45 temperature/RH `offset` values in `espcure.yaml` after calibration
-> - Verify each SSR-40 DD triggers reliably at 3.3 V (add 2N2222 NPN if marginal — see `docs/hardware.md`)
+> - ~~Verify each SSR-40 DD triggers reliably at 3.3 V~~ ✅ **verified on the reference unit (2026-07)** — all three SSRs trigger reliably at 3.3 V, no NPN driver needed. Still re-verify on any new build (see `docs/hardware.md`)
 > - Confirm the hot-side fan energizes the instant the Peltier turns on (shared fan rail)
 > - Verify a time source syncs — HA time preferred, SNTP fallback (drives the epoch-anchored cure-program day advancement)
 
@@ -132,6 +132,6 @@ Priority: 🔴 Critical · 🟡 High · 🟢 Nice-to-have · ✅ Done
 - Frost protection reacts to chamber *air* temperature (SHT45), not cold-plate surface — may be slow to respond to rapid over-cooling
 - Dry floor (RH safety) has a 3% release hysteresis (e.g. trip below 55%, release above 58%) to prevent chatter when RH oscillates near the floor
 - SHT45 self-heating (~0.1–0.2 °C) means temperature reads slightly high; calibrate with offset after install
-- SSR-40 DD control voltage is at the minimum spec (3.3 V = 3 V min) — verify each SSR before final install
+- SSR-40 DD control voltage is at the minimum spec (3.3 V = 3 V min) — verified reliable on the reference unit; still verify each SSR on any new build before final install
 - Humidity control is downward-only (Peltier condensation); there is no humidifier in this build
 - Temperature has no active cooling (heat-only PID) — the chamber floats (typically ~17–19 °C); the `max_chamber_temp` ceiling is the only forced-cooling path
