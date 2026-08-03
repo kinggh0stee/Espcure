@@ -50,18 +50,18 @@ Four entities control the loop:
 ### Interpreting Cool Bias
 
 - **Settling around 1.0** = normal. The loop has learned the chamber's steady-state offset.
-- **Pinned at 0.0** = bias has saturated downward. Either the **gain is too small** (increase it 0.005–0.01) or the **deadband is too wide** (narrow it 0.1–0.05 °C). The loop is struggling to cool enough.
-- **Pinned at 3.0** = bias has saturated upward. Either the **gain is too large** (decrease it 0.005–0.01) or the **deadband is too narrow** (widen it 0.1–0.2 °C). The loop is over-cooling.
+- **Pinned at 0.0** = bias has saturated downward. Either the **gain is too small** (increase it one or two steps — the slider moves in 0.00625 increments) or the **deadband is too wide** (narrow it 0.1–0.05 °C). The loop is struggling to cool enough.
+- **Pinned at 3.0** = bias has saturated upward. Either the **gain is too large** (decrease it one or two steps) or the **deadband is too narrow** (widen it 0.1–0.2 °C). The loop is over-cooling.
 
 ### Gain Adjustment (Start Conservative)
 
 The default gain 0.03125 (1/32) is conservative: each °C of error produces ~3% duty. This suits Peltiers with thermal inertia (they overshoot easily). If the chamber is very slow to respond:
 
-1. Increase gain by 0.005–0.01 increments (e.g. 0.03125 → 0.04).
+1. Increase gain one or two steps at a time (the slider moves in 0.00625 increments, e.g. 0.03125 → 0.0375 → 0.04375).
 2. Let it settle 1–2 hours and observe the bias trend.
 3. If bias is creeping toward 0, stop; if stable ~1.0, you can increase more.
 
-If the Peltier oscillates (undershoots then overshoots), reduce gain 0.005–0.01.
+If the Peltier oscillates (undershoots then overshoots), reduce gain one or two steps (0.00625 each).
 
 ### Deadband Tuning (Advanced)
 
