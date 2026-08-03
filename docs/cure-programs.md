@@ -53,7 +53,7 @@ Temperature stays at 17.2 °C throughout — the heater holds the floor while th
 - Days 6–9: hold 11.1 °C (cure phase, 4 days)
 - Day ≥10: program auto-disables
 
-Days are true 24-hour periods from program start, not calendar-midnight boundaries. A program started at 11 PM on one day is not treated as "two days old" the next morning — it ages by actual hours elapsed. If the device loses connection or restarts mid-program, the day counter catches up on the next valid time source (HA time preferred, SNTP fallback, or manual edit).
+Days are true 24-hour periods from program start, not calendar-midnight boundaries. A program started at 11 PM on one day is not treated as "two days old" the next morning — it ages by actual hours elapsed. If the device loses connection or restarts mid-program, the day counter catches up on the next valid time source (HA time preferred, SNTP fallback, or manual edit). A reboot **resumes** an in-flight program where it left off — it never resets the schedule; only toggling the program switch off and back on starts fresh (v1.6.1+).
 
 **Manual day edit**: Dragging the **10-Day Program Day** number re-anchors the program. Setting it to day N is equivalent to re-starting the program N days ago, re-locking the schedule.
 
