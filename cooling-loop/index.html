@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../assets/favicon.svg">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
     
     
       
@@ -31,7 +31,7 @@
       
     
     
-      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -1008,17 +1008,17 @@
 <h3 id="interpreting-cool-bias">Interpreting Cool Bias<a class="headerlink" href="#interpreting-cool-bias" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong>Settling around 1.0</strong> = normal. The loop has learned the chamber's steady-state offset.</li>
-<li><strong>Pinned at 0.0</strong> = bias has saturated downward. Either the <strong>gain is too small</strong> (increase it 0.005–0.01) or the <strong>deadband is too wide</strong> (narrow it 0.1–0.05 °C). The loop is struggling to cool enough.</li>
-<li><strong>Pinned at 3.0</strong> = bias has saturated upward. Either the <strong>gain is too large</strong> (decrease it 0.005–0.01) or the <strong>deadband is too narrow</strong> (widen it 0.1–0.2 °C). The loop is over-cooling.</li>
+<li><strong>Pinned at 0.0</strong> = bias has saturated downward. Either the <strong>gain is too small</strong> (increase it one or two steps — the slider moves in 0.00625 increments) or the <strong>deadband is too wide</strong> (narrow it 0.1–0.05 °C). The loop is struggling to cool enough.</li>
+<li><strong>Pinned at 3.0</strong> = bias has saturated upward. Either the <strong>gain is too large</strong> (decrease it one or two steps) or the <strong>deadband is too narrow</strong> (widen it 0.1–0.2 °C). The loop is over-cooling.</li>
 </ul>
 <h3 id="gain-adjustment-start-conservative">Gain Adjustment (Start Conservative)<a class="headerlink" href="#gain-adjustment-start-conservative" title="Permanent link">&para;</a></h3>
 <p>The default gain 0.03125 (1/32) is conservative: each °C of error produces ~3% duty. This suits Peltiers with thermal inertia (they overshoot easily). If the chamber is very slow to respond:</p>
 <ol>
-<li>Increase gain by 0.005–0.01 increments (e.g. 0.03125 → 0.04).</li>
+<li>Increase gain one or two steps at a time (the slider moves in 0.00625 increments, e.g. 0.03125 → 0.0375 → 0.04375).</li>
 <li>Let it settle 1–2 hours and observe the bias trend.</li>
 <li>If bias is creeping toward 0, stop; if stable ~1.0, you can increase more.</li>
 </ol>
-<p>If the Peltier oscillates (undershoots then overshoots), reduce gain 0.005–0.01.</p>
+<p>If the Peltier oscillates (undershoots then overshoots), reduce gain one or two steps (0.00625 each).</p>
 <h3 id="deadband-tuning-advanced">Deadband Tuning (Advanced)<a class="headerlink" href="#deadband-tuning-advanced" title="Permanent link">&para;</a></h3>
 <p>Default 0.1 °C is tight — the loop adapts on every tick if error exceeds ±0.1. This is stable for most chambers.</p>
 <ul>
@@ -1164,7 +1164,7 @@
       <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.instant", "navigation.instant.progress", "navigation.tabs", "navigation.top", "navigation.footer", "content.code.copy", "content.code.annotate", "search.highlight", "search.suggest", "toc.follow"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

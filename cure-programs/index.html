@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../assets/favicon.svg">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
     
     
       
@@ -31,7 +31,7 @@
       
     
     
-      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -1159,7 +1159,7 @@
 - Days 2–5: hold 12.2 °C (dry phase, 4 days)
 - Days 6–9: hold 11.1 °C (cure phase, 4 days)
 - Day ≥10: program auto-disables</p>
-<p>Days are true 24-hour periods from program start, not calendar-midnight boundaries. A program started at 11 PM on one day is not treated as "two days old" the next morning — it ages by actual hours elapsed. If the device loses connection or restarts mid-program, the day counter catches up on the next valid time source (HA time preferred, SNTP fallback, or manual edit).</p>
+<p>Days are true 24-hour periods from program start, not calendar-midnight boundaries. A program started at 11 PM on one day is not treated as "two days old" the next morning — it ages by actual hours elapsed. If the device loses connection or restarts mid-program, the day counter catches up on the next valid time source (HA time preferred, SNTP fallback, or manual edit). A reboot <strong>resumes</strong> an in-flight program where it left off — it never resets the schedule; only toggling the program switch off and back on starts fresh (v1.6.1+).</p>
 <p><strong>Manual day edit</strong>: Dragging the <strong>10-Day Program Day</strong> number re-anchors the program. Setting it to day N is equivalent to re-starting the program N days ago, re-locking the schedule.</p>
 <p><strong>Status sensor</strong>: <code>10-Day Program Status</code> shows e.g. <code>Day 3/10 — Dry 12.2°C</code>.</p>
 <hr />
@@ -1371,7 +1371,7 @@
       <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.instant", "navigation.instant.progress", "navigation.tabs", "navigation.top", "navigation.footer", "content.code.copy", "content.code.annotate", "search.highlight", "search.suggest", "toc.follow"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>
