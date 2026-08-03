@@ -47,7 +47,7 @@ substitutions:
   # Firmware version — single source of truth. Bump this on every release; it
   # feeds both esphome.project.version (boot log + HA device info) and the
   # "Firmware Version" diagnostic text sensor shown on the web UI.
-  fw_version: "1.6.0"
+  fw_version: "1.6.1"
 
   # Chamber sensor — SHT45 (sht4x) is ACTIVE. The sht4x platform has no
   # on-demand heater API, so the Clear Sensor Condensation button just takes a
@@ -75,7 +75,7 @@ esphome:
     version: "${fw_version}"
   on_boot:
     # Heat-only PID — put the climate in HEAT mode so the heater chases temperature
-    # from boot. The Peltier is driven separately by the dew-point/VPD loop.
+    # from boot. The Peltier is driven separately by the 20 s Allende cooling loop.
     - priority: -100
       then:
         - climate.control:
@@ -447,8 +447,9 @@ output:
 
 switch:
   # Fan rail — all 3 fans together (2× TEC hot-side + heater fan)
-  # GPIO5 → SSR-40 DD → fan rail 12 V (controlled by PID state — on when active, off when idle)
-  # Auto-driven by the 2 s interval (on when Peltier cooling or heater heating);
+  # GPIO5 → SSR-40 DD → fan rail 12 V
+  # Auto-driven by the 2 s interval (continuous while a cure program is active,
+  # else on when Peltier cooling or heater heating, off when idle);
   # diagnostic category so users don't toggle it expecting it to stick.
   - platform: gpio
     id: fan_relay
@@ -481,11 +482,13 @@ switch:
     on_turn_off:
       - script.execute: paint_status_led
 
-  # 10-day dew-point dry program (proven recipe — replaces the 24 h hang):
-  #   Day 1   : ramp dew point 15.6 °C → 13.9 °C → 12.2 °C
+  # 10-day dew-point dry program (proven recipe — replaces the 24 h hang).
+  # Epoch-anchored: days are true 24 h periods from program start.
+  #   Day 0 (enable): dew point 15.6 °C (ramp origin)
+  #   Day 1  : 13.9 °C (mid-ramp)
   #   Days 2–5: hold 12.2 °C dew point
   #   Days 6–9: hold 11.1 °C dew point
-  #   Day 10  : complete, auto-off
+  #   Day ≥10: complete, auto-off
   - platform: template
     id: dry10_program_active
     name: "10-Day Dry Program"
@@ -496,19 +499,29 @@ switch:
       sorting_group_id: grp_programs
       sorting_weight: 3
     on_turn_on:
+      # Single lambda (not an action list) so the boot-restore guard below can
+      # skip ALL of the fresh-start resets with one early return.
       - lambda: |-
-          id(cure_complete) = false;         // starting fresh -- clear "cured"
-          id(dry10_start_epoch) = 0;         // re-anchor on the next valid-time tick
-      - number.set:
-          id: dry10_day
-          value: 0
-      - number.set:
-          id: dew_point_setpoint
-          value: 15.6       # start of the 2-day ramp
-      - climate.control:
-          id: temp_pid
-          target_temperature: 17.2    # 17.2 °C (63 °F)
-      - switch.turn_on: use_dew_point_control
+          // Boot-restore guard: ESPHome re-fires on_turn_on when a template
+          // switch's saved ON state is restored at boot (TemplateSwitch::setup
+          // calls turn_on()). A restored in-flight program has a nonzero start
+          // epoch (globals restore at priority 800, before this fires at 798),
+          // so resume it untouched instead of resetting to day 0. A genuine
+          // fresh enable always has epoch == 0 -- on_turn_off zeroes it.
+          // DO NOT remove this guard: without it every reboot mid-cure
+          // silently restarts the program at day 0 / 15.6 C.
+          if (id(dry10_start_epoch) != 0) return;
+          id(cure_complete) = false;              // starting fresh -- clear "cured"
+          auto dc = id(dry10_day).make_call();
+          dc.set_value(0);                        // reset day counter (on_value anchors the epoch)
+          dc.perform();
+          auto sp = id(dew_point_setpoint).make_call();
+          sp.set_value(15.6f);                    // start of the 2-day ramp
+          sp.perform();
+          auto cc = id(temp_pid).make_call();
+          cc.set_target_temperature(17.2f);       // 17.2 C (63 F)
+          cc.perform();
+          id(use_dew_point_control).turn_on();
     on_turn_off:
       - lambda: id(dry10_start_epoch) = 0;
 
@@ -740,12 +753,14 @@ number:
   # Proportional gain around the 0.5 duty baseline. Default 0.03125 (1/32) gives
   # ~3 % duty per °C of dew-point error — conservative for a Peltier that has
   # significant thermal inertia. Increase if the chamber is slow to respond.
+  # step 0.00625 = 1/160, so the 1/32 default sits exactly on the step grid
+  # (a 0.005 step made the UI snap 0.03125 to 0.030/0.035 on first adjust).
   - platform: template
     id: allende_cool_gain
     name: "Cool Gain (Allende)"
     min_value: 0.0
     max_value: 0.2
-    step: 0.005
+    step: 0.00625
     initial_value: 0.03125
     restore_value: true
     optimistic: true
@@ -830,8 +845,9 @@ time:
 # Extracted into a script so toggling "Status LED Enable" repaints the LED
 # instantly instead of waiting up to 2 s for the next interval tick. Still
 # edge-triggered via led_state so the Frost Blink pulse isn't restarted on
-# every call. Colors: blue = cooling, red = heating, purple = idle,
-# white blink = frost; off when the enable switch is OFF.
+# every call. Cure-progress colors: purple = idle, blue→green fade = active
+# program (by day), solid green = cured, white blink = frost (safety override);
+# off when the enable switch is OFF.
 
 script:
   - id: paint_status_led
@@ -1063,8 +1079,8 @@ interval:
   # Fan: runs continuously while a cure program is active (air circulation for
   #   even drying); otherwise on when the Peltier is cooling OR the heater is
   #   heating; off when idle with no program.
-  # LED (when enabled via Status LED Enable):
-  #   Blue = cooling (Peltier) · Red = heating · Purple = idle · White blink = frost
+  # LED (when enabled via Status LED Enable) — cure progress:
+  #   Purple = idle · Blue→Green fade = program day · Green = cured · White blink = frost
   - interval: 2s
     then:
       - lambda: |-
@@ -1258,7 +1274,9 @@ text_sensor:
       if (day <= 1)      phase = "Ramp\xe2\x86\x92""12.2\xc2\xb0""C";
       else if (day <= 5) phase = "Dry 12.2\xc2\xb0""C";
       else               phase = "Cure 11.1\xc2\xb0""C";
-      snprintf(buf, sizeof(buf), "Day %d/10 \xe2\x80\x94 %s", day + 1, phase);
+      int shown = day + 1;                 // display is 1-based
+      if (shown > 10) shown = 10;          // cap: manual day=10 edit would show 11/10
+      snprintf(buf, sizeof(buf), "Day %d/10 \xe2\x80\x94 %s", shown, phase);
       return std::string(buf);
     update_interval: 30s
     web_server:
@@ -1317,8 +1335,10 @@ display:
           if (id(frost_active)) {
             it.printf(0, 49, id(font_s), "FROST GUARD ACTIVE");
           } else if (id(dry10_program_active).state) {
+            int shown = (int)id(dry10_day).state + 1;
+            if (shown > 10) shown = 10;
             it.printf(0, 49, id(font_s), "10d Day %d  T%.0f\xc2\xb0""C",
-                      (int)id(dry10_day).state + 1, id(temp_pid).target_temperature);
+                      shown, id(temp_pid).target_temperature);
           } else {
             it.printf(0, 49, id(font_s), "T %.0f\xc2\xb0""C  Standby",
                       id(temp_pid).target_temperature);
@@ -1331,7 +1351,8 @@ display:
           it.line(0, 15, 128, 15);
           it.printf(0, 18, id(font_s), "%s", id(humidity_control_mode).state.c_str());
           it.printf(0, 30, id(font_s), "Temp SP %.1f\xc2\xb0""C", id(temp_pid).target_temperature);
-          it.printf(0, 42, id(font_s), "Frost floor %.0f\xc2\xb0""C", id(min_chamber_temp).state);
+          it.printf(0, 42, id(font_s), "Floors %.0f\xc2\xb0""C / %.0f%%",
+                    id(min_chamber_temp).state, id(min_chamber_rh).state);
           it.printf(0, 54, id(font_s), "WiFi %d dBm", (int)id(wifi_signal_sensor).state);
 
       # Page 3 — active cure program
@@ -1345,11 +1366,12 @@ display:
           }
 
 # ─── Status LED (WS2812 RGB, built into ESP32-C6 DevKitC-1 on GPIO8) ─────────
-# Color code:
-#   Cooling  → blue              Heating → red (dim)
-#   Idle     → purple (half power)
-#   Frost    → white fast blink
-#   Off      → Status LED Enable switch OFF
+# Cure-progress color code (painted by paint_status_led):
+#   Idle (no program) → purple (half power)
+#   Active program    → blue fading to green as the days advance
+#   Cured (complete)  → solid green
+#   Frost guard       → white fast blink (safety override)
+#   Off               → Status LED Enable switch OFF
 
 light:
   # internal: true — the LED is driven entirely by paint_status_led and gated by
