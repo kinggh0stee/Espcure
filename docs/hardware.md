@@ -154,7 +154,7 @@ Run `esphome config espcure.yaml`, then `esphome run espcure.yaml`. CI compiles 
 
 ## Dehumidification
 
-The Peltier cold plate is the sole dehumidification mechanism. When the dew-point or VPD control loop is active, the Peltier condenses moisture from the chamber air by pulling the cold plate temperature below the air's dew point. There is no external dehumidifier relay.
+The Peltier cold plate is the sole dehumidification mechanism. When dew-point control is active, the Peltier condenses moisture from the chamber air by pulling the cold plate temperature below the air's dew point. There is no external dehumidifier relay.
 
 ## Frost Protection (Software-Only)
 
