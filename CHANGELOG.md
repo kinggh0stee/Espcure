@@ -7,6 +7,19 @@ All notable changes to EspCure are documented here.
 ## [Unreleased]
 
 ### Added
+- **Cooling Loop (Allende) tuning card on both HA dashboards** — Cool Gain, Dew Point Deadband, live Cool Bias (the Mushroom edition flags a bias pinned at 0 or 3 in red with the suggested fix), Peltier duty, and the Reset Cool Bias button. Previously these were reachable only via the device web UI or the HA device page.
+
+### Fixed
+- **Docs: the "Dew Point Out of Range" HA automation example referenced a non-existent entity** (`sensor.espcure_chamber_dew_point`) — corrected to `sensor.espcure_dew_point`. Copies of the old example never fired.
+- **Docs: the "10-Day Dry Complete" HA automation now fires only on auto-completion** (day counter ≥ 10 condition) instead of on any program switch-off, including a manual cancel.
+- **Changelog: the Deadband-rename entry (v1.5.0, below) wrongly claimed the HA entity ID was unchanged.** Corrected with a migration note.
+- `docs/hardware.md` no longer refers to the hidden VPD loop.
+
+## v1.6.1 — 2026-08-03
+
+_Consolidated notes for firmware 1.4.0 → 1.6.1 — no intermediate release headings were cut while these shipped._
+
+### Added
 - **Dry floor (minimum humidity safety).** New `Min Chamber RH (Dry Floor)` number (default 55%, range 30–60%): if chamber RH drops below it, the Peltier is forced off (dehumidification stops) until RH recovers 3% above the floor. The Allende bias integrator is frozen while floored. New "Dry Floor" chamber-status state. Mirrors the frost floor on the humidity side.
 - **SNTP fallback time source.** The 10-Day Dry program no longer depends solely on HA time sync. Time resolution now uses HA time (preferred, when connected) or SNTP (internet NTP fallback). Day advancement runs every 60 s and self-heals missed ticks and multi-day outages.
 - **Allende self-tuning cooling loop** — the Peltier is now driven by a 20 s proportional+adaptive-bias controller instead of the old 30 s bang-bang loop. Continuous duty (0–100%) output with learned steady-state bias that adapts every 20 s, reducing manual tweaking and power waste. See `docs/cooling-loop.md` for tuning guidance.
@@ -19,7 +32,7 @@ All notable changes to EspCure are documented here.
 ### Changed
 - **10-Day Dry day counter now epoch-anchored (bug fix).** Program start anchors a restored epoch timestamp (`dry10_start_epoch`); a 60 s interval computes elapsed days from whichever time source is valid (HA or SNTP) and advances the day + dew-point setpoint. Self-heals missed ticks and multi-day gaps (catch-up jumps directly to the correct day). Days are now true 24-hour periods from program start (not calendar-midnight boundaries) — a program started at 11 PM no longer gets a 1-hour "day 1". Manually editing the "10-Day Program Day" number re-anchors the schedule.
 - **Peltier now outputs continuous 0–100% duty instead of on/off.** The Allende loop drives `peltier_output.set_level(0.0–1.0)` every 20 s, where output is calculated as `(0.5 + error×gain)×bias`. The `peltier_output_pct` diagnostic sensor now reports the real continuous duty percentage instead of a fixed 0 or 100.
-- **Dew Point Hysteresis renamed to Dew Point Deadband.** The entity ID stays the same (`dew_point_hysteresis`), but the UI label now reflects its expanded role in the Allende loop: it gates bias adaptation (only ticks if `|error| > deadband`) and triggers satisfied-cutoff (Peltier forced to 0 if `error < -deadband`).
+- **Dew Point Hysteresis renamed to Dew Point Deadband.** ⚠️ **Home Assistant entity ID changed:** `number.espcure_dew_point_hysteresis` → `number.espcure_dew_point_deadband`. ESPHome derives the HA entity ID from the entity's *name*; the YAML `id:` (`dew_point_hysteresis`, unchanged) is internal to the firmware only. **Migration:** update any HA automations or dashboard cards that reference the old ID, then delete the orphaned "unavailable" entity (Settings → Devices & services → EspCure). The new label reflects its expanded role in the Allende loop: it gates bias adaptation (only ticks if `|error| > deadband`) and triggers satisfied-cutoff (Peltier forced to 0 if `error < -deadband`).
 - **Overview Humidity graph now has an interactive 1h/6h/12h/24h range toggle.** Replaced the fixed-24h `mini-graph-card` with a `custom:plotly-graph` card (new HACS dependency: [Plotly Graph Card](https://github.com/dbuezas/lovelace-plotly-graph-card)), which adds native clickable range-selector buttons plus pan/zoom on the chart itself. The Temp & Dew Point graph next to it is unchanged.
 - **OLED page 2 now shows both safety floors** — the frost floor (°C) and the new dry floor (%RH) on one line.
 - Stale code comments describing the pre-v1.3 LED color scheme ("blue = cooling, red = heating") and the old midnight-cron day numbering were corrected to the current cure-progress LED and epoch-anchored semantics.

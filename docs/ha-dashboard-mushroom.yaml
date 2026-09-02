@@ -374,6 +374,42 @@ views:
                 name: Integral
                 color: "#9c27b0"
 
+      # ── Allende cooling loop (Peltier) ──────────────────────────────────
+      - type: grid
+        cards:
+          - type: heading
+            heading: Cooling Loop (Allende)
+            heading_style: title
+            icon: mdi:snowflake-thermometer
+          - type: custom:mushroom-number-card
+            entity: number.espcure_cool_gain_allende
+            name: Cool Gain
+            icon: mdi:snowflake-thermometer
+            display_mode: buttons
+          - type: custom:mushroom-number-card
+            entity: number.espcure_dew_point_deadband
+            name: Dew Point Deadband
+            icon: mdi:tune
+            display_mode: buttons
+          - type: custom:mushroom-template-card
+            primary: Cool Bias
+            secondary: >-
+              {% set b = states('sensor.espcure_cool_bias_allende') | float(1) %}
+              {{ '%.2f' | format(b) }} —
+              {{ 'pinned low: raise gain / narrow deadband' if b <= 0.05
+                 else 'pinned high: lower gain / widen deadband' if b >= 2.95
+                 else 'learning OK (~1.0 is healthy)' }}
+            icon: mdi:sigma
+            icon_color: >-
+              {% set b = states('sensor.espcure_cool_bias_allende') | float(1) %}
+              {{ 'red' if b <= 0.05 or b >= 2.95 else 'green' }}
+          - type: custom:mushroom-entity-card
+            entity: button.espcure_reset_cool_bias
+            name: Reset Cool Bias to 1.0
+            icon: mdi:restart
+            tap_action:
+              action: toggle
+
       # ── Safety limits ───────────────────────────────────────────────────
       - type: grid
         cards:

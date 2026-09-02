@@ -103,6 +103,11 @@ triggers:
     entity_id: switch.espcure_10_day_dry_program
     from: "on"
     to: "off"
+conditions:
+  # Fire only on auto-completion (day counter reached 10) — not on a manual cancel
+  - condition: numeric_state
+    entity_id: number.espcure_10_day_program_day
+    above: 9
 actions:
   - action: notify.mobile_app_your_phone
     data:
@@ -158,12 +163,12 @@ mode: single
 alias: "EspCure — Dew Point Alert"
 triggers:
   - trigger: numeric_state
-    entity_id: sensor.espcure_chamber_dew_point
+    entity_id: sensor.espcure_dew_point
     above: 15
     for:
       hours: 1
   - trigger: numeric_state
-    entity_id: sensor.espcure_chamber_dew_point
+    entity_id: sensor.espcure_dew_point
     below: 8
     for:
       hours: 1
@@ -173,6 +178,6 @@ actions:
       title: "EspCure Alert"
       message: >
         Chamber dew point out of range:
-        {{ states('sensor.espcure_chamber_dew_point') }} °C
+        {{ states('sensor.espcure_dew_point') }} °C
 mode: single
 ```
