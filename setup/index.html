@@ -1116,21 +1116,21 @@
 <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nb">Copy-Item</span> <span class="n">secrets</span><span class="p">.</span><span class="n">yaml</span><span class="p">.</span><span class="n">example</span> <span class="n">secrets</span><span class="p">.</span><span class="n">yaml</span>
 </code></pre></div></p>
 <p>Edit <code>secrets.yaml</code> with your values:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nt">wifi_ssid</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;YourNetworkName&quot;</span>
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="nt">wifi_password</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;YourWiFiPassword&quot;</span>
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="nt">ap_password</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;espcure-setup&quot;</span>
-<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="nt">api_encryption_key</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;&lt;generate</span><span class="nv"> </span><span class="s">below&gt;&quot;</span>
-<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="nt">ota_password</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;&lt;choose</span><span class="nv"> </span><span class="s">a</span><span class="nv"> </span><span class="s">strong</span><span class="nv"> </span><span class="s">password&gt;&quot;</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nt">wifi_ssid</span><span class="p">:</span><span class="w"> </span><span class="s">"YourNetworkName"</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="nt">wifi_password</span><span class="p">:</span><span class="w"> </span><span class="s">"YourWiFiPassword"</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="nt">ap_password</span><span class="p">:</span><span class="w"> </span><span class="s">"espcure-setup"</span>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="nt">api_encryption_key</span><span class="p">:</span><span class="w"> </span><span class="s">"&lt;generate</span><span class="nv"> </span><span class="s">below&gt;"</span>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="nt">ota_password</span><span class="p">:</span><span class="w"> </span><span class="s">"&lt;choose</span><span class="nv"> </span><span class="s">a</span><span class="nv"> </span><span class="s">strong</span><span class="nv"> </span><span class="s">password&gt;"</span>
 </code></pre></div>
 <p>Generate a random API encryption key:</p>
 <p><strong>macOS / Linux:</strong>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>python3<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;import base64,os; print(base64.b64encode(os.urandom(32)).decode())&quot;</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>python3<span class="w"> </span>-c<span class="w"> </span><span class="s2">"import base64,os; print(base64.b64encode(os.urandom(32)).decode())"</span>
 </code></pre></div></p>
 <p><strong>Windows (PowerShell):</strong>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="no">[Convert]</span><span class="p">::</span><span class="n">ToBase64String</span><span class="p">((</span><span class="n">1</span><span class="p">..</span><span class="n">32</span> <span class="p">|</span> <span class="k">ForEach</span><span class="n">-Object</span> <span class="p">{</span> <span class="no">[byte]</span><span class="p">(</span><span class="nb">Get-Random</span> <span class="n">-Max</span> <span class="n">256</span><span class="p">)</span> <span class="p">}))</span>
 </code></pre></div></p>
 <p>Or if Python is installed on Windows:
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="n">python</span> <span class="n">-c</span> <span class="s2">&quot;import base64,os; print(base64.b64encode(os.urandom(32)).decode())&quot;</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="n">python</span> <span class="n">-c</span> <span class="s2">"import base64,os; print(base64.b64encode(os.urandom(32)).decode())"</span>
 </code></pre></div></p>
 <hr />
 <h2 id="1b-name-the-device-required-if-you-run-more-than-one">1b. Name the device (required if you run more than one)<a class="headerlink" href="#1b-name-the-device-required-if-you-run-more-than-one" title="Permanent link">&para;</a></h2>

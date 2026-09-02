@@ -280,6 +280,27 @@ views:
           - type: section
             label: "Changes apply instantly — no reflash needed"
 
+      # ── Allende cooling loop (Peltier) ────────────────────────────────────
+      - type: entities
+        title: Cooling Loop (Allende)
+        icon: mdi:snowflake-thermometer
+        entities:
+          - entity: number.espcure_cool_gain_allende
+            name: Cool Gain — duty per °C of error
+          - entity: number.espcure_dew_point_deadband
+            name: Dew Point Deadband
+          - type: divider
+          - entity: sensor.espcure_cool_bias_allende
+            name: Cool Bias (learned — ~1.0 is healthy)
+          - entity: sensor.espcure_peltier_dehumidify_duty
+            name: Peltier Duty
+          - type: divider
+          - entity: button.espcure_reset_cool_bias
+            name: Reset Cool Bias to 1.0
+            action_name: Reset
+          - type: section
+            label: "Bias pinned at 0 or 3 → adjust gain/deadband (docs/cooling-loop.md)"
+
       # ── PID state ─────────────────────────────────────────────────────────
       - type: entities
         title: PID State
